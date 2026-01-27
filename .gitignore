@@ -7,9 +7,10 @@ docs/00-AI-prompt-memo.md
 # macOS
 .DS_Store
 
-# 一回限りのセットアップ用（不要なら削除してよい）
+# 一回限りのセットアップ・修正用（不要なら削除してよい）
 setup-gol-web-app-repo.sh
 setup-result.txt
+fix-gol-web-as-normal-dir.sh
 
 # gol-web 配下は gol-web/.gitignore が適用される
 # （node_modules, .next, .env*, など）
