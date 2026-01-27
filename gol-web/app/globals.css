@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+}
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 16px; /* ベースフォントサイズを16pxに設定（中サイズに合わせる） */
+}
+
+/* フォントサイズコントロール */
+html[data-font-size="small"] {
+  font-size: 13px;
+}
+
+html[data-font-size="medium"] {
+  font-size: 16px; /* 中を少し大きく */
+}
+
+html[data-font-size="large"] {
+  font-size: 18px; /* 大はそのまま */
+}
+
+/* 全体的にフォントサイズを上げる */
+@layer base {
+  * {
+    font-size: inherit;
+  }
+}
+
+/* プレースホルダーテキストの色を薄く、黒寄りに */
+@layer base {
+  input::placeholder,
+  textarea::placeholder {
+    color: #3f3f46; /* zinc-700 - 薄く黒寄りのグレー */
+    opacity: 0.8;
+  }
+}
+
+/* アクション可能なボタンやリンクにポインターカーソルを設定 */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  a,
+  label[for],
+  input[type="checkbox"],
+  input[type="radio"] {
+    cursor: pointer;
+  }
+  
+  button:disabled,
+  [role="button"]:disabled {
+    cursor: not-allowed;
+  }
+}
