@@ -50,6 +50,84 @@
 
 ## 2601 --------------
 
+### 260127-火
+
+#### Hydration エラー・無限ループの解消
+
+**起因:**
+
+- 新規ToDo作成（プラスボタン）やダッシュボード表示時に Hydration failed / Maximum update depth exceeded が発生
+- 原因1: カンバン・ToDoサマリーで filterTagIds 等の初期値に `typeof window !== 'undefined'` で localStorage を読み込んでおり、サーバーとクライアントの初回描画が不一致
+- 原因2: @dnd-kit がクライアント側で aria-roledescription / aria-describedby / aria-label を付与するため、サーバーと属性がずれる
+- 原因3: ToDoサマリーで filteredActiveTodos / filteredInProgressTodos が毎レンダーで新配列になり、それに依存する useEffect が setOrderedTodos を呼び続けて無限ループ
+
+**対応内容:**
+
+1. **kanban-board.tsx**
+   - filterTagIds, filterDifficulties, sortDateActive 等の初期値を `[]` / `'asc'` / `'desc'` に統一
+   - 新規 useEffect でマウント後に localStorage から復元
+   - isClient 状態を追加し、!isClient の間は DndContext を使わず「読み込み中...」プレースホルダーのみ描画
+   - CompletedTodoCardInner / DraggableTodoCard の task_name・期限・完了日の表示に suppressHydrationWarning を付与
+
+2. **todo-summary-tab.tsx**
+   - filterTagIds, filterDifficulties の初期値を `[]` にし、マウント後の useEffect で localStorage から復元
+   - filteredActiveTodos / filteredInProgressTodos を useMemo で算出（依存: todos, filterTagIds, filterDifficulties, searchQuery）
+
+3. **docs/00-AI-prompt-memo.md**
+   - .gitignore に追加済み。既に追跡されていたため `git rm --cached docs/00-AI-prompt-memo.md` でインデックスから除外
+
+4. **git add/commit の実行**
+   - マルチルートワークスペースでは、実行時の cwd が別ルートになることがあるため、`working_directory: /Users/ta2/ALL-DTA2/Develop/dta2/gol/web-app` を指定して add/commit を実行することでリポジトリに反映
+
+**使用した技術・パターン**
+
+- React: useState 初期値の統一、useEffect によるマウント後復元、useMemo による参照安定化、suppressHydrationWarning
+- Next.js: Hydration エラー回避（クライアントのみ描画、日付・テキストの suppressHydrationWarning）
+
+**学んだこと**
+
+- localStorage を useState の初期値で読むとサーバーとクライアントで DOM がずれ、Hydration エラーになる。初回は同じデフォルトを使い、useEffect で復元する
+- @dnd-kit はクライアントで aria-* を付与するため、DndContext 配下はクライアントマウント後のみ描画すると安全
+- useMemo の依存配列に「毎レンダーで変わる参照」を入れると useEffect が延々走る。算出結果を useMemo で安定させる
+
+---
+
+#### リモートリポジトリ作成・Git管理化
+
+**実施内容:**
+
+- gol-web-app のリモートリポジトリを GitHub 上に Private で作成
+- 本プロジェクト（web-app 配下）を Git 管理下に置いた
+- md版（gol-md-app）と Web版（gol-web-app）は別リポジトリで管理する方針（同期しない）
+
+**手順・運用:**
+
+1. **リポジトリ作成**
+   - GitHub で gol-web-app を Private で作成（ブラウザまたは `gh repo create gol-web-app --private --source=. --remote=origin --push`）
+   - 既存の gol 配下に web-app がある場合、web-app をルートとして別ディレクトリにコピーしてから `git init` → add → commit → push する形でも可
+
+2. **README・.gitignore**
+   - web-app ルートに README と .gitignore を整備
+   - .gitignore に docs/00-AI-prompt-memo.md、docs/ex-secret.md、macOS の .DS_Store 等を記載
+   - 秘匿情報は別ファイル（ex-secret.md）に記載し、リポに含めない
+
+3. **gol-web の扱い**
+   - gol-web 内に .git があった場合は削除し、web-app からは通常ディレクトリとして含める（サブモジュール解除）。`fix-gol-web-as-normal-dir.sh` または `git rm --cached gol-web` → `git add gol-web/` → commit
+
+4. **作成手順の記載**
+   - ブラウザ／CLI でのリポ作成手順、gol-web の直し方は docs/00-AI-prompt-memo.md に記載
+
+**使用した技術・ツール**
+
+- Git, GitHub（または GitHub CLI `gh`）
+- .gitignore による追跡除外、`git rm --cached` による既追跡ファイルの除外
+
+**学んだこと**
+
+- マルチルートワークスペースで AI やツールから git を実行する場合は、`working_directory` を明示しないと別ルートの cwd で動き、意図したリポに反映されないことがある
+
+---
+
 ### 260123-金
 
 #### 過去の日誌表示機能の改善

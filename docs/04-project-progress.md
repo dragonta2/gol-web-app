@@ -269,6 +269,40 @@
 
 ## 2601 --------------
 
+### 260127-火
+
+#### 実施内容
+
+**Hydration エラー・無限ループの解消:**
+
+- カンバンボード（kanban-board.tsx）
+  - フィルター・ソートの初期値をサーバーとクライアントで統一。localStorage の復元はマウント後の useEffect のみに変更
+  - DndContext 配下は isClient が立つまでプレースホルダー表示にし、@dnd-kit の aria-* による Hydration エラーを回避
+  - テキスト・日付表示に suppressHydrationWarning を付与
+- ToDoサマリー（todo-summary-tab.tsx）
+  - フィルターの初期値も同様に「初回デフォルト、復元は useEffect」に変更
+  - filteredActiveTodos / filteredInProgressTodos を useMemo でメモ化し、useEffect の無限ループ（Maximum update depth exceeded）を解消
+- docs/00-AI-prompt-memo.md を .gitignore に追加し、追跡対象から除外（git rm --cached 済み）
+
+**リモートリポジトリ作成・Git管理化:**
+
+- gol-web-app のリモートリポジトリを Private で作成（GitHub 上で用意）
+- 本プロジェクト（web-app）を Git 管理下に置いた（README・.gitignore 整備含む）
+- md版（gol-md-app）と Web版（gol-web-app）は別リポジトリで管理する方針（同期しない）
+- 作成手順（ブラウザ／CLI）は docs/00-AI-prompt-memo.md に記載
+
+#### 決定事項
+
+- カンバン・ToDoサマリーの localStorage 利用は「初回はデフォルト、マウント後に useEffect で復元」に統一して Hydration エラーを防ぐ
+- gol/web-app への git 操作は working_directory を明示して実行する（マルチルートワークスペースで反映させるため）
+
+#### 次回予定
+
+- 動作確認（新規ToDo作成・日付切り替えでエラーが出ないか）
+- 必要に応じて push
+
+---
+
 ### 260123-金
 
 #### 実施内容
