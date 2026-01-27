@@ -1,0 +1,15 @@
+# ---- gol-web-app リポジトリルート用 ----
+
+# 機密・個人メモ（必要ならコメントアウトしてコミット）
+docs/02-gol-design-doc.md
+docs/00-AI-prompt-memo.md
+
+# macOS
+.DS_Store
+
+# 一回限りのセットアップ用（不要なら削除してよい）
+setup-gol-web-app-repo.sh
+setup-result.txt
+
+# gol-web 配下は gol-web/.gitignore が適用される
+# （node_modules, .next, .env*, など）
