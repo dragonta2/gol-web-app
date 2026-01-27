@@ -1,8 +1,8 @@
 # ---- gol-web-app リポジトリルート用 ----
 
-# 機密・個人メモ（必要ならコメントアウトしてコミット）
-docs/02-gol-design-doc.md
-docs/00-AI-prompt-memo.md
+
+# 秘匿情報（ID・PW・APIキー等）→ 絶対にコミットしない
+docs/ex-secret.md
 
 # macOS
 .DS_Store
