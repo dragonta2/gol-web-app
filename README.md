@@ -1,6 +1,8 @@
 # GOL Web版（gol-web-app）
 
-習慣・ToDo・日誌を扱うWebアプリ。Next.js + Supabase + OpenAI を利用しています。MD版（gol-md-app）とは別リポジトリで独立して開発しています。
+習慣・ToDo・日誌を扱うWebアプリ。Next.js + Supabase + OpenAI を利用しています。
+
+**md-app（マークダウンファイル版）と web-app（Webアプリ版）は、それぞれ独立したリポジトリで管理しています。** 本リポジトリは web-app 用（gol-web-app）、md-app 用は gol-md-app です。
 
 ## 構成
 
