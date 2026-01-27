@@ -3,8 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Calendar, FileText, ChevronDown, ChevronUp, ArrowUpDown, ArrowDown, ArrowUp } from 'lucide-react';
+import { Calendar, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
@@ -183,15 +182,15 @@ export default function JournalList({ onDateSelect, isExpanded: externalIsExpand
     <div className="space-y-4">
       {/* 今月の日誌セクション */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg">
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-800 gap-2 flex-wrap">
           <button
             onClick={() => setIsCurrentMonthExpanded(!isCurrentMonthExpanded)}
-            className="flex-1 text-left flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
+            className="flex-1 min-w-0 text-left flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
             aria-expanded={isCurrentMonthExpanded}
             aria-controls="current-month-journal-content"
           >
             <h3 className="text-lg font-semibold text-cyan-400 flex items-center gap-2">
-              <FileText className="w-5 h-5" />
+              <FileText className="w-5 h-5 shrink-0" />
               <span>今月の日誌</span>
               <span className="text-sm text-zinc-500 font-normal">
                 ({currentMonthJournals.length}件)
@@ -203,25 +202,25 @@ export default function JournalList({ onDateSelect, isExpanded: externalIsExpand
               <ChevronDown className="w-5 h-5 text-zinc-400 shrink-0" />
             )}
           </button>
-          {isCurrentMonthExpanded && currentMonthJournals.length > 0 && (
-            <div className="flex items-center gap-2 ml-4">
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setCurrentMonthSortOrder(currentMonthSortOrder === 'desc' ? 'asc' : 'desc');
-                }}
-                variant="ghost"
-                size="sm"
-                className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
-                title={currentMonthSortOrder === 'desc' ? '降順' : '昇順'}
+          {currentMonthJournals.length > 0 && (
+            <span className="flex items-center gap-1 text-xs text-zinc-500 shrink-0" aria-label="日付で並び替え">
+              <button
+                type="button"
+                onClick={() => setCurrentMonthSortOrder('asc')}
+                className={`px-2 py-1 rounded ${currentMonthSortOrder === 'asc' ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+                title="古い順"
               >
-                {currentMonthSortOrder === 'desc' ? (
-                  <ArrowDown className="w-4 h-4" />
-                ) : (
-                  <ArrowUp className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
+                古い順
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentMonthSortOrder('desc')}
+                className={`px-2 py-1 rounded ${currentMonthSortOrder === 'desc' ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+                title="新しい順"
+              >
+                新しい順
+              </button>
+            </span>
           )}
         </div>
         {isCurrentMonthExpanded && (
@@ -237,15 +236,15 @@ export default function JournalList({ onDateSelect, isExpanded: externalIsExpand
 
       {/* 過去の日誌セクション */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg">
-        <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+        <div className="flex items-center justify-between p-4 border-b border-zinc-800 gap-2 flex-wrap">
           <button
             onClick={() => setIsPastJournalsExpanded(!isPastJournalsExpanded)}
-            className="flex-1 text-left flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
+            className="flex-1 min-w-0 text-left flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
             aria-expanded={isPastJournalsExpanded}
             aria-controls="past-journal-content"
           >
             <h3 className="text-lg font-semibold text-cyan-400 flex items-center gap-2">
-              <FileText className="w-5 h-5" />
+              <FileText className="w-5 h-5 shrink-0" />
               <span>過去の日誌</span>
               <span className="text-sm text-zinc-500 font-normal">
                 ({pastJournals.length}件)
@@ -257,25 +256,25 @@ export default function JournalList({ onDateSelect, isExpanded: externalIsExpand
               <ChevronDown className="w-5 h-5 text-zinc-400 shrink-0" />
             )}
           </button>
-          {isPastJournalsExpanded && pastJournals.length > 0 && (
-            <div className="flex items-center gap-2 ml-4">
-              <Button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPastJournalsSortOrder(pastJournalsSortOrder === 'desc' ? 'asc' : 'desc');
-                }}
-                variant="ghost"
-                size="sm"
-                className="text-zinc-400 hover:text-zinc-200 h-8 px-2"
-                title={pastJournalsSortOrder === 'desc' ? '降順' : '昇順'}
+          {pastJournals.length > 0 && (
+            <span className="flex items-center gap-1 text-xs text-zinc-500 shrink-0" aria-label="日付で並び替え">
+              <button
+                type="button"
+                onClick={() => setPastJournalsSortOrder('asc')}
+                className={`px-2 py-1 rounded ${pastJournalsSortOrder === 'asc' ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+                title="古い順"
               >
-                {pastJournalsSortOrder === 'desc' ? (
-                  <ArrowDown className="w-4 h-4" />
-                ) : (
-                  <ArrowUp className="w-4 h-4" />
-                )}
-              </Button>
-            </div>
+                古い順
+              </button>
+              <button
+                type="button"
+                onClick={() => setPastJournalsSortOrder('desc')}
+                className={`px-2 py-1 rounded ${pastJournalsSortOrder === 'desc' ? 'bg-cyan-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'}`}
+                title="新しい順"
+              >
+                新しい順
+              </button>
+            </span>
           )}
         </div>
         {isPastJournalsExpanded && (

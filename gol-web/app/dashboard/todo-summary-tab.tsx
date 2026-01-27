@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { Todo, TodoLog, TodoSubtask, Difficulty, Tag } from '@/lib/types';
@@ -55,21 +55,9 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
   const [tags, setTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
-  // フィルター状態（ローカルストレージから復元）
-  const [filterTagIds, setFilterTagIds] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('todo-summary-filter-tag-ids');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
-  const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('todo-summary-filter-difficulties');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
+  // フィルター状態（初回はサーバーとクライアントで同じにし、マウント後に localStorage から復元して Hydration エラーを防ぐ）
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
+  const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>([]);
   // 月ごとのフィルター状態（'all' = すべて、'YYYY-MM' = 特定の月）
   const [monthFilter, setMonthFilter] = useState<string>('all');
   
@@ -79,6 +67,28 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     active: [],
     inProgress: [],
   });
+
+  // マウント後に localStorage からフィルターを復元（Hydration 後のみ実行）
+  useEffect(() => {
+    const savedTagIds = localStorage.getItem('todo-summary-filter-tag-ids');
+    if (savedTagIds) {
+      try {
+        const parsed = JSON.parse(savedTagIds);
+        if (Array.isArray(parsed)) setFilterTagIds(parsed);
+      } catch {
+        /* ignore */
+      }
+    }
+    const savedDiff = localStorage.getItem('todo-summary-filter-difficulties');
+    if (savedDiff) {
+      try {
+        const parsed = JSON.parse(savedDiff);
+        if (Array.isArray(parsed)) setFilterDifficulties(parsed);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
 
   // フィルター状態をローカルストレージに保存
   useEffect(() => {
@@ -198,18 +208,16 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     });
   };
 
-  // ステータス別にtodosを分類（フィルター適用後、並び替え）
-  const filteredActiveTodos = sortTodos(
-    applyFilters(
-      todos.filter((todo) => todo.status === 'active')
-    )
+  // ステータス別にtodosを分類（フィルター適用後、並び替え）。useMemoで参照を安定させ、useEffectの無限ループを防ぐ
+  const filteredActiveTodos = useMemo(
+    () => sortTodos(applyFilters(todos.filter((todo) => todo.status === 'active'))),
+    [todos, filterTagIds, filterDifficulties, searchQuery]
   );
-  const filteredInProgressTodos = sortTodos(
-    applyFilters(
-      todos.filter((todo) => todo.status === 'in_progress')
-    )
+  const filteredInProgressTodos = useMemo(
+    () => sortTodos(applyFilters(todos.filter((todo) => todo.status === 'in_progress'))),
+    [todos, filterTagIds, filterDifficulties, searchQuery]
   );
-  
+
   // ドラッグ&ドロップで並び替えられた順序を管理
   useEffect(() => {
     setOrderedTodos({

@@ -22,12 +22,13 @@ import { FormCard } from '@/components/ui/form-card';
 import { ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 
 // ドラッグ可能なカードコンポーネント
-function DraggableTodoCard({ todo, isOverdue, icon, totalExp, formatDeadline }: {
+function DraggableTodoCard({ todo, isOverdue, icon, totalExp, formatDeadline, onMoveToActive }: {
   todo: Todo;
   isOverdue: boolean;
   icon: string;
   totalExp: number;
   formatDeadline: (dueDate: string | null) => string;
+  onMoveToActive?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: todo.id,
@@ -58,7 +59,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, totalExp, formatDeadline }: 
         <span className="text-lg">{icon}</span>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-base font-medium text-zinc-100 flex-1">
+            <span className="text-base font-medium text-zinc-100 flex-1" suppressHydrationWarning>
               {todo.task_name}
             </span>
             {todo.difficulty && (
@@ -91,9 +92,23 @@ function DraggableTodoCard({ todo, isOverdue, icon, totalExp, formatDeadline }: 
         {todo.is_special && <div>SP {todo.sp_points}pt</div>}
         {totalExp > 0 && <div>{totalExp}ex</div>}
         {todo.due_date && (
-          <div className={isOverdue ? 'text-red-400' : ''} id={isOverdue ? `overdue-${todo.id}` : undefined}>
+          <div className={isOverdue ? 'text-red-400' : ''} id={isOverdue ? `overdue-${todo.id}` : undefined} suppressHydrationWarning>
             期限: {formatDeadline(todo.due_date)}
             {isOverdue && <span aria-label="期限超過"> (期限超過)</span>}
+          </div>
+        )}
+        {todo.status === 'in_progress' && onMoveToActive && (
+          <div className="pt-1 mt-1 border-t border-zinc-700">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMoveToActive();
+              }}
+              className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline"
+            >
+              ← アクティブに戻す
+            </button>
           </div>
         )}
       </div>
@@ -101,20 +116,20 @@ function DraggableTodoCard({ todo, isOverdue, icon, totalExp, formatDeadline }: 
   );
 }
 
-// 完了済みカードコンポーネント（ドラッグ不可）
-function CompletedTodoCard({ todo, icon, totalExp, formatCompletedDate }: {
+// 完了済みカードの見た目（中身だけ）
+function CompletedTodoCardInner({ todo, icon, totalExp, formatCompletedDate }: {
   todo: Todo;
   icon: string;
   totalExp: number;
   formatCompletedDate: (completedAt: string | null) => string;
 }) {
   return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-cyan-600 transition-colors opacity-75">
+    <>
       <div className="flex items-start gap-2 mb-2">
         <span className="text-lg">{icon}</span>
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-base font-medium text-zinc-100 flex-1 line-through">
+            <span className="text-base font-medium text-zinc-100 flex-1 line-through" suppressHydrationWarning>
               {todo.task_name}
             </span>
             {todo.difficulty && (
@@ -126,7 +141,6 @@ function CompletedTodoCard({ todo, icon, totalExp, formatCompletedDate }: {
               </span>
             )}
           </div>
-          {/* タグチップ */}
           {todo.tags && todo.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {todo.tags.map((tag) => (
@@ -147,11 +161,61 @@ function CompletedTodoCard({ todo, icon, totalExp, formatCompletedDate }: {
         {todo.is_special && <div>SP {todo.sp_points}pt</div>}
         {totalExp > 0 && <div>{totalExp}ex</div>}
         {todo.completed_at && (
-          <div>完了: {formatCompletedDate(todo.completed_at)}</div>
+          <div suppressHydrationWarning>完了: {formatCompletedDate(todo.completed_at)}</div>
         )}
       </div>
+    </>
+  );
+}
+
+// 完了済みカードコンポーネント（ドラッグ可能・アクティブ/進行中へ戻せる）
+function DraggableCompletedTodoCard({ todo, icon, totalExp, formatCompletedDate }: {
+  todo: Todo;
+  icon: string;
+  totalExp: number;
+  formatCompletedDate: (completedAt: string | null) => string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: todo.id,
+  });
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      role="button"
+      tabIndex={0}
+      aria-label={`${todo.task_name}をドラッグしてアクティブまたは進行中へ戻す`}
+      className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-cyan-600 transition-colors opacity-75 cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-950"
+    >
+      <CompletedTodoCardInner todo={todo} icon={icon} totalExp={totalExp} formatCompletedDate={formatCompletedDate} />
     </div>
   );
+}
+
+// 完了済みカード（ドラッグ不可・DragOverlay 用など）
+function CompletedTodoCard({ todo, icon, totalExp, formatCompletedDate }: {
+  todo: Todo;
+  icon: string;
+  totalExp: number;
+  formatCompletedDate: (completedAt: string | null) => string;
+}) {
+  return (
+    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-cyan-600 transition-colors opacity-75">
+      <CompletedTodoCardInner todo={todo} icon={icon} totalExp={totalExp} formatCompletedDate={formatCompletedDate} />
+    </div>
+  );
+}
+
+// カード単位のドロップ領域（同一カラム内の並び替え用）
+function DroppableCardSlot({ id, children }: { id: string; children: React.ReactNode }) {
+  const { setNodeRef } = useDroppable({ id });
+  return <div ref={setNodeRef}>{children}</div>;
 }
 
 // ドロップ可能なカラムコンポーネント
@@ -164,6 +228,10 @@ function DroppableColumn({
   getTotalExp,
   formatDeadline,
   formatCompletedDate,
+  sortOrder,
+  onSortChange,
+  dateSortLabel,
+  onMoveToActive,
 }: {
   id: string;
   title: string;
@@ -173,6 +241,10 @@ function DroppableColumn({
   getTotalExp: (todo: Todo) => number;
   formatDeadline: (dueDate: string | null) => string;
   formatCompletedDate: (completedAt: string | null) => string;
+  sortOrder?: 'asc' | 'desc';
+  onSortChange?: (order: 'asc' | 'desc') => void;
+  dateSortLabel?: string;
+  onMoveToActive?: (todoId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -181,10 +253,32 @@ function DroppableColumn({
   return (
     <div>
       <div className="bg-zinc-800 rounded-lg p-3 mb-3">
-        <h3 className="font-medium text-zinc-300 text-base flex items-center justify-between">
+        <h3 className="font-medium text-zinc-300 text-base flex items-center justify-between gap-2">
           <span>{title}</span>
-          <span className="text-base text-zinc-500" aria-label={`${todos.length}件のタスク`}>
-            ({todos.length})
+          <span className="flex items-center gap-1 shrink-0">
+            {sortOrder !== undefined && onSortChange && dateSortLabel && (
+              <span className="flex items-center gap-1 text-xs text-zinc-500" aria-label={`${dateSortLabel}で並び替え`}>
+                <button
+                  type="button"
+                  onClick={() => onSortChange('asc')}
+                  className={`px-1.5 py-0.5 rounded ${sortOrder === 'asc' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+                  title="古い順"
+                >
+                  古い順
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onSortChange('desc')}
+                  className={`px-1.5 py-0.5 rounded ${sortOrder === 'desc' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+                  title="新しい順"
+                >
+                  新しい順
+                </button>
+              </span>
+            )}
+            <span className="text-base text-zinc-500" aria-label={`${todos.length}件のタスク`}>
+              ({todos.length})
+            </span>
           </span>
         </h3>
       </div>
@@ -210,7 +304,7 @@ function DroppableColumn({
 
             if (todo.status === 'completed') {
               return (
-                <CompletedTodoCard
+                <DraggableCompletedTodoCard
                   key={todo.id}
                   todo={todo}
                   icon={icon}
@@ -221,14 +315,16 @@ function DroppableColumn({
             }
 
             return (
-              <DraggableTodoCard
-                key={todo.id}
-                todo={todo}
-                isOverdue={overdue}
-                icon={icon}
-                totalExp={totalExp}
-                formatDeadline={formatDeadline}
-              />
+              <DroppableCardSlot key={todo.id} id={todo.id}>
+                <DraggableTodoCard
+                  todo={todo}
+                  isOverdue={overdue}
+                  icon={icon}
+                  totalExp={totalExp}
+                  formatDeadline={formatDeadline}
+                  onMoveToActive={onMoveToActive ? () => onMoveToActive(todo.id) : undefined}
+                />
+              </DroppableCardSlot>
             );
           })
         )}
@@ -244,23 +340,48 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [internalIsExpanded, setInternalIsExpanded] = useState(true); // アコーディオンの開閉状態（内部管理）
-  // フィルター状態（ローカルストレージから復元）
+  // フィルター状態（初回はサーバーとクライアントで同じにし、マウント後に localStorage から復元して Hydration エラーを防ぐ）
   const [tags, setTags] = useState<Tag[]>([]);
-  const [filterTagIds, setFilterTagIds] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('todo-kanban-filter-tag-ids');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
-  const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('todo-kanban-filter-difficulties');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
+  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
+  const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>([]);
   const [isLoadingTags, setIsLoadingTags] = useState(false);
+  const [sortDateActive, setSortDateActive] = useState<'asc' | 'desc'>('asc');
+  const [sortDateInProgress, setSortDateInProgress] = useState<'asc' | 'desc'>('asc');
+  const [sortDateCompleted, setSortDateCompleted] = useState<'asc' | 'desc'>('desc');
+  // @dnd-kit の aria-* がサーバーと一致しないため、DndContext 配下はクライアントマウント後のみ描画する
+  const [isClient, setIsClient] = useState(false);
+
+  // マウント後に localStorage からフィルター・ソートを復元（Hydration 後のみ実行）
+  useEffect(() => {
+    const savedTagIds = localStorage.getItem('todo-kanban-filter-tag-ids');
+    if (savedTagIds) {
+      try {
+        const parsed = JSON.parse(savedTagIds);
+        if (Array.isArray(parsed)) setFilterTagIds(parsed);
+      } catch {
+        /* ignore */
+      }
+    }
+    const savedDiff = localStorage.getItem('todo-kanban-filter-difficulties');
+    if (savedDiff) {
+      try {
+        const parsed = JSON.parse(savedDiff);
+        if (Array.isArray(parsed)) setFilterDifficulties(parsed);
+      } catch {
+        /* ignore */
+      }
+    }
+    const sActive = localStorage.getItem('todo-kanban-sort-date-active');
+    if (sActive === 'asc' || sActive === 'desc') setSortDateActive(sActive);
+    const sProgress = localStorage.getItem('todo-kanban-sort-date-in-progress');
+    if (sProgress === 'asc' || sProgress === 'desc') setSortDateInProgress(sProgress);
+    const sCompleted = localStorage.getItem('todo-kanban-sort-date-completed');
+    if (sCompleted === 'asc' || sCompleted === 'desc') setSortDateCompleted(sCompleted);
+  }, []);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // フィルター状態をローカルストレージに保存
   useEffect(() => {
@@ -270,6 +391,16 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
   useEffect(() => {
     localStorage.setItem('todo-kanban-filter-difficulties', JSON.stringify(filterDifficulties));
   }, [filterDifficulties]);
+
+  useEffect(() => {
+    localStorage.setItem('todo-kanban-sort-date-active', sortDateActive);
+  }, [sortDateActive]);
+  useEffect(() => {
+    localStorage.setItem('todo-kanban-sort-date-in-progress', sortDateInProgress);
+  }, [sortDateInProgress]);
+  useEffect(() => {
+    localStorage.setItem('todo-kanban-sort-date-completed', sortDateCompleted);
+  }, [sortDateCompleted]);
 
   const isExpanded = externalIsExpanded ?? internalIsExpanded;
   const setIsExpanded = (value: boolean) => {
@@ -356,30 +487,76 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
     return { startDate, endDate };
   };
 
-  // ステータス別にtodosを分類（フィルター適用後）
-  const activeTodos = applyFilters(todos.filter((todo) => todo.status === 'active'));
-  const inProgressTodos = applyFilters(todos.filter((todo) => todo.status === 'in_progress'));
-  
-  // 完了済みタスク（今月のものだけ表示）
-  const completedTodos = applyFilters(
-    todos.filter((todo) => {
-      if (todo.status !== 'completed') return false;
-      if (!todo.completed_at) return false;
-      
-      const { startDate, endDate } = getCurrentMonthRange();
-      const completedDate = new Date(todo.completed_at);
-      
-      return completedDate >= startDate && completedDate <= endDate;
-    })
-  );
-
-  // 期限超過判定関数
+  // 期限超過判定関数（sortTodosByDeadline より前に定義すること）
   const isOverdue = (dueDate: string | null, status: string): boolean => {
     if (!dueDate || status === 'completed') return false;
     const due = new Date(dueDate);
     const todayDate = new Date(today);
     return due < todayDate;
   };
+
+  // 日付でソート（小順=asc=古い順、高順=desc=新しい順）。同一日は getSubKey で比較
+  const sortByDate = (
+    list: Todo[],
+    getDate: (t: Todo) => string | null,
+    order: 'asc' | 'desc',
+    getSubKey?: (t: Todo) => number
+  ): Todo[] => {
+    return [...list].sort((a, b) => {
+      const da = getDate(a);
+      const db = getDate(b);
+      const ta = da ? new Date(da).getTime() : NaN;
+      const tb = db ? new Date(db).getTime() : NaN;
+      const na = Number.isNaN(ta);
+      const nb = Number.isNaN(tb);
+      if (na && nb) return (getSubKey ? getSubKey(a) - getSubKey(b) : 0);
+      if (na) return order === 'asc' ? 1 : -1;
+      if (nb) return order === 'asc' ? -1 : 1;
+      const cmp = order === 'asc' ? ta - tb : tb - ta;
+      if (cmp !== 0) return cmp;
+      return getSubKey ? getSubKey(a) - getSubKey(b) : 0;
+    });
+  };
+
+  // 期限切れを一番上（日付古い順）、それ以外は display_order（ドラッグで変更可能）
+  const sortTodosByDeadline = (todoList: Todo[]): Todo[] => {
+    const overdue = todoList.filter((t) => isOverdue(t.due_date, t.status));
+    const rest = todoList.filter((t) => !isOverdue(t.due_date, t.status));
+    const overdueSorted = overdue.sort((a, b) =>
+      (a.due_date && b.due_date) ? new Date(a.due_date).getTime() - new Date(b.due_date).getTime() : 0
+    );
+    const restSorted = rest.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
+    return [...overdueSorted, ...restSorted];
+  };
+
+  // ステータス別にtodosを分類（フィルター適用後・日付ソート適用）
+  const activeFiltered = applyFilters(todos.filter((todo) => todo.status === 'active'));
+  const inProgressFiltered = applyFilters(todos.filter((todo) => todo.status === 'in_progress'));
+  const activeTodos =
+    sortDateActive === 'asc'
+      ? sortTodosByDeadline(activeFiltered)
+      : sortByDate(activeFiltered, (t) => t.due_date, 'desc', (t) => t.display_order ?? 0);
+  const inProgressTodos =
+    sortDateInProgress === 'asc'
+      ? sortTodosByDeadline(inProgressFiltered)
+      : sortByDate(inProgressFiltered, (t) => t.due_date, 'desc', (t) => t.display_order ?? 0);
+
+  // 完了済みタスク（今月のものだけ表示・完了日でソート）
+  const completedTodos = sortByDate(
+    applyFilters(
+      todos.filter((todo) => {
+        if (todo.status !== 'completed') return false;
+        if (!todo.completed_at) return false;
+
+        const { startDate, endDate } = getCurrentMonthRange();
+        const completedDate = new Date(todo.completed_at);
+
+        return completedDate >= startDate && completedDate <= endDate;
+      })
+    ),
+    (t) => t.completed_at,
+    sortDateCompleted
+  );
 
   // アイコン取得関数
   const getIcon = (isSpecial: boolean, status: string): string => {
@@ -388,22 +565,24 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
     return '📄';
   };
 
-  // 期限表示用フォーマット関数（MMDD形式）
+  // 期限表示用フォーマット関数（西暦下2桁含む YY/MM/DD形式）
   const formatDeadline = (dueDate: string | null): string => {
     if (!dueDate) return '';
     const date = new Date(dueDate);
+    const year = String(date.getFullYear()).slice(-2);
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${month}${day}`;
+    return `${year}/${month}/${day}`;
   };
 
-  // 完了日表示用フォーマット関数（MMDD形式）
+  // 完了日表示用フォーマット関数（西暦下2桁含む YY/MM/DD形式）
   const formatCompletedDate = (completedAt: string | null): string => {
     if (!completedAt) return '';
     const date = new Date(completedAt);
+    const year = String(date.getFullYear()).slice(-2);
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${month}${day}`;
+    return `${year}/${month}/${day}`;
   };
 
   // EXP合計計算関数
@@ -586,6 +765,36 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
     }
   };
 
+  // 進行中 → アクティブに戻す（ボタン用）
+  const handleMoveToActive = async (todoId: string) => {
+    const todo = todos.find((t) => t.id === todoId);
+    if (!todo || todo.status !== 'in_progress') return;
+    setIsUpdating(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('todos')
+        .update({ status: 'active', completed_at: null })
+        .eq('id', todoId);
+      if (error) {
+        toast.error('アクティブに戻せませんでした', { description: error.message });
+        return;
+      }
+      setTodos((prev) =>
+        prev.map((t) =>
+          t.id === todoId ? { ...t, status: 'active' as const, completed_at: null } : t
+        )
+      );
+      toast.success('アクティブに戻しました');
+      window.location.reload();
+    } catch (err) {
+      console.error('アクティブへ移動エラー:', err);
+      toast.error('アクティブに戻せませんでした');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   // ドラッグ終了時の処理
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -594,11 +803,9 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
     if (!over) return;
 
     const todoId = active.id as string;
-    const newStatus = over.id as string;
-
-    // 同じカラムにドロップした場合は何もしない
+    const overId = over.id as string;
     const currentTodo = todos.find((t) => t.id === todoId);
-    if (!currentTodo || currentTodo.status === newStatus) return;
+    if (!currentTodo) return;
 
     // ステータスマッピング（カラムID → ステータス）
     const statusMap: Record<string, 'active' | 'in_progress' | 'completed'> = {
@@ -607,8 +814,55 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
       'column-completed': 'completed',
     };
 
-    const mappedStatus = statusMap[newStatus];
-    if (!mappedStatus) return;
+    const targetInActive = activeTodos.find((t) => t.id === overId);
+    const targetInProgress = inProgressTodos.find((t) => t.id === overId);
+    // ドロップ先のステータス（カラム上 or 他カラムのカード上）
+    const mappedStatus =
+      statusMap[overId] ?? (targetInActive ? 'active' : targetInProgress ? 'in_progress' : undefined);
+
+    // 同じカラム内の並び替え（アクティブ/進行中のみ。完了→他カラムのカード上は下のカラム間処理へ）
+    const sameColumnReorder =
+      (targetInActive || targetInProgress) &&
+      overId !== todoId &&
+      currentTodo.status !== 'completed' &&
+      (currentTodo.status === 'active' ? !!targetInActive : !!targetInProgress);
+
+    if (sameColumnReorder) {
+      if (isOverdue(currentTodo.due_date, currentTodo.status)) {
+        toast.warning('期限超過のタスクは並び替えできません');
+        return;
+      }
+      const currentList =
+        currentTodo.status === 'active' ? [...activeTodos] : [...inProgressTodos];
+      const oldIndex = currentList.findIndex((t) => t.id === todoId);
+      const newIndex = currentList.findIndex((t) => t.id === overId);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const [moved] = currentList.splice(oldIndex, 1);
+      currentList.splice(newIndex, 0, moved);
+      const overdueCount = currentList.filter((t) => isOverdue(t.due_date, t.status)).length;
+      setIsUpdating(true);
+      try {
+        const supabase = createClient();
+        let restIndex = 0;
+        for (const t of currentList) {
+          if (!isOverdue(t.due_date, t.status)) {
+            await supabase.from('todos').update({ display_order: overdueCount + restIndex }).eq('id', t.id);
+            restIndex += 1;
+          }
+        }
+        toast.success('並び順を更新しました');
+        window.location.reload();
+      } catch (err) {
+        console.error('並び順更新エラー:', err);
+        toast.error('並び順の更新に失敗しました');
+      } finally {
+        setIsUpdating(false);
+      }
+      return;
+    }
+
+    // カラム間のステータス変更（カラム上へのドロップ or 完了→アクティブ/進行中のカード上へのドロップ）
+    if (!mappedStatus || currentTodo.status === mappedStatus) return;
 
     const wasCompleted = currentTodo.status === 'completed';
     const willBeCompleted = mappedStatus === 'completed';
@@ -706,6 +960,24 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
     );
   }
 
+  // クライアントマウント前は DndContext を使わずプレースホルダーのみ描画（@dnd-kit の aria-* による Hydration エラーを防ぐ）
+  if (!isClient) {
+    return (
+      <div className="mb-8">
+        <div className="w-full text-left mb-4 flex items-center justify-between gap-2">
+          <h2 className="text-xl font-semibold text-zinc-100 flex items-center gap-2">
+            <ClipboardList className="w-5 h-5" />
+            <span>ToDoリスト</span>
+          </h2>
+          <ChevronDown className="w-5 h-5 text-zinc-400 shrink-0" />
+        </div>
+        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 text-center">
+          <p className="text-zinc-400">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mb-8">
       <button
@@ -722,9 +994,9 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
           )}
         </h2>
         {isExpanded ? (
-          <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+          <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
         ) : (
-          <ChevronDown className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+          <ChevronDown className="w-5 h-5 text-zinc-400 shrink-0" />
         )}
       </button>
 
@@ -858,6 +1130,9 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             getTotalExp={getTotalExp}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
+            sortOrder={sortDateActive}
+            onSortChange={setSortDateActive}
+            dateSortLabel="期限"
           />
 
           {/* 進行中カラム */}
@@ -870,6 +1145,10 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             getTotalExp={getTotalExp}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
+            sortOrder={sortDateInProgress}
+            onSortChange={setSortDateInProgress}
+            dateSortLabel="期限"
+            onMoveToActive={handleMoveToActive}
           />
 
           {/* 完了済みカラム */}
@@ -882,24 +1161,38 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             getTotalExp={getTotalExp}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
+            sortOrder={sortDateCompleted}
+            onSortChange={setSortDateCompleted}
+            dateSortLabel="完了日"
           />
         </div>
 
         {/* ドラッグ中のオーバーレイ */}
         <DragOverlay>
           {activeTodo ? (
-            <div className="bg-zinc-900 border border-cyan-600 rounded-lg p-3 shadow-lg opacity-90 rotate-2">
-              <div className="flex items-start gap-2 mb-2">
-                <span className="text-lg">{getIcon(activeTodo.is_special, activeTodo.status)}</span>
-                <span className="text-base font-medium text-zinc-100 flex-1">
-                  {activeTodo.task_name}
-                </span>
+            activeTodo.status === 'completed' ? (
+              <div className="bg-zinc-900 border border-cyan-600 rounded-lg p-3 shadow-lg opacity-90 rotate-2">
+                <CompletedTodoCardInner
+                  todo={activeTodo}
+                  icon={getIcon(activeTodo.is_special, activeTodo.status)}
+                  totalExp={getTotalExp(activeTodo)}
+                  formatCompletedDate={formatCompletedDate}
+                />
               </div>
-              <div className="space-y-1 text-base text-zinc-400">
-                {activeTodo.is_special && <div>SP {activeTodo.sp_points}pt</div>}
-                {getTotalExp(activeTodo) > 0 && <div>{getTotalExp(activeTodo)}ex</div>}
+            ) : (
+              <div className="bg-zinc-900 border border-cyan-600 rounded-lg p-3 shadow-lg opacity-90 rotate-2">
+                <div className="flex items-start gap-2 mb-2">
+                  <span className="text-lg">{getIcon(activeTodo.is_special, activeTodo.status)}</span>
+                  <span className="text-base font-medium text-zinc-100 flex-1">
+                    {activeTodo.task_name}
+                  </span>
+                </div>
+                <div className="space-y-1 text-base text-zinc-400">
+                  {activeTodo.is_special && <div>SP {activeTodo.sp_points}pt</div>}
+                  {getTotalExp(activeTodo) > 0 && <div>{getTotalExp(activeTodo)}ex</div>}
+                </div>
               </div>
-            </div>
+            )
           ) : null}
         </DragOverlay>
         </DndContext>
