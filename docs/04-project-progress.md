@@ -300,6 +300,25 @@
 - 実装優先順位の決定
   - まずは案A（日誌のカードから「編集」→ ToDoサマリータブへ切り替え＋該当タスクの編集モーダルを開く）から着手することを推奨
 
+**Git自動PUSH機能の実装（MD版と同様の仕組み）:**
+
+- 自動コミット・プッシュスクリプトの作成
+  - `general/git-auto-commit.sh`: PC起動時に自動実行されるスクリプト
+  - 1日1回のみ実行（`.last-commit-date.md`でチェック）
+  - 変更がある場合のみコミット・プッシュ（`gol-web/`と`docs/`を対象）
+- セットアップスクリプトの作成
+  - `general/setup-auto-commit.sh`: 新しいMacでも簡単にセットアップできるスクリプト
+  - launchd設定ファイルの自動生成・配置
+  - リポジトリパスとユーザー名を自動設定
+- launchd設定テンプレートの作成
+  - `general/git-auto-commit.plist.template`: テンプレートファイル
+  - リポジトリに含めて、どのMacでも使えるように
+- README更新
+  - 自動コミットシステムの説明を追加
+  - 新しいMacでのセットアップ手順を追加（セットアップスクリプト使用と手動セットアップの2通り）
+- `.gitignore`更新
+  - `general/.last-commit-date.md`を除外対象に追加
+
 **作業記録:**
 
 - `docs/10-progress-support.md`にTo Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
@@ -308,11 +327,19 @@
 
 - To Do操作の動線: 日誌タブは実行画面、ToDoサマリータブは管理画面として役割分担を明確化
 - 使い勝手改善: 案A（日誌のカードから「編集」→ ToDoサマリータブへ切り替え＋該当タスクの編集モーダルを開く）を優先的に実装する方向で検討
+- Git自動PUSH機能: MD版と同様の仕組みを実装し、新しいMacでも`./general/setup-auto-commit.sh`を実行するだけでセットアップ可能に
 
 #### 成果物
 
 **ドキュメント:**
 - `docs/10-progress-support.md`: To Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
+- `README.md`: 自動コミットシステムの説明とセットアップ手順を追加
+
+**コード:**
+- `general/git-auto-commit.sh`: 自動コミット・プッシュスクリプト
+- `general/setup-auto-commit.sh`: セットアップスクリプト
+- `general/git-auto-commit.plist.template`: launchd設定テンプレート
+- `.gitignore`: `.last-commit-date.md`を除外対象に追加
 
 #### 学んだこと
 

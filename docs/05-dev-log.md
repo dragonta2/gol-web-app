@@ -98,6 +98,71 @@
 
 - `docs/10-progress-support.md`: To Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
 
+#### Git自動PUSH機能の実装（MD版と同様の仕組み）
+
+**作業内容:**
+
+1. **自動コミット・プッシュスクリプトの作成**
+   - `general/git-auto-commit.sh`: PC起動時に自動実行されるスクリプト
+   - MD版の`git-auto-commit.sh`を参考に、Web版用にカスタマイズ
+   - 1日1回のみ実行（`.last-commit-date.md`でチェック）
+   - 変更がある場合のみコミット・プッシュ
+   - コミット対象: `gol-web/`と`docs/`ディレクトリ
+   - コミットメッセージ: `Auto commit: YYYYMMDD`形式
+
+2. **セットアップスクリプトの作成**
+   - `general/setup-auto-commit.sh`: 新しいMacでも簡単にセットアップできるスクリプト
+   - リポジトリパスとユーザー名を自動取得
+   - テンプレートからlaunchd設定ファイルを生成
+   - `~/Library/LaunchAgents/`に配置
+   - launchdへのロードまで自動実行
+   - エラーハンドリングとログ出力を実装
+
+3. **launchd設定テンプレートの作成**
+   - `general/git-auto-commit.plist.template`: テンプレートファイル
+   - プレースホルダー（`REPO_PATH_PLACEHOLDER`、`USERNAME_PLACEHOLDER`）を使用
+   - リポジトリに含めて、どのMacでも使えるように
+   - ログファイルのパスも自動設定
+
+4. **README更新**
+   - 自動コミットシステムの説明を追加
+   - 機能、仕組み、手動実行方法を記載
+   - 新しいMacでのセットアップ手順を追加
+     - 方法1: セットアップスクリプトを使用（推奨）
+     - 方法2: 手動セットアップ
+   - 動作確認方法を記載
+
+5. **`.gitignore`更新**
+   - `general/.last-commit-date.md`を除外対象に追加
+   - 日付記録ファイルはGit管理外に
+
+**使用した技術・パターン**
+
+- Bashスクリプト: 自動コミット・プッシュロジック
+- macOS launchd: PC起動時の自動実行
+- sedコマンド: テンプレートファイルの置換
+- Git操作: add、commit、pushの自動化
+
+**学んだこと**
+
+- MD版と同様の仕組みをWeb版にも適用することで、一貫性のある運用が可能
+- セットアップスクリプトを作成することで、新しいMacでも簡単にセットアップ可能
+- テンプレートファイルを使用することで、環境依存を排除
+- launchdの`bootstrap`コマンド（macOSの新しいバージョン）と`load`コマンド（古いバージョン）の違い
+
+**作成したファイル**
+
+- `general/git-auto-commit.sh`: 自動コミット・プッシュスクリプト
+- `general/setup-auto-commit.sh`: セットアップスクリプト
+- `general/git-auto-commit.plist.template`: launchd設定テンプレート
+- `README.md`: 自動コミットシステムの説明を追加
+- `.gitignore`: `.last-commit-date.md`を除外対象に追加
+
+**Git操作**
+
+- コミット: `9ba1623 Add: Git自動PUSH機能の実装（MD版と同様の仕組み）`
+- プッシュ: 完了（手動でプッシュ）
+
 #### 作業終了
 
 本日の作業を終了しました。
