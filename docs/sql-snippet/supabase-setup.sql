@@ -171,8 +171,7 @@ CREATE TABLE todos (
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   task_name TEXT NOT NULL,
   
-  -- SP（スペシャルタスク）
-  is_special BOOLEAN DEFAULT false,
+  -- 報酬（難易度倍率はアプリ側で適用）
   sp_points INTEGER DEFAULT 0,
   sp_exp_body INTEGER DEFAULT 0,
   sp_exp_mind INTEGER DEFAULT 0,

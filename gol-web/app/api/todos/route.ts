@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       task_name,
-      is_special,
       sp_points,
       sp_exp_body,
       sp_exp_mind,
@@ -80,17 +79,16 @@ export async function POST(request: NextRequest) {
 
     const displayOrder = maxOrderTodo ? maxOrderTodo.display_order + 1 : 0;
 
-    // ToDoを作成
+    // ToDoを作成（報酬は sp_* をそのまま保存、難易度倍率はフロントで適用）
     const { data: newTodo, error: insertError } = await supabase
       .from('todos')
       .insert({
         user_id: user.id,
         task_name: task_name.trim(),
-        is_special: is_special || false,
-        sp_points: is_special ? (sp_points || 0) : 0,
-        sp_exp_body: is_special ? (sp_exp_body || 0) : 0,
-        sp_exp_mind: is_special ? (sp_exp_mind || 0) : 0,
-        sp_exp_spirit: is_special ? (sp_exp_spirit || 0) : 0,
+        sp_points: sp_points ?? 0,
+        sp_exp_body: sp_exp_body ?? 0,
+        sp_exp_mind: sp_exp_mind ?? 0,
+        sp_exp_spirit: sp_exp_spirit ?? 0,
         status: status || 'active',
         due_date: due_date || null,
         display_order: displayOrder,
@@ -133,7 +131,6 @@ export async function PUT(request: NextRequest) {
     const {
       todoId,
       task_name,
-      is_special,
       sp_points,
       sp_exp_body,
       sp_exp_mind,
@@ -192,16 +189,15 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // ToDoを更新
+    // ToDoを更新（報酬は sp_* をそのまま保存）
     const { error: updateError } = await supabase
       .from('todos')
       .update({
         task_name: task_name.trim(),
-        is_special: is_special || false,
-        sp_points: is_special ? (sp_points || 0) : 0,
-        sp_exp_body: is_special ? (sp_exp_body || 0) : 0,
-        sp_exp_mind: is_special ? (sp_exp_mind || 0) : 0,
-        sp_exp_spirit: is_special ? (sp_exp_spirit || 0) : 0,
+        sp_points: sp_points ?? 0,
+        sp_exp_body: sp_exp_body ?? 0,
+        sp_exp_mind: sp_exp_mind ?? 0,
+        sp_exp_spirit: sp_exp_spirit ?? 0,
         status: status || 'active',
         due_date: due_date || null,
       })

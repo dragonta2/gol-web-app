@@ -93,7 +93,7 @@ export default function SettingsPage() {
                 <h2 className="text-xl font-semibold text-zinc-100">権利設定</h2>
               </div>
               <p className="text-sm text-zinc-400">
-                権利のポイント消費量の設定
+                権利のゴルド消費量の設定
               </p>
             </div>
           </Link>

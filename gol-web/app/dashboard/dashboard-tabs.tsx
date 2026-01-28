@@ -18,7 +18,9 @@ type TabType = 'journal' | 'todo-summary' | 'stats';
 
 export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog, todos, todoLogs, todoSubtasks, selectedDate }: DashboardTabsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('journal');
-  
+  /** 日誌カンバンから「編集」で飛んできたとき、このタスクの編集モーダルを開く */
+  const [editTodoId, setEditTodoId] = useState<string | null>(null);
+
   // アコーディオンの開閉状態を管理（全てのアコーディオンを一括制御）
   const [isKanbanExpanded, setIsKanbanExpanded] = useState(true);
   const [isHabitsExpanded, setIsHabitsExpanded] = useState(true);
@@ -155,6 +157,10 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
               dailyLogId={dailyLogId}
               isExpanded={isKanbanExpanded}
               onExpandedChange={setIsKanbanExpanded}
+              onEditTodo={(id) => {
+                setActiveTab('todo-summary');
+                setEditTodoId(id);
+              }}
             />
 
             {/* 今日の日誌と一言感想 */}
@@ -231,7 +237,14 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
             aria-labelledby="tab-todo-summary"
             className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg"
           >
-            <TodoSummaryTab todos={todos} todoLogs={todoLogs} todoSubtasks={todoSubtasks} dailyLogId={dailyLogId} />
+            <TodoSummaryTab
+              todos={todos}
+              todoLogs={todoLogs}
+              todoSubtasks={todoSubtasks}
+              dailyLogId={dailyLogId}
+              initialEditTodoId={editTodoId}
+              onInitialEditConsumed={() => setEditTodoId(null)}
+            />
           </div>
         )}
 

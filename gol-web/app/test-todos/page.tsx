@@ -78,7 +78,6 @@ export default function TestTodosPage() {
         {
           user_id: user.id,
           task_name: '沖縄旅行',
-          is_special: true,
           sp_points: 6,
           sp_exp_body: 2,
           sp_exp_mind: 2,
@@ -90,7 +89,6 @@ export default function TestTodosPage() {
         {
           user_id: user.id,
           task_name: '確定申告',
-          is_special: true,
           sp_points: 4,
           sp_exp_body: 1,
           sp_exp_mind: 2,
@@ -102,7 +100,6 @@ export default function TestTodosPage() {
         {
           user_id: user.id,
           task_name: '健康診断',
-          is_special: false,
           sp_points: 0,
           sp_exp_body: 1,
           sp_exp_mind: 0,
@@ -114,7 +111,6 @@ export default function TestTodosPage() {
         {
           user_id: user.id,
           task_name: 'パスポート受領',
-          is_special: true,
           sp_points: 4,
           sp_exp_body: 0,
           sp_exp_mind: 0,
@@ -126,7 +122,6 @@ export default function TestTodosPage() {
         {
           user_id: user.id,
           task_name: 'スキルシート',
-          is_special: false,
           sp_points: 0,
           sp_exp_body: 0,
           sp_exp_mind: 2,
@@ -139,7 +134,6 @@ export default function TestTodosPage() {
         {
           user_id: user.id,
           task_name: 'ブログ記事',
-          is_special: false,
           sp_points: 0,
           sp_exp_body: 0,
           sp_exp_mind: 3,

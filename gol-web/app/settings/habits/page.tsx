@@ -223,7 +223,7 @@ export default function HabitsSettingsPage() {
           )}
         </div>
         <div className="text-sm text-zinc-400 space-y-1">
-          <div>ポイント: {habit.points > 0 ? '+' : ''}{habit.points}pt</div>
+          <div>ゴルド: {habit.points > 0 ? '+' : ''}{habit.points}G</div>
           {habit.habit_type === 'good' && (
             <div>
               EXP: 身体+{habit.exp_body} / 頭脳+{habit.exp_mind} / 精神+{habit.exp_spirit}
@@ -337,9 +337,9 @@ export default function HabitsSettingsPage() {
                     </div>
                   </div>
 
-                  {/* ポイント */}
+                  {/* ゴルド */}
                   <div>
-                    <Label htmlFor="points" className="text-zinc-300">ポイント</Label>
+                    <Label htmlFor="points" className="text-zinc-300">ゴルド</Label>
                     <Input
                       id="points"
                       type="number"

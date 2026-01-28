@@ -133,7 +133,7 @@ export default function RightsSettingsPage() {
       <div className="space-y-3">
         <div>
           <Label htmlFor={`${rightCode}-points`} className="text-zinc-300">
-            ポイント消費量
+            ゴルド消費量
           </Label>
           <Input
             id={`${rightCode}-points`}
@@ -144,7 +144,7 @@ export default function RightsSettingsPage() {
             min="0"
           />
           <p className="text-xs text-zinc-500 mt-1">
-            1回使用するごとに消費されるポイント数
+            1回使用するごとに消費されるゴルド数
           </p>
         </div>
         {config.maxCount !== undefined && (
@@ -203,7 +203,7 @@ export default function RightsSettingsPage() {
             </div>
           </div>
           <p className="text-zinc-400 mt-2">
-            各権利のポイント消費量を設定します。変更は保存ボタンをクリックすると反映されます。
+            各権利のゴルド消費量を設定します。変更は保存ボタンをクリックすると反映されます。
           </p>
         </div>
 

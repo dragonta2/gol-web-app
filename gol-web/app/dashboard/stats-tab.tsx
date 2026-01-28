@@ -54,14 +54,6 @@ interface TodoCompletionSummary {
   totalTodos: number;
   completedTodos: number;
   completionRate: number;
-  averageByType: {
-    special: number;
-    normal: number;
-  };
-  specialTodos: number;
-  normalTodos: number;
-  completedSpecialTodos: number;
-  completedNormalTodos: number;
 }
 
 interface WeeklyMonthlySummary {
@@ -112,7 +104,7 @@ export default function StatsTab() {
       const [pointsExpResult, habitsResult, todosResult] = await Promise.all([
         pointsExpResponse.ok
           ? pointsExpResponse.json()
-          : Promise.reject(new Error('ポイント・EXPデータの取得に失敗しました')),
+          : Promise.reject(new Error('ゴルド・EXPデータの取得に失敗しました')),
         habitsResponse.ok
           ? habitsResponse.json()
           : Promise.reject(new Error('習慣データの取得に失敗しました')),
@@ -283,7 +275,7 @@ export default function StatsTab() {
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">ポイント</p>
+                  <p className="text-2xl text-zinc-400 mb-1">ゴルド</p>
                   <p className="text-2xl font-bold text-cyan-400">
                     {weeklySummary.weekly.points}
                   </p>
@@ -328,7 +320,7 @@ export default function StatsTab() {
               </h3>
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">ポイント</p>
+                  <p className="text-2xl text-zinc-400 mb-1">ゴルド</p>
                   <p className="text-2xl font-bold text-cyan-400">
                     {weeklySummary.monthly.points}
                   </p>
@@ -375,7 +367,7 @@ export default function StatsTab() {
         <select
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
-          className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-2xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="pl-3 pr-8 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-2xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
         >
           <option value={7}>過去7日間</option>
           <option value={30}>過去30日間</option>
@@ -383,10 +375,10 @@ export default function StatsTab() {
         </select>
       </div>
 
-      {/* ポイント・EXPの推移グラフ */}
+      {/* ゴルド・EXPの推移グラフ */}
       <div className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg">
         <h2 className="text-2xl sm:text-2xl font-semibold text-cyan-400 mb-4">
-          📈 ポイント・EXPの推移
+          📈 ゴルド・EXPの推移
         </h2>
         
         <div className="w-full h-80">
@@ -424,7 +416,7 @@ export default function StatsTab() {
                 dataKey="points"
                 stroke="#22d3ee"
                 strokeWidth={2}
-                name="ポイント"
+                name="ゴルド"
                 dot={{ fill: '#22d3ee', r: 3 }}
               />
               <Line
@@ -460,7 +452,7 @@ export default function StatsTab() {
       {pointsExpSummary && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg">
-            <p className="text-2xl text-zinc-400 mb-1">合計ポイント</p>
+            <p className="text-2xl text-zinc-400 mb-1">合計ゴルド</p>
             <p className="text-2xl font-bold text-cyan-400">
               {pointsExpSummary.totalPoints}
             </p>
@@ -591,24 +583,6 @@ export default function StatsTab() {
               </p>
               <p className="text-2xl text-zinc-500 mt-1">
                 {todoSummary.completedTodos}/{todoSummary.totalTodos}個完了
-              </p>
-            </div>
-            <div className="p-4 bg-zinc-800 border border-zinc-700 rounded-lg">
-              <p className="text-2xl text-zinc-400 mb-1">SPタスクの完了率</p>
-              <p className="text-2xl font-bold text-yellow-400">
-                {todoSummary.averageByType.special}%
-              </p>
-              <p className="text-2xl text-zinc-500 mt-1">
-                {todoSummary.completedSpecialTodos}/{todoSummary.specialTodos}個完了
-              </p>
-            </div>
-            <div className="p-4 bg-zinc-800 border border-zinc-700 rounded-lg">
-              <p className="text-2xl text-zinc-400 mb-1">通常タスクの完了率</p>
-              <p className="text-2xl font-bold text-blue-400">
-                {todoSummary.averageByType.normal}%
-              </p>
-              <p className="text-2xl text-zinc-500 mt-1">
-                {todoSummary.completedNormalTodos}/{todoSummary.normalTodos}個完了
               </p>
             </div>
           </div>

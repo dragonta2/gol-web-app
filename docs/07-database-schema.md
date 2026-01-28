@@ -281,8 +281,7 @@ CREATE TABLE todos (
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   task_name TEXT NOT NULL,
   
-  -- SP（スペシャルタスク）
-  is_special BOOLEAN DEFAULT false,
+  -- 報酬（難易度倍率はアプリ側で適用）
   sp_points INTEGER DEFAULT 0,
   sp_exp_body INTEGER DEFAULT 0,
   sp_exp_mind INTEGER DEFAULT 0,
@@ -320,11 +319,10 @@ EXECUTE FUNCTION update_updated_at_column();
 | id | UUID | ToDoタスクID |
 | user_id | UUID | ユーザーID |
 | task_name | TEXT | タスク名 |
-| is_special | BOOLEAN | SPタスクフラグ |
-| sp_points | INTEGER | SPポイント報酬 |
-| sp_exp_body | INTEGER | SP身体EXP報酬 |
-| sp_exp_mind | INTEGER | SP頭脳EXP報酬 |
-| sp_exp_spirit | INTEGER | SP精神EXP報酬 |
+| sp_points | INTEGER | ポイント報酬 |
+| sp_exp_body | INTEGER | 身体EXP報酬 |
+| sp_exp_mind | INTEGER | 頭脳EXP報酬 |
+| sp_exp_spirit | INTEGER | 精神EXP報酬 |
 | status | TEXT | ステータス（'active', 'in_progress', 'completed'） |
 | due_date | DATE | 期限 |
 | completed_at | TIMESTAMP | 完了日時 |

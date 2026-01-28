@@ -641,7 +641,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           >
             <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2">
               <Gift className="w-5 h-5 sm:w-6 sm:h-6" />
-              <span>本日の利用ポイント</span>
+              <span>本日の利用ゴルド</span>
             </h3>
             {isRightsExpanded ? (
               <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
@@ -671,7 +671,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
                   {/* ポイント表示（常に領域確保） */}
                   <span className="text-base text-red-400 font-medium whitespace-nowrap min-w-14 text-right">
-                    {right.count > 0 ? `(-${right.points * right.count}pt)` : ''}
+                    {right.count > 0 ? `(-${right.points * right.count}G)` : ''}
                   </span>
                 </div>
               ))}
@@ -680,8 +680,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               {totalPoints > 0 && (
                 <div className="pt-3 mt-3 border-t border-zinc-800 text-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-zinc-300 font-medium">本日消費ポイント合計</span>
-                    <span className="text-red-400 font-bold">-{totalPoints}pt</span>
+                    <span className="text-zinc-300 font-medium">本日消費ゴルド合計</span>
+                    <span className="text-red-400 font-bold">-{totalPoints}G</span>
                   </div>
                 </div>
               )}
@@ -791,7 +791,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             )}
             {dailyLog?.ai_points_earned !== null && dailyLog?.ai_points_earned !== undefined && (
               <div className="text-sm text-zinc-300">
-                <div>獲得ポイント: <span className="text-yellow-400 font-medium">+{dailyLog.ai_points_earned}pt</span></div>
+                <div>獲得ゴルド: <span className="text-yellow-400 font-medium">+{dailyLog.ai_points_earned}G</span></div>
                 <div>獲得EXP: 身体+{dailyLog.ai_exp_body || 0} 頭脳+{dailyLog.ai_exp_mind || 0} 精神+{dailyLog.ai_exp_spirit || 0}</div>
               </div>
             )}

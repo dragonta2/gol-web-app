@@ -19,16 +19,18 @@ import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, DIFFICULTY_MULTIPLIERS } from '@/
 import { Button } from '@/components/ui/button';
 import { FormLabel } from '@/components/ui/form-input';
 import { FormCard } from '@/components/ui/form-card';
-import { ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
+import { ClipboardList, ChevronDown, ChevronUp, Edit } from 'lucide-react';
 
 // ドラッグ可能なカードコンポーネント
-function DraggableTodoCard({ todo, isOverdue, icon, totalExp, formatDeadline, onMoveToActive }: {
+function DraggableTodoCard({ todo, isOverdue, icon, totalExp, rewardPoints, formatDeadline, onMoveToActive, onEditTodo }: {
   todo: Todo;
   isOverdue: boolean;
   icon: string;
   totalExp: number;
+  rewardPoints: number;
   formatDeadline: (dueDate: string | null) => string;
   onMoveToActive?: () => void;
+  onEditTodo?: (todoId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: todo.id,
@@ -89,8 +91,12 @@ function DraggableTodoCard({ todo, isOverdue, icon, totalExp, formatDeadline, on
         </div>
       </div>
       <div className="space-y-1 text-base text-zinc-400">
-        {todo.is_special && <div>SP {todo.sp_points}pt</div>}
-        {totalExp > 0 && <div>{totalExp}ex</div>}
+        {(rewardPoints > 0 || totalExp > 0) && (
+          <div>
+            {rewardPoints > 0 && <>{rewardPoints}G </>}
+            {totalExp > 0 && <>{totalExp}ex</>}
+          </div>
+        )}
         {todo.due_date && (
           <div className={isOverdue ? 'text-red-400' : ''} id={isOverdue ? `overdue-${todo.id}` : undefined} suppressHydrationWarning>
             期限: {formatDeadline(todo.due_date)}
@@ -111,16 +117,33 @@ function DraggableTodoCard({ todo, isOverdue, icon, totalExp, formatDeadline, on
             </button>
           </div>
         )}
+        {onEditTodo && (
+          <div className="pt-1 mt-1 border-t border-zinc-700 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditTodo(todo.id);
+              }}
+              className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1"
+              aria-label={`${todo.task_name}を編集する`}
+            >
+              <Edit className="w-3 h-3" />
+              編集
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 // 完了済みカードの見た目（中身だけ）
-function CompletedTodoCardInner({ todo, icon, totalExp, formatCompletedDate }: {
+function CompletedTodoCardInner({ todo, icon, totalExp, rewardPoints, formatCompletedDate }: {
   todo: Todo;
   icon: string;
   totalExp: number;
+  rewardPoints: number;
   formatCompletedDate: (completedAt: string | null) => string;
 }) {
   return (
@@ -158,8 +181,12 @@ function CompletedTodoCardInner({ todo, icon, totalExp, formatCompletedDate }: {
         </div>
       </div>
       <div className="space-y-1 text-base text-zinc-400">
-        {todo.is_special && <div>SP {todo.sp_points}pt</div>}
-        {totalExp > 0 && <div>{totalExp}ex</div>}
+        {(rewardPoints > 0 || totalExp > 0) && (
+          <div>
+            {rewardPoints > 0 && <>{rewardPoints}G </>}
+            {totalExp > 0 && <>{totalExp}ex</>}
+          </div>
+        )}
         {todo.completed_at && (
           <div suppressHydrationWarning>完了: {formatCompletedDate(todo.completed_at)}</div>
         )}
@@ -169,11 +196,13 @@ function CompletedTodoCardInner({ todo, icon, totalExp, formatCompletedDate }: {
 }
 
 // 完了済みカードコンポーネント（ドラッグ可能・アクティブ/進行中へ戻せる）
-function DraggableCompletedTodoCard({ todo, icon, totalExp, formatCompletedDate }: {
+function DraggableCompletedTodoCard({ todo, icon, totalExp, rewardPoints, formatCompletedDate, onEditTodo }: {
   todo: Todo;
   icon: string;
   totalExp: number;
+  rewardPoints: number;
   formatCompletedDate: (completedAt: string | null) => string;
+  onEditTodo?: (todoId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: todo.id,
@@ -193,21 +222,38 @@ function DraggableCompletedTodoCard({ todo, icon, totalExp, formatCompletedDate 
       aria-label={`${todo.task_name}をドラッグしてアクティブまたは進行中へ戻す`}
       className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-cyan-600 transition-colors opacity-75 cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-950"
     >
-      <CompletedTodoCardInner todo={todo} icon={icon} totalExp={totalExp} formatCompletedDate={formatCompletedDate} />
+      <CompletedTodoCardInner todo={todo} icon={icon} totalExp={totalExp} rewardPoints={rewardPoints} formatCompletedDate={formatCompletedDate} />
+      {onEditTodo && (
+        <div className="pt-1 mt-1 border-t border-zinc-700">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditTodo(todo.id);
+            }}
+            className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1"
+            aria-label={`${todo.task_name}を編集する`}
+          >
+            <Edit className="w-3 h-3" />
+            編集
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 // 完了済みカード（ドラッグ不可・DragOverlay 用など）
-function CompletedTodoCard({ todo, icon, totalExp, formatCompletedDate }: {
+function CompletedTodoCard({ todo, icon, totalExp, rewardPoints, formatCompletedDate }: {
   todo: Todo;
   icon: string;
   totalExp: number;
+  rewardPoints: number;
   formatCompletedDate: (completedAt: string | null) => string;
 }) {
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-cyan-600 transition-colors opacity-75">
-      <CompletedTodoCardInner todo={todo} icon={icon} totalExp={totalExp} formatCompletedDate={formatCompletedDate} />
+      <CompletedTodoCardInner todo={todo} icon={icon} totalExp={totalExp} rewardPoints={rewardPoints} formatCompletedDate={formatCompletedDate} />
     </div>
   );
 }
@@ -226,25 +272,29 @@ function DroppableColumn({
   isOverdue,
   getIcon,
   getTotalExp,
+  getRewardPoints,
   formatDeadline,
   formatCompletedDate,
   sortOrder,
   onSortChange,
   dateSortLabel,
   onMoveToActive,
+  onEditTodo,
 }: {
   id: string;
   title: string;
   todos: Todo[];
   isOverdue: (dueDate: string | null, status: string) => boolean;
-  getIcon: (isSpecial: boolean, status: string) => string;
+  getIcon: (status: string) => string;
   getTotalExp: (todo: Todo) => number;
+  getRewardPoints: (todo: Todo) => number;
   formatDeadline: (dueDate: string | null) => string;
   formatCompletedDate: (completedAt: string | null) => string;
   sortOrder?: 'asc' | 'desc';
   onSortChange?: (order: 'asc' | 'desc') => void;
   dateSortLabel?: string;
   onMoveToActive?: (todoId: string) => void;
+  onEditTodo?: (todoId: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -299,8 +349,9 @@ function DroppableColumn({
         ) : (
           todos.map((todo) => {
             const overdue = isOverdue(todo.due_date, todo.status);
-            const icon = getIcon(todo.is_special, todo.status);
+            const icon = getIcon(todo.status);
             const totalExp = getTotalExp(todo);
+            const rewardPoints = getRewardPoints(todo);
 
             if (todo.status === 'completed') {
               return (
@@ -309,7 +360,9 @@ function DroppableColumn({
                   todo={todo}
                   icon={icon}
                   totalExp={totalExp}
+                  rewardPoints={rewardPoints}
                   formatCompletedDate={formatCompletedDate}
+                  onEditTodo={onEditTodo}
                 />
               );
             }
@@ -321,8 +374,10 @@ function DroppableColumn({
                   isOverdue={overdue}
                   icon={icon}
                   totalExp={totalExp}
+                  rewardPoints={rewardPoints}
                   formatDeadline={formatDeadline}
                   onMoveToActive={onMoveToActive ? () => onMoveToActive(todo.id) : undefined}
+                  onEditTodo={onEditTodo}
                 />
               </DroppableCardSlot>
             );
@@ -333,7 +388,7 @@ function DroppableColumn({
   );
 }
 
-function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsExpanded, onExpandedChange }: KanbanBoardProps) {
+function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsExpanded, onExpandedChange, onEditTodo }: KanbanBoardProps) {
 
   // ローカル状態でtodosを管理（ドラッグ&ドロップで即座に反映）
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
@@ -559,11 +614,12 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
   );
 
   // アイコン取得関数
-  const getIcon = (isSpecial: boolean, status: string): string => {
+  const getIcon = (status: string): string => {
     if (status === 'completed') return '✅';
-    if (isSpecial) return '⚠️';
     return '📄';
   };
+
+  const getRewardPoints = (t: Todo): number => calculateReward(t).points;
 
   // 期限表示用フォーマット関数（西暦下2桁含む YY/MM/DD形式）
   const formatDeadline = (dueDate: string | null): string => {
@@ -595,26 +651,14 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
     setActiveId(event.active.id as string);
   };
 
-  // 報酬計算関数（難易度倍率を適用）
+  // 報酬計算関数（難易度倍率を適用、sp_* をそのまま倍率掛け）
   const calculateReward = (todo: Todo) => {
-    if (!todo.is_special) {
-      return {
-        points: 0,
-        exp_body: 0,
-        exp_mind: 0,
-        exp_spirit: 0,
-      };
-    }
-    
-    // 難易度倍率を取得（デフォルトはmedium = 1.0）
     const multiplier = DIFFICULTY_MULTIPLIERS[todo.difficulty || 'medium'];
-    
-    // 難易度倍率を適用して報酬を計算（小数点以下は四捨五入）
     return {
-      points: Math.round(todo.sp_points * multiplier),
-      exp_body: Math.round(todo.sp_exp_body * multiplier),
-      exp_mind: Math.round(todo.sp_exp_mind * multiplier),
-      exp_spirit: Math.round(todo.sp_exp_spirit * multiplier),
+      points: Math.round((todo.sp_points ?? 0) * multiplier),
+      exp_body: Math.round((todo.sp_exp_body ?? 0) * multiplier),
+      exp_mind: Math.round((todo.sp_exp_mind ?? 0) * multiplier),
+      exp_spirit: Math.round((todo.sp_exp_spirit ?? 0) * multiplier),
     };
   };
 
@@ -1013,84 +1057,87 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
                   </span>
                 )}
               </div>
-              
-              {/* タグフィルター */}
-              <div>
-                <FormLabel>タグ</FormLabel>
-                {isLoadingTags ? (
-                  <div className="mt-2 text-sm text-zinc-400">読み込み中...</div>
-                ) : (
+
+              {/* タグ・難易度フィルター（並列表示） */}
+              <div className="flex flex-row flex-nowrap gap-4 w-full">
+                {/* タグフィルター */}
+                <div className="flex-1 min-w-0 shrink-0 basis-1/2">
+                  <FormLabel>タグ</FormLabel>
+                  {isLoadingTags ? (
+                    <div className="mt-2 text-sm text-zinc-400">読み込み中...</div>
+                  ) : (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setFilterTagIds([])}
+                        className={`px-3 py-1 text-sm rounded ${
+                          filterTagIds.length === 0
+                            ? 'bg-cyan-600 text-white'
+                            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                        }`}
+                      >
+                        すべて
+                      </button>
+                      {tags.map((tag) => (
+                        <button
+                          key={tag.id}
+                          onClick={() => {
+                            if (filterTagIds.includes(tag.id)) {
+                              setFilterTagIds(filterTagIds.filter((id) => id !== tag.id));
+                            } else {
+                              setFilterTagIds([...filterTagIds, tag.id]);
+                            }
+                          }}
+                          className={`px-3 py-1 text-sm rounded flex items-center gap-2 ${
+                            filterTagIds.includes(tag.id)
+                              ? 'bg-cyan-600 text-white'
+                              : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                          }`}
+                        >
+                          <span
+                            className="w-3 h-3 rounded"
+                            style={{ backgroundColor: tag.tag_color }}
+                          />
+                          {tag.tag_name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 難易度フィルター */}
+                <div className="flex-1 min-w-0 shrink-0 basis-1/2">
+                  <FormLabel>難易度</FormLabel>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
-                      onClick={() => setFilterTagIds([])}
+                      onClick={() => setFilterDifficulties([])}
                       className={`px-3 py-1 text-sm rounded ${
-                        filterTagIds.length === 0
+                        filterDifficulties.length === 0
                           ? 'bg-cyan-600 text-white'
                           : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                       }`}
                     >
                       すべて
                     </button>
-                    {tags.map((tag) => (
+                    {(['easy', 'medium', 'hard'] as Difficulty[]).map((difficulty) => (
                       <button
-                        key={tag.id}
+                        key={difficulty}
                         onClick={() => {
-                          if (filterTagIds.includes(tag.id)) {
-                            setFilterTagIds(filterTagIds.filter((id) => id !== tag.id));
+                          if (filterDifficulties.includes(difficulty)) {
+                            setFilterDifficulties(filterDifficulties.filter((d) => d !== difficulty));
                           } else {
-                            setFilterTagIds([...filterTagIds, tag.id]);
+                            setFilterDifficulties([...filterDifficulties, difficulty]);
                           }
                         }}
-                        className={`px-3 py-1 text-sm rounded flex items-center gap-2 ${
-                          filterTagIds.includes(tag.id)
-                            ? 'bg-cyan-600 text-white'
+                        className={`px-3 py-1 text-sm rounded ${
+                          filterDifficulties.includes(difficulty)
+                            ? `${DIFFICULTY_COLORS[difficulty]} text-white`
                             : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                         }`}
                       >
-                        <span
-                          className="w-3 h-3 rounded"
-                          style={{ backgroundColor: tag.tag_color }}
-                        />
-                        {tag.tag_name}
+                        {DIFFICULTY_LABELS[difficulty]}
                       </button>
                     ))}
                   </div>
-                )}
-              </div>
-
-              {/* 難易度フィルター */}
-              <div>
-                <FormLabel>難易度</FormLabel>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setFilterDifficulties([])}
-                    className={`px-3 py-1 text-sm rounded ${
-                      filterDifficulties.length === 0
-                        ? 'bg-cyan-600 text-white'
-                        : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                    }`}
-                  >
-                    すべて
-                  </button>
-                  {(['easy', 'medium', 'hard'] as Difficulty[]).map((difficulty) => (
-                    <button
-                      key={difficulty}
-                      onClick={() => {
-                        if (filterDifficulties.includes(difficulty)) {
-                          setFilterDifficulties(filterDifficulties.filter((d) => d !== difficulty));
-                        } else {
-                          setFilterDifficulties([...filterDifficulties, difficulty]);
-                        }
-                      }}
-                      className={`px-3 py-1 text-sm rounded ${
-                        filterDifficulties.includes(difficulty)
-                          ? `${DIFFICULTY_COLORS[difficulty]} text-white`
-                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                      }`}
-                    >
-                      {DIFFICULTY_LABELS[difficulty]}
-                    </button>
-                  ))}
                 </div>
               </div>
 
@@ -1128,11 +1175,13 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             isOverdue={isOverdue}
             getIcon={getIcon}
             getTotalExp={getTotalExp}
+            getRewardPoints={getRewardPoints}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
             sortOrder={sortDateActive}
             onSortChange={setSortDateActive}
             dateSortLabel="期限"
+            onEditTodo={onEditTodo}
           />
 
           {/* 進行中カラム */}
@@ -1143,12 +1192,14 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             isOverdue={isOverdue}
             getIcon={getIcon}
             getTotalExp={getTotalExp}
+            getRewardPoints={getRewardPoints}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
             sortOrder={sortDateInProgress}
             onSortChange={setSortDateInProgress}
             dateSortLabel="期限"
             onMoveToActive={handleMoveToActive}
+            onEditTodo={onEditTodo}
           />
 
           {/* 完了済みカラム */}
@@ -1159,11 +1210,13 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             isOverdue={isOverdue}
             getIcon={getIcon}
             getTotalExp={getTotalExp}
+            getRewardPoints={getRewardPoints}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
             sortOrder={sortDateCompleted}
             onSortChange={setSortDateCompleted}
             dateSortLabel="完了日"
+            onEditTodo={onEditTodo}
           />
         </div>
 
@@ -1174,22 +1227,27 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
               <div className="bg-zinc-900 border border-cyan-600 rounded-lg p-3 shadow-lg opacity-90 rotate-2">
                 <CompletedTodoCardInner
                   todo={activeTodo}
-                  icon={getIcon(activeTodo.is_special, activeTodo.status)}
+                  icon={getIcon(activeTodo.status)}
                   totalExp={getTotalExp(activeTodo)}
+                  rewardPoints={getRewardPoints(activeTodo)}
                   formatCompletedDate={formatCompletedDate}
                 />
               </div>
             ) : (
               <div className="bg-zinc-900 border border-cyan-600 rounded-lg p-3 shadow-lg opacity-90 rotate-2">
                 <div className="flex items-start gap-2 mb-2">
-                  <span className="text-lg">{getIcon(activeTodo.is_special, activeTodo.status)}</span>
+                  <span className="text-lg">{getIcon(activeTodo.status)}</span>
                   <span className="text-base font-medium text-zinc-100 flex-1">
                     {activeTodo.task_name}
                   </span>
                 </div>
                 <div className="space-y-1 text-base text-zinc-400">
-                  {activeTodo.is_special && <div>SP {activeTodo.sp_points}pt</div>}
-                  {getTotalExp(activeTodo) > 0 && <div>{getTotalExp(activeTodo)}ex</div>}
+                  {(getRewardPoints(activeTodo) > 0 || getTotalExp(activeTodo) > 0) && (
+                    <div>
+                      {getRewardPoints(activeTodo) > 0 && <>{getRewardPoints(activeTodo)}G </>}
+                      {getTotalExp(activeTodo) > 0 && <>{getTotalExp(activeTodo)}ex</>}
+                    </div>
+                  )}
                 </div>
               </div>
             )

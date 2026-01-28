@@ -17,7 +17,6 @@ interface Todo {
   id: string;
   user_id: string;
   task_name: string;
-  is_special: boolean;
   sp_points: number;
   sp_exp_body: number;
   sp_exp_mind: number;
@@ -40,7 +39,6 @@ export default function TodosSettingsPage() {
   // フォーム状態
   const [formData, setFormData] = useState({
     task_name: '',
-    is_special: false,
     sp_points: 0,
     sp_exp_body: 0,
     sp_exp_mind: 0,
@@ -83,7 +81,6 @@ export default function TodosSettingsPage() {
   const resetForm = () => {
     setFormData({
       task_name: '',
-      is_special: false,
       sp_points: 0,
       sp_exp_body: 0,
       sp_exp_mind: 0,
@@ -191,7 +188,6 @@ export default function TodosSettingsPage() {
     setEditingTodo(todo);
     setFormData({
       task_name: todo.task_name,
-      is_special: todo.is_special,
       sp_points: todo.sp_points,
       sp_exp_body: todo.sp_exp_body,
       sp_exp_mind: todo.sp_exp_mind,
@@ -242,23 +238,17 @@ export default function TodosSettingsPage() {
         <div className="flex items-center gap-2 mb-2">
           <GripVertical className="w-4 h-4 text-zinc-500" />
           <h3 className="text-lg font-medium text-zinc-100">{todo.task_name}</h3>
-          {todo.is_special && (
-            <span className="text-xs px-2 py-0.5 bg-yellow-900 text-yellow-300 rounded flex items-center gap-1">
-              <Star className="w-3 h-3" />
-              SP
-            </span>
-          )}
           <span className={`text-xs px-2 py-0.5 rounded ${getStatusColor(todo.status)} bg-opacity-20`}>
             {getStatusLabel(todo.status)}
           </span>
         </div>
         <div className="text-sm text-zinc-400 space-y-1">
-          {todo.is_special && (
+          {(todo.sp_points > 0 || todo.sp_exp_body + todo.sp_exp_mind + todo.sp_exp_spirit > 0) && (
             <>
-              <div>SPポイント: +{todo.sp_points}pt</div>
-              <div>
-                SP EXP: 身体+{todo.sp_exp_body} / 頭脳+{todo.sp_exp_mind} / 精神+{todo.sp_exp_spirit}
-              </div>
+              {todo.sp_points > 0 && <div>ゴルド: +{todo.sp_points}G</div>}
+              {(todo.sp_exp_body + todo.sp_exp_mind + todo.sp_exp_spirit) > 0 && (
+                <div>EXP: 身体+{todo.sp_exp_body} / 頭脳+{todo.sp_exp_mind} / 精神+{todo.sp_exp_spirit}</div>
+              )}
             </>
           )}
           {todo.due_date && (
@@ -333,67 +323,47 @@ export default function TodosSettingsPage() {
                     />
                   </div>
 
-                  {/* SPタスク設定 */}
+                  {/* 報酬（ゴルド・EXP） */}
                   <div>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.is_special}
-                        onChange={(e) => setFormData({ ...formData, is_special: e.target.checked })}
-                        className="w-4 h-4 text-cyan-600"
-                      />
-                      <span className="text-zinc-300 flex items-center gap-2">
-                        <Star className="w-4 h-4 text-yellow-400" />
-                        SPタスク（特別タスク）
-                      </span>
-                    </label>
+                    <Label htmlFor="sp_points" className="text-zinc-300">ゴルド</Label>
+                    <Input
+                      id="sp_points"
+                      type="number"
+                      value={formData.sp_points}
+                      onChange={(e) => setFormData({ ...formData, sp_points: parseInt(e.target.value) || 0 })}
+                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                    />
                   </div>
-
-                  {/* SP設定（SPタスクの場合のみ表示） */}
-                  {formData.is_special && (
-                    <>
-                      <div>
-                        <Label htmlFor="sp_points" className="text-zinc-300">SPポイント</Label>
-                        <Input
-                          id="sp_points"
-                          type="number"
-                          value={formData.sp_points}
-                          onChange={(e) => setFormData({ ...formData, sp_points: parseInt(e.target.value) || 0 })}
-                          className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="sp_exp_body" className="text-zinc-300">SP身体EXP</Label>
-                        <Input
-                          id="sp_exp_body"
-                          type="number"
-                          value={formData.sp_exp_body}
-                          onChange={(e) => setFormData({ ...formData, sp_exp_body: parseInt(e.target.value) || 0 })}
-                          className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="sp_exp_mind" className="text-zinc-300">SP頭脳EXP</Label>
-                        <Input
-                          id="sp_exp_mind"
-                          type="number"
-                          value={formData.sp_exp_mind}
-                          onChange={(e) => setFormData({ ...formData, sp_exp_mind: parseInt(e.target.value) || 0 })}
-                          className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="sp_exp_spirit" className="text-zinc-300">SP精神EXP</Label>
-                        <Input
-                          id="sp_exp_spirit"
-                          type="number"
-                          value={formData.sp_exp_spirit}
-                          onChange={(e) => setFormData({ ...formData, sp_exp_spirit: parseInt(e.target.value) || 0 })}
-                          className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
-                        />
-                      </div>
-                    </>
-                  )}
+                  <div>
+                    <Label htmlFor="sp_exp_body" className="text-zinc-300">身体EXP</Label>
+                    <Input
+                      id="sp_exp_body"
+                      type="number"
+                      value={formData.sp_exp_body}
+                      onChange={(e) => setFormData({ ...formData, sp_exp_body: parseInt(e.target.value) || 0 })}
+                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="sp_exp_mind" className="text-zinc-300">頭脳EXP</Label>
+                    <Input
+                      id="sp_exp_mind"
+                      type="number"
+                      value={formData.sp_exp_mind}
+                      onChange={(e) => setFormData({ ...formData, sp_exp_mind: parseInt(e.target.value) || 0 })}
+                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="sp_exp_spirit" className="text-zinc-300">精神EXP</Label>
+                    <Input
+                      id="sp_exp_spirit"
+                      type="number"
+                      value={formData.sp_exp_spirit}
+                      onChange={(e) => setFormData({ ...formData, sp_exp_spirit: parseInt(e.target.value) || 0 })}
+                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                    />
+                  </div>
 
                   {/* ステータス */}
                   <div>

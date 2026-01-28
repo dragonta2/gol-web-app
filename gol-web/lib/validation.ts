@@ -128,7 +128,7 @@ export function validateHabitName(habitName: string | undefined | null): { valid
  * ポイントのバリデーション
  */
 export function validatePoints(points: number | undefined | null): { valid: boolean; error?: string } {
-  return validateNumberRange(points, 'ポイント', 0, 9999, false);
+  return validateNumberRange(points, 'ゴルド', 0, 9999, false);
 }
 
 /**

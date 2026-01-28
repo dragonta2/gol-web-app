@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     // 期間内に作成されたtodosを取得
     const { data: todos, error: todosError } = await supabase
       .from('todos')
-      .select('id, task_name, status, is_special, created_at, completed_at')
+      .select('id, task_name, status, created_at, completed_at')
       .eq('user_id', user.id)
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
@@ -49,33 +49,14 @@ export async function GET(request: Request) {
           totalTodos: 0,
           completedTodos: 0,
           completionRate: 0,
-          averageByType: {
-            special: 0,
-            normal: 0,
-          },
         },
       });
     }
 
-    // 完了済みタスクをカウント
+    // 完了済みタスクをカウント（全体の完了率のみ）
     const completedTodos = todos.filter(todo => todo.status === 'completed');
     const totalTodos = todos.length;
     const completionRate = totalTodos > 0 ? (completedTodos.length / totalTodos) * 100 : 0;
-
-    // SPタスク/通常タスク別の完了率を計算
-    const specialTodos = todos.filter(todo => todo.is_special === true);
-    const normalTodos = todos.filter(todo => todo.is_special === false);
-    
-    const completedSpecialTodos = specialTodos.filter(todo => todo.status === 'completed');
-    const completedNormalTodos = normalTodos.filter(todo => todo.status === 'completed');
-
-    const specialCompletionRate = specialTodos.length > 0
-      ? (completedSpecialTodos.length / specialTodos.length) * 100
-      : 0;
-    
-    const normalCompletionRate = normalTodos.length > 0
-      ? (completedNormalTodos.length / normalTodos.length) * 100
-      : 0;
 
     // 日別の完了率を計算
     const dailyCompletion: { date: string; completed: number; total: number; rate: number }[] = [];
@@ -111,14 +92,6 @@ export async function GET(request: Request) {
         totalTodos,
         completedTodos: completedTodos.length,
         completionRate: Math.round(completionRate * 10) / 10,
-        averageByType: {
-          special: Math.round(specialCompletionRate * 10) / 10,
-          normal: Math.round(normalCompletionRate * 10) / 10,
-        },
-        specialTodos: specialTodos.length,
-        normalTodos: normalTodos.length,
-        completedSpecialTodos: completedSpecialTodos.length,
-        completedNormalTodos: completedNormalTodos.length,
       },
     });
   } catch (error) {

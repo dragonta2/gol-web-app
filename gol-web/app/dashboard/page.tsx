@@ -194,7 +194,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </div>
               <div className="flex items-center gap-1 text-base sm:text-lg font-semibold text-yellow-400">
                 <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span>{userProfile.points}pt</span>
+                <span>{userProfile.points}G</span>
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">

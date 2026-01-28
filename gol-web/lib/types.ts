@@ -147,15 +147,13 @@ export interface Todo {
   user_id: string;
   /** タスク名（例: "沖縄旅行"） */
   task_name: string;
-  /** SPタスクフラグ（true=スペシャルタスク） */
-  is_special: boolean;
-  /** SPポイント報酬 */
+  /** ポイント報酬（難易度倍率はフロントで適用） */
   sp_points: number;
-  /** SP身体EXP報酬 */
+  /** 身体EXP報酬 */
   sp_exp_body: number;
-  /** SP頭脳EXP報酬 */
+  /** 頭脳EXP報酬 */
   sp_exp_mind: number;
-  /** SP精神EXP報酬 */
+  /** 精神EXP報酬 */
   sp_exp_spirit: number;
   /** ステータス: 'active'=アクティブ, 'in_progress'=進行中, 'completed'=完了済み */
   status: 'active' | 'in_progress' | 'completed';
@@ -215,6 +213,8 @@ export interface TodoSubtask {
   subtask_name: string;
   /** 完了状態（true = 完了、false = 未完了） */
   is_completed: boolean;
+  /** チェックを入れた日時（完了時に記録） */
+  completed_at?: string | null;
   /** 表示順序（小さい順に表示） */
   display_order: number;
   /** 作成日時 */
@@ -439,6 +439,8 @@ export interface KanbanBoardProps {
   isExpanded?: boolean;
   /** アコーディオンの開閉状態を更新する関数（外部制御用） */
   onExpandedChange?: (expanded: boolean) => void;
+  /** カードの「編集」クリック時：ToDoサマリーへ切り替え＋編集モーダルを開く */
+  onEditTodo?: (todoId: string) => void;
 }
 
 // ============================================================================

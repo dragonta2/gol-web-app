@@ -73,7 +73,7 @@
 **データベース制約:**
 - `task_name`: TEXT NOT NULL
 - `status`: TEXT DEFAULT 'active' CHECK (status IN ('active', 'in_progress', 'completed'))
-- `sp_points`, `sp_exp_*`: INTEGER DEFAULT 0（0以上、is_special=trueの場合のみ有効）
+- `sp_points`, `sp_exp_*`: INTEGER DEFAULT 0（0以上）
 - `due_date`: DATE（YYYY-MM-DD形式）
 - `user_id`: UUID NOT NULL REFERENCES profiles(id)
 

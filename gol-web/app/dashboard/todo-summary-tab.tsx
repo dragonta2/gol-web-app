@@ -29,11 +29,14 @@ interface TodoSummaryTabProps {
   todoLogs: TodoLog[];
   todoSubtasks: TodoSubtask[];
   dailyLogId: string | null;
+  /** 日誌カンバンから「編集」で飛んできたとき、このIDのタスクの編集モーダルを開く */
+  initialEditTodoId?: string | null;
+  /** 編集モーダルを開いたあと、親の editTodoId をクリアするために呼ぶ */
+  onInitialEditConsumed?: () => void;
 }
 
 interface TodoFormData {
   task_name: string;
-  is_special: boolean;
   sp_points: number;
   sp_exp_body: number;
   sp_exp_mind: number;
@@ -43,13 +46,18 @@ interface TodoFormData {
   difficulty: Difficulty;
 }
 
-export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLogId }: TodoSummaryTabProps) {
+export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLogId, initialEditTodoId, onInitialEditConsumed }: TodoSummaryTabProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [expandedTodos, setExpandedTodos] = useState<Set<string>>(new Set());
+  // サブタスクが1件以上あるToDoはデフォルトで展開
+  const [expandedTodos, setExpandedTodos] = useState<Set<string>>(() => {
+    const ids = new Set<string>();
+    for (const st of todoSubtasks) ids.add(st.todo_id);
+    return ids;
+  });
   const [editingSubtask, setEditingSubtask] = useState<{ todoId: string; subtask: TodoSubtask | null } | null>(null);
   const [subtaskFormData, setSubtaskFormData] = useState({ subtask_name: '' });
   const [tags, setTags] = useState<Tag[]>([]);
@@ -104,7 +112,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
   const [tagFormData, setTagFormData] = useState({ tag_name: '', tag_color: '#3b82f6' });
   const [formData, setFormData] = useState<TodoFormData>({
     task_name: '',
-    is_special: false,
     sp_points: 0,
     sp_exp_body: 0,
     sp_exp_mind: 0,
@@ -409,7 +416,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     setSelectedTagIds([]);
     setFormData({
       task_name: '',
-      is_special: false,
       sp_points: 0,
       sp_exp_body: 0,
       sp_exp_mind: 0,
@@ -426,7 +432,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     setEditingTodo(todo);
     setFormData({
       task_name: todo.task_name,
-      is_special: todo.is_special,
       sp_points: todo.sp_points,
       sp_exp_body: todo.sp_exp_body,
       sp_exp_mind: todo.sp_exp_mind,
@@ -447,26 +452,35 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     setSelectedTagIds([]);
   };
 
-  // 報酬計算関数（難易度倍率を適用）
+  // 日誌カンバンから「編集」で飛んできたとき、該当タスクの編集モーダルを開く
+  useEffect(() => {
+    if (!initialEditTodoId || !todos.length) return;
+    const todo = todos.find((t) => t.id === initialEditTodoId);
+    if (!todo) return;
+    setEditingTodo(todo);
+    setFormData({
+      task_name: todo.task_name,
+      sp_points: todo.sp_points,
+      sp_exp_body: todo.sp_exp_body,
+      sp_exp_mind: todo.sp_exp_mind,
+      sp_exp_spirit: todo.sp_exp_spirit,
+      due_date: todo.due_date || '',
+      status: todo.status,
+      difficulty: todo.difficulty || 'medium',
+    });
+    fetchTodoTags(todo.id);
+    setIsModalOpen(true);
+    onInitialEditConsumed?.();
+  }, [initialEditTodoId, todos, onInitialEditConsumed]);
+
+  // 報酬計算関数（難易度倍率を適用、sp_* をそのまま倍率掛け）
   const calculateReward = (todo: Todo) => {
-    if (!todo.is_special) {
-      return {
-        points: 0,
-        exp_body: 0,
-        exp_mind: 0,
-        exp_spirit: 0,
-      };
-    }
-    
-    // 難易度倍率を取得（デフォルトはmedium = 1.0）
     const multiplier = DIFFICULTY_MULTIPLIERS[todo.difficulty || 'medium'];
-    
-    // 難易度倍率を適用して報酬を計算（小数点以下は四捨五入）
     return {
-      points: Math.round(todo.sp_points * multiplier),
-      exp_body: Math.round(todo.sp_exp_body * multiplier),
-      exp_mind: Math.round(todo.sp_exp_mind * multiplier),
-      exp_spirit: Math.round(todo.sp_exp_spirit * multiplier),
+      points: Math.round((todo.sp_points ?? 0) * multiplier),
+      exp_body: Math.round((todo.sp_exp_body ?? 0) * multiplier),
+      exp_mind: Math.round((todo.sp_exp_mind ?? 0) * multiplier),
+      exp_spirit: Math.round((todo.sp_exp_spirit ?? 0) * multiplier),
     };
   };
 
@@ -625,7 +639,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
       return;
     }
     const numericFields = [
-      { key: 'sp_points', value: formData.sp_points, label: 'SPポイント' },
+      { key: 'sp_points', value: formData.sp_points, label: 'ゴルド' },
       { key: 'sp_exp_body', value: formData.sp_exp_body, label: '身体EXP' },
       { key: 'sp_exp_mind', value: formData.sp_exp_mind, label: '頭脳EXP' },
       { key: 'sp_exp_spirit', value: formData.sp_exp_spirit, label: '精神EXP' },
@@ -670,7 +684,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
             id: '',
             user_id: user.id,
             task_name: formData.task_name.trim(),
-            is_special: formData.is_special,
             sp_points: formData.sp_points,
             sp_exp_body: formData.sp_exp_body,
             sp_exp_mind: formData.sp_exp_mind,
@@ -679,6 +692,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
             due_date: formData.due_date || null,
             completed_at: formData.status === 'completed' ? new Date().toISOString() : null,
             display_order: displayOrder,
+            difficulty: formData.difficulty,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
@@ -687,7 +701,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
         // 更新
         const updateData: Partial<Todo> = {
           task_name: formData.task_name.trim(),
-          is_special: formData.is_special,
           sp_points: formData.sp_points,
           sp_exp_body: formData.sp_exp_body,
           sp_exp_mind: formData.sp_exp_mind,
@@ -759,7 +772,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
           .insert({
             user_id: user.id,
             task_name: formData.task_name.trim(),
-            is_special: formData.is_special,
             sp_points: formData.sp_points,
             sp_exp_body: formData.sp_exp_body,
             sp_exp_mind: formData.sp_exp_mind,
@@ -861,14 +873,18 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     setExpandedTodos(newExpanded);
   };
 
-  // サブタスクの完了状態を切り替え
+  // サブタスクの完了状態を切り替え（チェック時に completed_at を記録）
   const handleToggleSubtaskCompletion = async (subtask: TodoSubtask) => {
     try {
       const supabase = createClient();
+      const willBeCompleted = !subtask.is_completed;
 
       const { error } = await supabase
         .from('todo_subtasks')
-        .update({ is_completed: !subtask.is_completed })
+        .update({
+          is_completed: willBeCompleted,
+          completed_at: willBeCompleted ? new Date().toISOString() : null,
+        })
         .eq('id', subtask.id);
 
       if (error) {
@@ -899,16 +915,16 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     try {
       const supabase = createClient();
 
-      // 最大display_orderを取得
+      // 最大display_orderを取得（0件のときは .single() がエラーになるため .maybeSingle() を使用）
       const { data: maxOrderSubtask } = await supabase
         .from('todo_subtasks')
         .select('display_order')
         .eq('todo_id', todoId)
         .order('display_order', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      const displayOrder = maxOrderSubtask ? maxOrderSubtask.display_order + 1 : 0;
+      const displayOrder = maxOrderSubtask != null ? maxOrderSubtask.display_order + 1 : 0;
 
       const { error } = await supabase
         .from('todo_subtasks')
@@ -1025,6 +1041,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
 
     const totalExp = getTotalExp(todo);
     const expDist = isCompleted ? getExpDistribution(todo.id) : null;
+    const reward = calculateReward(todo);
 
     return (
       <div
@@ -1040,13 +1057,13 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
                   {isCompleted && <span className="text-green-400">✅</span>}
                   {!isCompleted && isOverdue && <span className="text-red-400 text-base">⚠️ 期限超過</span>}
-                  {todo.is_special && (
-                    <span className="text-yellow-400 text-base font-medium">
-                      SP {todo.sp_points}pt {totalExp}ex
+                  {(reward.points > 0 || totalExp > 0) && (
+                    <span className="text-zinc-400 text-base">
+                      {reward.points > 0 && <>{reward.points}G </>}
+                      {totalExp > 0 && <>{totalExp}ex</>}
                     </span>
                   )}
-                  {!todo.is_special && <span className="text-zinc-500 text-base">通常</span>}
-                  <span className={`text-zinc-100 font-medium ${isCompleted ? 'line-through' : ''}`}>
+                  <span className={`text-zinc-100 font-medium text-base ${isCompleted ? 'line-through' : ''}`}>
                     {todo.task_name}
                   </span>
                   {todo.difficulty && (
@@ -1077,9 +1094,11 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                   <div>
                     期限: {todo.due_date ? formatDate(todo.due_date) : '─'}
                   </div>
-                  <div>
-                    完了日: {isCompleted && todo.completed_at ? formatDate(todo.completed_at) : '─'}
-                  </div>
+                  {isCompleted && (
+                    <div>
+                      完了日: {todo.completed_at ? formatDate(todo.completed_at) : '─'}
+                    </div>
+                  )}
                   {expDist && (
                     <div className="text-zinc-300 mt-2">
                       EXP配分: 身体+{expDist.body} 頭脳+{expDist.mind} 精神+{expDist.spirit}
@@ -1087,25 +1106,26 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                   )}
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col items-end gap-1.5 shrink-0 ml-auto">
                 <Button
                   onClick={() => handleOpenEditModal(todo)}
                   variant="ghost"
                   size="sm"
                   aria-label={`${todo.task_name}を編集する`}
-                  className="text-base text-cyan-400 hover:text-cyan-300 h-auto px-3 py-1"
+                  className="text-xs text-cyan-400 hover:text-cyan-300 group h-auto px-2 py-0.5 flex items-center gap-0.5 min-h-0"
                 >
-                  <Edit className="w-4 h-4 mr-1" />
-                  編集
+                  <Edit className="w-3 h-3 shrink-0" />
+                  <span className="group-hover:underline">編集</span>
                 </Button>
                 <Button
                   onClick={() => handleDeleteTodo(todo)}
                   variant="ghost"
                   size="sm"
                   aria-label={`${todo.task_name}を削除する`}
-                  className="text-base text-red-400 hover:text-red-300 h-auto px-3 py-1"
+                  className="text-xs text-red-400 hover:text-red-300 group h-auto px-2 py-0.5 flex items-center gap-1 min-h-0"
                 >
-                  🗑削除
+                  <span className="shrink-0" aria-hidden>🗑</span>
+                  <span className="group-hover:underline">削除</span>
                 </Button>
               </div>
             </div>
@@ -1198,15 +1218,22 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                             </div>
                           ) : (
                             <>
-                              <span
-                                className={`flex-1 text-base ${
-                                  subtask.is_completed ? 'text-zinc-500 line-through' : 'text-zinc-300'
-                                }`}
-                              >
-                                {subtask.subtask_name}
+                              <span className="flex-1 text-base flex items-center gap-2 flex-wrap">
+                                <span
+                                  className={
+                                    subtask.is_completed ? 'text-zinc-200 line-through' : 'text-zinc-300'
+                                  }
+                                >
+                                  {subtask.subtask_name}
+                                </span>
+                                {subtask.is_completed && (subtask.completed_at ?? subtask.updated_at) && (
+                                  <span className="text-zinc-300 text-sm font-normal no-underline">
+                                    （{formatDate(subtask.completed_at ?? subtask.updated_at)}）
+                                  </span>
+                                )}
                               </span>
                               {!isCompleted && (
-                                <>
+                                <div className="flex items-center gap-0 shrink-0 ml-auto pl-4">
                                   <Button
                                     onClick={() => {
                                       setEditingSubtask({ todoId: todo.id, subtask });
@@ -1215,20 +1242,20 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                                     variant="ghost"
                                     size="sm"
                                     aria-label={`${subtask.subtask_name}を編集する`}
-                                    className="px-2 py-1 text-base text-cyan-400 hover:text-cyan-300 h-auto"
+                                    className="text-xs text-cyan-400 hover:text-cyan-300 group h-auto px-2 py-0.5 flex items-center min-h-0"
                                   >
-                                    編集
+                                    <span className="group-hover:underline">編集</span>
                                   </Button>
                                   <Button
                                     onClick={() => handleDeleteSubtask(subtask)}
                                     variant="ghost"
                                     size="sm"
                                     aria-label={`${subtask.subtask_name}を削除する`}
-                                    className="px-2 py-1 text-base text-red-400 hover:text-red-300 h-auto"
+                                    className="text-xs text-red-400 hover:text-red-300 group h-auto px-2 py-0.5 flex items-center min-h-0 -ml-2"
                                   >
-                                    削除
+                                    <span className="group-hover:underline">削除</span>
                                   </Button>
-                                </>
+                                </div>
                               )}
                             </>
                           )}
@@ -1375,7 +1402,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
             <select
               value={monthFilter}
               onChange={(e) => setMonthFilter(e.target.value)}
-              className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
             >
               <option value="all">すべてのToDo</option>
               {getMonthOptions().map((monthKey) => (
@@ -1386,83 +1413,86 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
             </select>
           </div>
           
-          {/* タグフィルター */}
-          <div>
-            <FormLabel>タグ</FormLabel>
-            {isLoadingTags ? (
-              <div className="mt-2 text-sm text-zinc-400">読み込み中...</div>
-            ) : (
+          {/* タグ・難易度フィルター（並列表示） */}
+          <div className="flex flex-row gap-4">
+            {/* タグフィルター */}
+            <div className="flex-1 min-w-0">
+              <FormLabel>タグ</FormLabel>
+              {isLoadingTags ? (
+                <div className="mt-2 text-sm text-zinc-400">読み込み中...</div>
+              ) : (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setFilterTagIds([])}
+                    className={`px-3 py-1 text-sm rounded ${
+                      filterTagIds.length === 0
+                        ? 'bg-cyan-600 text-white'
+                        : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                    }`}
+                  >
+                    すべて
+                  </button>
+                  {tags.map((tag) => (
+                    <button
+                      key={tag.id}
+                      onClick={() => {
+                        if (filterTagIds.includes(tag.id)) {
+                          setFilterTagIds(filterTagIds.filter((id) => id !== tag.id));
+                        } else {
+                          setFilterTagIds([...filterTagIds, tag.id]);
+                        }
+                      }}
+                      className={`px-3 py-1 text-sm rounded flex items-center gap-2 ${
+                        filterTagIds.includes(tag.id)
+                          ? 'bg-cyan-600 text-white'
+                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                      }`}
+                    >
+                      <span
+                        className="w-3 h-3 rounded"
+                        style={{ backgroundColor: tag.tag_color }}
+                      />
+                      {tag.tag_name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 難易度フィルター */}
+            <div className="flex-1 min-w-0">
+              <FormLabel>難易度</FormLabel>
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
-                  onClick={() => setFilterTagIds([])}
+                  onClick={() => setFilterDifficulties([])}
                   className={`px-3 py-1 text-sm rounded ${
-                    filterTagIds.length === 0
+                    filterDifficulties.length === 0
                       ? 'bg-cyan-600 text-white'
                       : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                   }`}
                 >
                   すべて
                 </button>
-                {tags.map((tag) => (
+                {(['easy', 'medium', 'hard'] as Difficulty[]).map((difficulty) => (
                   <button
-                    key={tag.id}
+                    key={difficulty}
                     onClick={() => {
-                      if (filterTagIds.includes(tag.id)) {
-                        setFilterTagIds(filterTagIds.filter((id) => id !== tag.id));
+                      if (filterDifficulties.includes(difficulty)) {
+                        setFilterDifficulties(filterDifficulties.filter((d) => d !== difficulty));
                       } else {
-                        setFilterTagIds([...filterTagIds, tag.id]);
+                        setFilterDifficulties([...filterDifficulties, difficulty]);
                       }
                     }}
-                    className={`px-3 py-1 text-sm rounded flex items-center gap-2 ${
-                      filterTagIds.includes(tag.id)
-                        ? 'bg-cyan-600 text-white'
+                    className={`px-3 py-1 text-sm rounded ${
+                      filterDifficulties.includes(difficulty)
+                        ? `${DIFFICULTY_COLORS[difficulty]} text-white`
                         : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                     }`}
                   >
-                    <span
-                      className="w-3 h-3 rounded"
-                      style={{ backgroundColor: tag.tag_color }}
-                    />
-                    {tag.tag_name}
+                    {DIFFICULTY_LABELS[difficulty]}
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* 難易度フィルター */}
-          <div>
-            <FormLabel>難易度</FormLabel>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                onClick={() => setFilterDifficulties([])}
-                className={`px-3 py-1 text-sm rounded ${
-                  filterDifficulties.length === 0
-                    ? 'bg-cyan-600 text-white'
-                    : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                }`}
-              >
-                すべて
-              </button>
-              {(['easy', 'medium', 'hard'] as Difficulty[]).map((difficulty) => (
-                <button
-                  key={difficulty}
-                  onClick={() => {
-                    if (filterDifficulties.includes(difficulty)) {
-                      setFilterDifficulties(filterDifficulties.filter((d) => d !== difficulty));
-                    } else {
-                      setFilterDifficulties([...filterDifficulties, difficulty]);
-                    }
-                  }}
-                  className={`px-3 py-1 text-sm rounded ${
-                    filterDifficulties.includes(difficulty)
-                      ? `${DIFFICULTY_COLORS[difficulty]} text-white`
-                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                  }`}
-                >
-                  {DIFFICULTY_LABELS[difficulty]}
-                </button>
-              ))}
             </div>
           </div>
 
@@ -1568,60 +1598,44 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
               placeholder="例: 沖縄旅行の準備"
             />
 
-            {/* SPタスクフラグ */}
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="is_special"
-                checked={formData.is_special}
-                onChange={(e) => setFormData({ ...formData, is_special: e.target.checked })}
-                className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-700 rounded focus:ring-cyan-500"
-              />
-              <FormLabel htmlFor="is_special" className="text-base font-medium cursor-pointer">
-                SPタスク（スペシャルタスク）
-              </FormLabel>
-            </div>
-
-            {/* SPタスクの報酬（is_specialがtrueの場合のみ表示） */}
-            {formData.is_special && (
-              <FormCard variant="nested" className="p-4 space-y-3">
-                <h4 className="text-base font-medium text-yellow-400 mb-3">SP報酬設定</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <FormInputSmall
-                    id="sp_points"
-                    label="SPポイント"
-                    type="number"
-                    min="0"
-                    value={formData.sp_points}
-                    onChange={(e) => setFormData({ ...formData, sp_points: parseInt(e.target.value) || 0 })}
-                  />
-                  <FormInputSmall
-                    id="sp_exp_body"
-                    label="身体EXP"
-                    type="number"
-                    min="0"
-                    value={formData.sp_exp_body}
-                    onChange={(e) => setFormData({ ...formData, sp_exp_body: parseInt(e.target.value) || 0 })}
-                  />
-                  <FormInputSmall
-                    id="sp_exp_mind"
-                    label="頭脳EXP"
-                    type="number"
-                    min="0"
-                    value={formData.sp_exp_mind}
-                    onChange={(e) => setFormData({ ...formData, sp_exp_mind: parseInt(e.target.value) || 0 })}
-                  />
-                  <FormInputSmall
-                    id="sp_exp_spirit"
-                    label="精神EXP"
-                    type="number"
-                    min="0"
-                    value={formData.sp_exp_spirit}
-                    onChange={(e) => setFormData({ ...formData, sp_exp_spirit: parseInt(e.target.value) || 0 })}
-                  />
-                </div>
-              </FormCard>
-            )}
+            {/* 報酬（ゴルド・EXP）。難易度で倍率がかかります */}
+            <FormCard variant="nested" className="p-4 space-y-3">
+              <h4 className="text-base font-medium text-zinc-300 mb-3">報酬</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormInputSmall
+                  id="sp_points"
+                  label="ゴルド"
+                  type="number"
+                  min="0"
+                  value={formData.sp_points}
+                  onChange={(e) => setFormData({ ...formData, sp_points: parseInt(e.target.value) || 0 })}
+                />
+                <FormInputSmall
+                  id="sp_exp_body"
+                  label="身体EXP"
+                  type="number"
+                  min="0"
+                  value={formData.sp_exp_body}
+                  onChange={(e) => setFormData({ ...formData, sp_exp_body: parseInt(e.target.value) || 0 })}
+                />
+                <FormInputSmall
+                  id="sp_exp_mind"
+                  label="頭脳EXP"
+                  type="number"
+                  min="0"
+                  value={formData.sp_exp_mind}
+                  onChange={(e) => setFormData({ ...formData, sp_exp_mind: parseInt(e.target.value) || 0 })}
+                />
+                <FormInputSmall
+                  id="sp_exp_spirit"
+                  label="精神EXP"
+                  type="number"
+                  min="0"
+                  value={formData.sp_exp_spirit}
+                  onChange={(e) => setFormData({ ...formData, sp_exp_spirit: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+            </FormCard>
 
             {/* ステータス */}
             <div>
@@ -1630,7 +1644,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                 id="status"
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'in_progress' | 'completed' })}
-                className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
               >
                   <option value="active">アクティブ</option>
                   <option value="in_progress">進行中</option>
@@ -1654,7 +1668,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                 id="difficulty"
                 value={formData.difficulty}
                 onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as Difficulty })}
-                className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
               >
                 <option value="easy">やさしい</option>
                 <option value="medium">ふつう</option>

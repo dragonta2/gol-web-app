@@ -657,7 +657,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
       return;
     }
     const numericFields = [
-      { label: 'ポイント', value: formData.points },
+      { label: 'ゴルド', value: formData.points },
       { label: '身体EXP', value: formData.exp_body },
       { label: '頭脳EXP', value: formData.exp_mind },
       { label: '精神EXP', value: formData.exp_spirit },
@@ -1017,7 +1017,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
                 habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
               }`}>
                 {habit.checked && calculatePoints(habit) !== 0 ? (
-                  calculatePoints(habit) > 0 ? `(+${calculatePoints(habit)}pt)` : `(${calculatePoints(habit)}pt)`
+                  calculatePoints(habit) > 0 ? `(+${calculatePoints(habit)}G)` : `(${calculatePoints(habit)}G)`
                 ) : ''}
               </span>
             </div>
@@ -1140,7 +1140,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
                 habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
               }`}>
                 {habit.checked && calculatePoints(habit) !== 0 ? (
-                  calculatePoints(habit) > 0 ? `(+${calculatePoints(habit)}pt)` : `(${calculatePoints(habit)}pt)`
+                  calculatePoints(habit) > 0 ? `(+${calculatePoints(habit)}G)` : `(${calculatePoints(habit)}G)`
                 ) : ''}
               </span>
             </div>
@@ -1233,7 +1233,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
 
               {/* ポイント表示 */}
               <span className="text-base text-cyan-400 font-medium whitespace-nowrap min-w-[3.5rem] text-right">
-                {completeBonus ? `(+${bonusHabits[0].points}pt)` : ''}
+                {completeBonus ? `(+${bonusHabits[0].points}G)` : ''}
               </span>
             </div>
             </FormCard>
@@ -1315,7 +1315,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
                 id="difficulty"
                 value={formData.difficulty}
                 onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as Difficulty })}
-                className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                className="mt-2 w-full pl-4 pr-8 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               >
                 <option value="easy">やさしい</option>
                 <option value="medium">ふつう</option>
@@ -1329,7 +1329,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <FormInputSmall
                   id="points"
-                  label="ポイント"
+                  label="ゴルド"
                   type="number"
                   min="0"
                   value={formData.points}
@@ -1653,7 +1653,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
                       <span className="text-base text-zinc-500 w-8">{index + 1}</span>
                       <span className="flex-1 text-base text-zinc-100">{habit.habit_name}</span>
                       <span className="text-base text-zinc-400">
-                        {habit.points}pt / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
+                        {habit.points}G / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
                       </span>
                       {habit.input_type === 'number' && (
                         <span className="text-base text-zinc-500">数値入力</span>
@@ -1722,7 +1722,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
                       <span className="text-base text-zinc-500 w-8">{index + 1}</span>
                       <span className="flex-1 text-base text-zinc-100">{habit.habit_name}</span>
                       <span className="text-base text-zinc-400">
-                        {habit.points}pt / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
+                        {habit.points}G / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
@@ -1789,7 +1789,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
                         <span className="text-base text-zinc-500 w-8">{index + 1}</span>
                         <span className="flex-1 text-base text-zinc-100">{habit.habit_name}</span>
                         <span className="text-base text-zinc-400">
-                          {habit.points}pt / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
+                          {habit.points}G / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
