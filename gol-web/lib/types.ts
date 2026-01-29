@@ -278,6 +278,7 @@ export interface TodoTag {
 
 /**
  * 難易度の型（3段階）
+ * ※裁量値は後から 'custom' を追加可能。その場合は報酬を自由入力にし、calculateReward 内で分岐する。
  */
 export type Difficulty = 'easy' | 'medium' | 'hard';
 
@@ -300,18 +301,63 @@ export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
 };
 
 /**
- * 難易度に応じた報酬倍率
- * 
- * 難易度が高いタスクほど報酬が多くなるように設定
- * - easy: 0.75x
- * - medium: 1.0x（基準）
- * - hard: 1.5x（難しいタスクは報酬が多い）
+ * 難易度ごとの固定ゴルド（やさしい1 / ふつう2 / むずかしい3）
+ */
+export const PRESET_GOLD_BY_DIFFICULTY: Record<Difficulty, number> = {
+  easy: 1,
+  medium: 2,
+  hard: 3,
+};
+
+/**
+ * 難易度ごとの固定EXP合計（やさしい1 / ふつう2 / むずかしい3）
+ * 選択した属性（体・頭・心）に振り分ける
+ */
+export const PRESET_EXP_BY_DIFFICULTY: Record<Difficulty, number> = {
+  easy: 1,
+  medium: 2,
+  hard: 3,
+};
+
+/**
+ * 難易度に応じた報酬倍率（現仕様は固定報酬のためすべて1.0）
+ * ※裁量値追加時は difficulty === 'custom' のときは sp_* をそのまま使う分岐を入れる
  */
 export const DIFFICULTY_MULTIPLIERS: Record<Difficulty, number> = {
-  easy: 0.75,
+  easy: 1.0,
   medium: 1.0,
-  hard: 1.5,
+  hard: 1.0,
 };
+
+/** 属性（体=身体 / 頭=頭脳 / 心=精神）。EXP振り分け先 */
+export type ExpAttribute = 'body' | 'mind' | 'spirit';
+
+export const EXP_ATTRIBUTE_LABELS: Record<ExpAttribute, string> = {
+  body: '体',
+  mind: '頭',
+  spirit: '心',
+};
+
+/**
+ * 固定EXPを選択属性に均等配分する（余りは先頭から+1）
+ * 例: totalExp=2, attributes=['body','mind'] → { body:1, mind:1, spirit:0 }
+ * 例: totalExp=3, attributes=['body','mind'] → { body:2, mind:1, spirit:0 }
+ * ※むずかしいで2つだけ選んだ場合の「どれに2EXP」は現状は選択順で自動。AIで比重を提案する機能は後から追加可能。
+ */
+export function distributePresetExp(
+  totalExp: number,
+  attributes: ExpAttribute[]
+): { body: number; mind: number; spirit: number } {
+  const result = { body: 0, mind: 0, spirit: 0 };
+  if (attributes.length === 0) return result;
+  const base = Math.floor(totalExp / attributes.length);
+  let remainder = totalExp % attributes.length;
+  for (const a of attributes) {
+    result[a] = base + (remainder > 0 ? 1 : 0);
+    if (remainder > 0) remainder--;
+  }
+  return result;
+}
 
 // ============================================================================
 // UI用の拡張型定義

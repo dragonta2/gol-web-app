@@ -12,6 +12,14 @@ import { toast } from 'sonner';
 import { ArrowLeft, Plus, Edit, Trash2, GripVertical, ClipboardList, Star, Calendar } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { DatePickerField } from '@/components/date-picker-field';
+import type { Difficulty, ExpAttribute } from '@/lib/types';
+import {
+  PRESET_GOLD_BY_DIFFICULTY,
+  PRESET_EXP_BY_DIFFICULTY,
+  EXP_ATTRIBUTE_LABELS,
+  distributePresetExp,
+} from '@/lib/types';
 
 interface Todo {
   id: string;
@@ -23,6 +31,7 @@ interface Todo {
   sp_exp_spirit: number;
   status: 'active' | 'in_progress' | 'completed';
   due_date: string | null;
+  difficulty?: Difficulty;
   display_order: number;
   created_at: string;
   updated_at: string;
@@ -36,15 +45,17 @@ export default function TodosSettingsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null);
 
-  // フォーム状態
+  // フォーム状態（難易度＋属性で報酬を決定）
+  const [selectedAttributes, setSelectedAttributes] = useState<ExpAttribute[]>(['mind']);
   const [formData, setFormData] = useState({
     task_name: '',
-    sp_points: 0,
+    sp_points: 2,
     sp_exp_body: 0,
-    sp_exp_mind: 0,
+    sp_exp_mind: 2,
     sp_exp_spirit: 0,
     status: 'active' as 'active' | 'in_progress' | 'completed',
     due_date: '',
+    difficulty: 'medium' as Difficulty,
   });
 
   // ToDo一覧を取得
@@ -79,14 +90,18 @@ export default function TodosSettingsPage() {
 
   // フォームをリセット
   const resetForm = () => {
+    setSelectedAttributes(['mind']);
+    const gold = PRESET_GOLD_BY_DIFFICULTY['medium'];
+    const dist = distributePresetExp(PRESET_EXP_BY_DIFFICULTY['medium'], ['mind']);
     setFormData({
       task_name: '',
-      sp_points: 0,
-      sp_exp_body: 0,
-      sp_exp_mind: 0,
-      sp_exp_spirit: 0,
+      sp_points: gold,
+      sp_exp_body: dist.body,
+      sp_exp_mind: dist.mind,
+      sp_exp_spirit: dist.spirit,
       status: 'active',
       due_date: '',
+      difficulty: 'medium',
     });
     setEditingTodo(null);
   };
@@ -95,6 +110,10 @@ export default function TodosSettingsPage() {
   const handleAddTodo = async () => {
     if (!formData.task_name.trim()) {
       toast.error('ToDo名を入力してください');
+      return;
+    }
+    if (selectedAttributes.length === 0) {
+      toast.error('属性を1つ以上選んでください');
       return;
     }
 
@@ -128,6 +147,10 @@ export default function TodosSettingsPage() {
   const handleUpdateTodo = async () => {
     if (!editingTodo || !formData.task_name.trim()) {
       toast.error('ToDo名を入力してください');
+      return;
+    }
+    if (selectedAttributes.length === 0) {
+      toast.error('属性を1つ以上選んでください');
       return;
     }
 
@@ -183,9 +206,19 @@ export default function TodosSettingsPage() {
     }
   };
 
+  // 保存されている sp_exp_* から属性選択を復元
+  const inferAttributesFromTodo = (todo: Todo): ExpAttribute[] => {
+    const attrs: ExpAttribute[] = [];
+    if ((todo.sp_exp_body ?? 0) > 0) attrs.push('body');
+    if ((todo.sp_exp_mind ?? 0) > 0) attrs.push('mind');
+    if ((todo.sp_exp_spirit ?? 0) > 0) attrs.push('spirit');
+    return attrs.length > 0 ? attrs : ['mind'];
+  };
+
   // 編集ダイアログを開く
   const openEditDialog = (todo: Todo) => {
     setEditingTodo(todo);
+    setSelectedAttributes(inferAttributesFromTodo(todo));
     setFormData({
       task_name: todo.task_name,
       sp_points: todo.sp_points,
@@ -194,6 +227,7 @@ export default function TodosSettingsPage() {
       sp_exp_spirit: todo.sp_exp_spirit,
       status: todo.status,
       due_date: todo.due_date || '',
+      difficulty: (todo.difficulty ?? 'medium') as Difficulty,
     });
     setIsDialogOpen(true);
   };
@@ -323,96 +357,145 @@ export default function TodosSettingsPage() {
                     />
                   </div>
 
-                  {/* 報酬（ゴルド・EXP） */}
+                  {/* 難易度（やさしい1G/1EXP・ふつう2G/2EXP・むずかしい3G/3EXP） */}
                   <div>
-                    <Label htmlFor="sp_points" className="text-zinc-300">ゴルド</Label>
-                    <Input
-                      id="sp_points"
-                      type="number"
-                      value={formData.sp_points}
-                      onChange={(e) => setFormData({ ...formData, sp_points: parseInt(e.target.value) || 0 })}
-                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="sp_exp_body" className="text-zinc-300">身体EXP</Label>
-                    <Input
-                      id="sp_exp_body"
-                      type="number"
-                      value={formData.sp_exp_body}
-                      onChange={(e) => setFormData({ ...formData, sp_exp_body: parseInt(e.target.value) || 0 })}
-                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="sp_exp_mind" className="text-zinc-300">頭脳EXP</Label>
-                    <Input
-                      id="sp_exp_mind"
-                      type="number"
-                      value={formData.sp_exp_mind}
-                      onChange={(e) => setFormData({ ...formData, sp_exp_mind: parseInt(e.target.value) || 0 })}
-                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="sp_exp_spirit" className="text-zinc-300">精神EXP</Label>
-                    <Input
-                      id="sp_exp_spirit"
-                      type="number"
-                      value={formData.sp_exp_spirit}
-                      onChange={(e) => setFormData({ ...formData, sp_exp_spirit: parseInt(e.target.value) || 0 })}
-                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
-                    />
+                    <Label htmlFor="difficulty" className="text-zinc-300">難易度</Label>
+                    <select
+                      id="difficulty"
+                      value={formData.difficulty}
+                      onChange={(e) => {
+                        const d = e.target.value as Difficulty;
+                        let attrs = selectedAttributes;
+                        if (d === 'easy' && attrs.length > 1) attrs = [attrs[0]];
+                        if (d === 'medium' && attrs.length > 2) attrs = attrs.slice(0, 2);
+                        setSelectedAttributes(attrs);
+                        const gold = PRESET_GOLD_BY_DIFFICULTY[d];
+                        const totalExp = PRESET_EXP_BY_DIFFICULTY[d];
+                        const effective = attrs.length > 0 ? attrs : ['mind'];
+                        const dist = distributePresetExp(totalExp, effective);
+                        setFormData((prev) => ({
+                          ...prev,
+                          difficulty: d,
+                          sp_points: gold,
+                          sp_exp_body: dist.body,
+                          sp_exp_mind: dist.mind,
+                          sp_exp_spirit: dist.spirit,
+                        }));
+                      }}
+                      className="mt-1 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    >
+                      <option value="easy">やさしい（1Gold・1EXP）</option>
+                      <option value="medium">ふつう（2Gold・2EXP）</option>
+                      <option value="hard">むずかしい（3Gold・3EXP）</option>
+                    </select>
                   </div>
 
-                  {/* ステータス */}
+                  {/* 属性（体・頭・心）。やさしい=1つのみ／ふつう=1or2／むずかしい=1or2or3 */}
                   <div>
-                    <Label className="text-zinc-300">ステータス</Label>
-                    <div className="flex gap-4 mt-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="active"
-                          checked={formData.status === 'active'}
-                          onChange={(e) => setFormData({ ...formData, status: 'active' as const })}
-                          className="w-4 h-4 text-cyan-600"
-                        />
-                        <span className="text-zinc-300">アクティブ</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="in_progress"
-                          checked={formData.status === 'in_progress'}
-                          onChange={(e) => setFormData({ ...formData, status: 'in_progress' as const })}
-                          className="w-4 h-4 text-cyan-600"
-                        />
-                        <span className="text-zinc-300">進行中</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="completed"
-                          checked={formData.status === 'completed'}
-                          onChange={(e) => setFormData({ ...formData, status: 'completed' as const })}
-                          className="w-4 h-4 text-cyan-600"
-                        />
-                        <span className="text-zinc-300">完了済み</span>
-                      </label>
+                    <Label className="text-zinc-300">属性（EXPの振り分け先）</Label>
+                    <p className="text-sm text-zinc-400 mt-0.5 mb-2">
+                      {formData.difficulty === 'easy' && '1つ選べます'}
+                      {formData.difficulty === 'medium' && '1つ or 2つ選べます'}
+                      {formData.difficulty === 'hard' && '1つ or 2つ or 3つ選べます'}
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                      {(['body', 'mind', 'spirit'] as ExpAttribute[]).map((attr) => {
+                        const checked = selectedAttributes.includes(attr);
+                        const isEasy = formData.difficulty === 'easy';
+                        const isMedium = formData.difficulty === 'medium';
+                        const disabled =
+                          (isEasy && !checked && selectedAttributes.length >= 1) ||
+                          (isMedium && !checked && selectedAttributes.length >= 2);
+                        return (
+                          <label
+                            key={attr}
+                            className={`flex items-center gap-2 cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              disabled={disabled}
+                              onChange={() => {
+                                let next: ExpAttribute[];
+                                if (checked) {
+                                  next = selectedAttributes.filter((a) => a !== attr);
+                                  // いったん0個にして別の属性を選べるようにする（保存時に1つ以上必須で検証）
+                                } else {
+                                  if (isEasy) next = [attr];
+                                  else if (isMedium && selectedAttributes.length >= 2) next = selectedAttributes;
+                                  else next = [...selectedAttributes, attr];
+                                }
+                                setSelectedAttributes(next);
+                                const gold = PRESET_GOLD_BY_DIFFICULTY[formData.difficulty];
+                                const totalExp = PRESET_EXP_BY_DIFFICULTY[formData.difficulty];
+                                const dist = distributePresetExp(totalExp, next);
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  sp_points: gold,
+                                  sp_exp_body: dist.body,
+                                  sp_exp_mind: dist.mind,
+                                  sp_exp_spirit: dist.spirit,
+                                }));
+                              }}
+                              className="w-4 h-4 text-cyan-600"
+                            />
+                            <span className="text-zinc-300">{EXP_ATTRIBUTE_LABELS[attr]}</span>
+                          </label>
+                        );
+                      })}
                     </div>
+                    <p className="text-sm text-zinc-500 mt-1">
+                      ［報酬］{formData.sp_points}Gold / 身体+{formData.sp_exp_body} 頭脳+{formData.sp_exp_mind} 精神+{formData.sp_exp_spirit}
+                    </p>
                   </div>
 
-                  {/* 期限 */}
-                  <div>
-                    <Label htmlFor="due_date" className="text-zinc-300">期限（任意）</Label>
-                    <Input
-                      id="due_date"
-                      type="date"
-                      value={formData.due_date}
-                      onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
-                    />
-                  </div>
+                  {/* ステータス（編集時のみ選択可。新規は常にアクティブ） */}
+                  {editingTodo && (
+                    <div>
+                      <Label className="text-zinc-300">ステータス</Label>
+                      <div className="flex gap-4 mt-2">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            value="active"
+                            checked={formData.status === 'active'}
+                            onChange={(e) => setFormData({ ...formData, status: 'active' as const })}
+                            className="w-4 h-4 text-cyan-600"
+                          />
+                          <span className="text-zinc-300">アクティブ</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            value="in_progress"
+                            checked={formData.status === 'in_progress'}
+                            onChange={(e) => setFormData({ ...formData, status: 'in_progress' as const })}
+                            className="w-4 h-4 text-cyan-600"
+                          />
+                          <span className="text-zinc-300">進行中</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            value="completed"
+                            checked={formData.status === 'completed'}
+                            onChange={(e) => setFormData({ ...formData, status: 'completed' as const })}
+                            className="w-4 h-4 text-cyan-600"
+                          />
+                          <span className="text-zinc-300">完了済み</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 期限（ヘッダーと同じダークカレンダーで選択） */}
+                  <DatePickerField
+                    id="due_date"
+                    label="期限（任意）"
+                    value={formData.due_date}
+                    onChange={(value) => setFormData({ ...formData, due_date: value })}
+                    optional
+                  />
 
                   {/* ボタン */}
                   <div className="flex gap-3 pt-4">

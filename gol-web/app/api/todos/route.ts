@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
       sp_exp_spirit,
       status,
       due_date,
+      difficulty,
     } = body;
 
     // バリデーション
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
 
     const displayOrder = maxOrderTodo ? maxOrderTodo.display_order + 1 : 0;
 
-    // ToDoを作成（報酬は sp_* をそのまま保存、難易度倍率はフロントで適用）
+    // ToDoを作成（報酬は sp_* をそのまま保存。難易度は easy/medium/hard、裁量値は後から追加可能）
     const { data: newTodo, error: insertError } = await supabase
       .from('todos')
       .insert({
@@ -92,6 +93,7 @@ export async function POST(request: NextRequest) {
         status: status || 'active',
         due_date: due_date || null,
         display_order: displayOrder,
+        difficulty: difficulty && ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium',
       })
       .select()
       .single();
@@ -137,6 +139,7 @@ export async function PUT(request: NextRequest) {
       sp_exp_spirit,
       status,
       due_date,
+      difficulty,
     } = body;
 
     // バリデーション
@@ -189,7 +192,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // ToDoを更新（報酬は sp_* をそのまま保存）
+    // ToDoを更新（報酬は sp_* をそのまま保存。難易度も更新）
     const { error: updateError } = await supabase
       .from('todos')
       .update({
@@ -200,6 +203,7 @@ export async function PUT(request: NextRequest) {
         sp_exp_spirit: sp_exp_spirit ?? 0,
         status: status || 'active',
         due_date: due_date || null,
+        difficulty: difficulty && ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium',
       })
       .eq('id', todoId);
 

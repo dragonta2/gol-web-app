@@ -4,11 +4,21 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { Todo, TodoLog, TodoSubtask, Difficulty, Tag } from '@/lib/types';
-import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, DIFFICULTY_MULTIPLIERS } from '@/lib/types';
+import {
+  DIFFICULTY_LABELS,
+  DIFFICULTY_COLORS,
+  DIFFICULTY_MULTIPLIERS,
+  PRESET_GOLD_BY_DIFFICULTY,
+  PRESET_EXP_BY_DIFFICULTY,
+  type ExpAttribute,
+  EXP_ATTRIBUTE_LABELS,
+  distributePresetExp,
+} from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
-import { FormInput, FormInputSmall, FormLabel } from '@/components/ui/form-input';
+import { FormInput, FormLabel } from '@/components/ui/form-input';
+import { DatePickerField } from '@/components/date-picker-field';
 import { FormCard } from '@/components/ui/form-card';
 import { toast } from 'sonner';
 import { ClipboardList, Edit } from 'lucide-react';
@@ -110,6 +120,8 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
   const [isTagManagementModalOpen, setIsTagManagementModalOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [tagFormData, setTagFormData] = useState({ tag_name: '', tag_color: '#3b82f6' });
+  /** 属性選択（体・頭・心）。やさしいは1つのみ。編集時も変更可 */
+  const [selectedAttributes, setSelectedAttributes] = useState<ExpAttribute[]>(['mind']);
   const [formData, setFormData] = useState<TodoFormData>({
     task_name: '',
     sp_points: 0,
@@ -356,6 +368,20 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     return `${year}/${month}/${day}`;
   };
 
+  // 完了日時フォーマット（26/01/28-水 HH:mm 形式、括弧付きで表示用）
+  const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'];
+  const formatCompletedDateTime = (dateString: string | null): string => {
+    if (!dateString) return '─';
+    const date = new Date(dateString);
+    const year = String(date.getFullYear()).slice(-2);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const weekday = WEEKDAY_JA[date.getDay()];
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    return `(${year}/${month}/${day}-${weekday} ${hour}:${minute})`;
+  };
+
   // EXP合計計算
   const getTotalExp = (todo: Todo): number => {
     return todo.sp_exp_body + todo.sp_exp_mind + todo.sp_exp_spirit;
@@ -414,12 +440,15 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
   const handleOpenCreateModal = () => {
     setEditingTodo(null);
     setSelectedTagIds([]);
+    setSelectedAttributes(['mind']);
+    const gold = PRESET_GOLD_BY_DIFFICULTY['medium'];
+    const dist = distributePresetExp(PRESET_EXP_BY_DIFFICULTY['medium'], ['mind']);
     setFormData({
       task_name: '',
-      sp_points: 0,
-      sp_exp_body: 0,
-      sp_exp_mind: 0,
-      sp_exp_spirit: 0,
+      sp_points: gold,
+      sp_exp_body: dist.body,
+      sp_exp_mind: dist.mind,
+      sp_exp_spirit: dist.spirit,
       due_date: '',
       status: 'active',
       difficulty: 'medium',
@@ -427,9 +456,20 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     setIsModalOpen(true);
   };
 
+  // 保存されている sp_exp_* から属性選択を復元（編集時）
+  const inferAttributesFromTodo = (todo: Todo): ExpAttribute[] => {
+    const attrs: ExpAttribute[] = [];
+    if ((todo.sp_exp_body ?? 0) > 0) attrs.push('body');
+    if ((todo.sp_exp_mind ?? 0) > 0) attrs.push('mind');
+    if ((todo.sp_exp_spirit ?? 0) > 0) attrs.push('spirit');
+    return attrs.length > 0 ? attrs : ['mind'];
+  };
+
   // モーダルを開く（編集）
   const handleOpenEditModal = (todo: Todo) => {
     setEditingTodo(todo);
+    const attrs = inferAttributesFromTodo(todo);
+    setSelectedAttributes(attrs);
     setFormData({
       task_name: todo.task_name,
       sp_points: todo.sp_points,
@@ -440,7 +480,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
       status: todo.status,
       difficulty: todo.difficulty || 'medium',
     });
-    // ToDoのタグを取得
     fetchTodoTags(todo.id);
     setIsModalOpen(true);
   };
@@ -458,6 +497,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     const todo = todos.find((t) => t.id === initialEditTodoId);
     if (!todo) return;
     setEditingTodo(todo);
+    setSelectedAttributes(inferAttributesFromTodo(todo));
     setFormData({
       task_name: todo.task_name,
       sp_points: todo.sp_points,
@@ -636,6 +676,10 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     // クライアント側バリデーション
     if (!formData.task_name.trim()) {
       toast.error('タスク名を入力してください');
+      return;
+    }
+    if (selectedAttributes.length === 0) {
+      toast.error('属性を1つ以上選んでください');
       return;
     }
     const numericFields = [
@@ -825,10 +869,10 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     }
   };
 
-  // ToDoを削除
-  const handleDeleteTodo = async (todo: Todo) => {
+  // ToDoを削除。成功時は true、キャンセルまたは失敗時は false を返す（モーダルから呼ぶときは成功時に閉じるため）
+  const handleDeleteTodo = async (todo: Todo): Promise<boolean> => {
     if (!confirm(`「${todo.task_name}」を削除しますか？\nこの操作は取り消せません。`)) {
-      return;
+      return false;
     }
 
     try {
@@ -844,16 +888,18 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
         toast.error('ToDoの削除に失敗しました', {
           description: error.message || 'データベースエラーが発生しました',
         });
-        return;
+        return false;
       }
 
       // ページをリフレッシュしてデータを再取得
       router.refresh();
+      return true;
     } catch (err) {
       console.error('予期しないエラー:', err);
       toast.error('エラーが発生しました', {
         description: err instanceof Error ? err.message : '予期しないエラーが発生しました',
       });
+      return false;
     }
   };
 
@@ -1048,86 +1094,77 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
         ref={setNodeRef}
         style={style}
         {...(canDrag ? { ...listeners, ...attributes } : {})}
-        className={`bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 transition-colors ${
+        className={`bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 transition-colors overflow-visible ${
           isCompleted ? 'opacity-75' : canDrag ? 'hover:border-cyan-600 cursor-grab active:cursor-grabbing' : ''
         }`}
       >
-            <div className="flex items-start justify-between mb-2">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  {isCompleted && <span className="text-green-400">✅</span>}
-                  {!isCompleted && isOverdue && <span className="text-red-400 text-base">⚠️ 期限超過</span>}
-                  {(reward.points > 0 || totalExp > 0) && (
-                    <span className="text-zinc-400 text-base">
-                      {reward.points > 0 && <>{reward.points}G </>}
-                      {totalExp > 0 && <>{totalExp}ex</>}
-                    </span>
-                  )}
-                  <span className={`text-zinc-100 font-medium text-base ${isCompleted ? 'line-through' : ''}`}>
-                    {todo.task_name}
+            {/* 1. ToDoタイトル（左寄せ）｜難易度ラベル（右寄せ） */}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className={`text-zinc-100 font-bold text-base flex-1 min-w-0 truncate ${isCompleted ? 'line-through' : ''}`}>
+                {isCompleted && <span className="text-green-400 mr-1">✅</span>}
+                {todo.task_name}
+              </span>
+              {todo.difficulty && (
+                <span
+                  className={`px-2 py-0.5 text-xs rounded shrink-0 ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
+                  title={`難易度: ${DIFFICULTY_LABELS[todo.difficulty]}`}
+                >
+                  {DIFFICULTY_LABELS[todo.difficulty]}
+                </span>
+              )}
+            </div>
+            {todo.tags && todo.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {todo.tags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="px-2 py-0.5 text-xs rounded text-white"
+                    style={{ backgroundColor: tag.tag_color }}
+                    title={tag.tag_name}
+                  >
+                    {tag.tag_name}
                   </span>
-                  {todo.difficulty && (
-                    <span
-                      className={`px-2 py-0.5 text-xs rounded ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
-                      title={`難易度: ${DIFFICULTY_LABELS[todo.difficulty]}`}
-                    >
-                      {DIFFICULTY_LABELS[todo.difficulty]}
-                    </span>
-                  )}
-                </div>
-                {/* タグチップ */}
-                {todo.tags && todo.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {todo.tags.map((tag) => (
-                      <span
-                        key={tag.id}
-                        className="px-2 py-0.5 text-xs rounded text-white"
-                        style={{ backgroundColor: tag.tag_color }}
-                        title={tag.tag_name}
-                      >
-                        {tag.tag_name}
+                ))}
+              </div>
+            )}
+
+            {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと）｜ 編集ボタン（右寄せ・難易度の下の行） */}
+            <div className="flex items-center justify-between gap-2 text-sm text-white mb-2">
+              <div className="text-white min-w-0 flex-1">
+                {(reward.points > 0 || reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
+                  <>
+                    <span className="text-white">報酬</span>
+                    {' ｜ '}
+                    {reward.points > 0 && <>{reward.points}Gold</>}
+                    {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
+                      <span className={reward.points > 0 ? ' ml-1' : ''}>
+                        {reward.exp_body > 0 && <>身体+{reward.exp_body}</>}
+                        {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳+{reward.exp_mind}</>}
+                        {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神+{reward.exp_spirit}</>}
                       </span>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
-                <div className="text-base text-zinc-400 space-y-1">
-                  <div>
-                    期限: {todo.due_date ? formatDate(todo.due_date) : '─'}
-                  </div>
-                  {isCompleted && (
-                    <div>
-                      完了日: {todo.completed_at ? formatDate(todo.completed_at) : '─'}
-                    </div>
-                  )}
-                  {expDist && (
-                    <div className="text-zinc-300 mt-2">
-                      EXP配分: 身体+{expDist.body} 頭脳+{expDist.mind} 精神+{expDist.spirit}
-                    </div>
-                  )}
-                </div>
               </div>
-              <div className="flex flex-col items-end gap-1.5 shrink-0 ml-auto">
-                <Button
-                  onClick={() => handleOpenEditModal(todo)}
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`${todo.task_name}を編集する`}
-                  className="text-xs text-cyan-400 hover:text-cyan-300 group h-auto px-2 py-0.5 flex items-center gap-0.5 min-h-0"
-                >
-                  <Edit className="w-3 h-3 shrink-0" />
-                  <span className="group-hover:underline">編集</span>
-                </Button>
-                <Button
-                  onClick={() => handleDeleteTodo(todo)}
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`${todo.task_name}を削除する`}
-                  className="text-xs text-red-400 hover:text-red-300 group h-auto px-2 py-0.5 flex items-center gap-1 min-h-0"
-                >
-                  <span className="shrink-0" aria-hidden>🗑</span>
-                  <span className="group-hover:underline">削除</span>
-                </Button>
-              </div>
+              <Button
+                onClick={() => handleOpenEditModal(todo)}
+                variant="ghost"
+                size="sm"
+                aria-label={`${todo.task_name}を編集する`}
+                className="text-xs text-cyan-400 hover:text-cyan-300 group h-auto px-2 py-0.5 flex items-center gap-0.5 min-h-0 shrink-0"
+              >
+                <Edit className="w-3 h-3 shrink-0" />
+                <span className="group-hover:underline">編集</span>
+              </Button>
+            </div>
+
+            {/* 3. （期限超過時はここに表示）期限 */}
+            <div className={`text-sm text-white mb-2 ${!isCompleted && isOverdue ? 'text-red-400' : ''}`}>
+              {!isCompleted && isOverdue && <span className="mr-1.5" aria-label="超過">⚠️</span>}
+              期限: {todo.due_date ? formatDate(todo.due_date) : '─'}
+              {isCompleted && todo.completed_at && (
+                <> ／ 完了: {formatCompletedDateTime(todo.completed_at)}</>
+              )}
             </div>
 
             {/* サブタスク表示 */}
@@ -1137,15 +1174,15 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
               const isEditing = editingSubtask?.todoId === todo.id;
 
               return (
-                <div className="mt-3 pt-3 border-t border-zinc-700">
-                  <div className="flex items-center justify-between mb-2">
+                <div className="mt-3 pt-3 border-t border-zinc-700 text-sm shrink-0" role="region" aria-label="サブタスク">
+                  <div className="flex items-center justify-between mb-2 text-base">
                     <Button
                       onClick={() => toggleSubtaskExpansion(todo.id)}
                       variant="ghost"
                       size="sm"
                       aria-label={`${todo.task_name}のサブタスクを${isExpanded ? '折りたたむ' : '展開する'}`}
                       aria-expanded={isExpanded}
-                      className="flex items-center gap-2 text-base text-zinc-400 hover:text-zinc-300 h-auto p-0"
+                      className="flex items-center gap-2 text-zinc-400 hover:text-zinc-300 h-auto p-0"
                     >
                       <span aria-hidden="true">{isExpanded ? '▼' : '▶'}</span>
                       <span>サブタスク ({subtasks.length}件)</span>
@@ -1159,7 +1196,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                         variant="ghost"
                         size="sm"
                         aria-label={`${todo.task_name}にサブタスクを追加する`}
-                        className="text-base text-cyan-400 hover:text-cyan-300 h-auto p-0"
+                        className="text-cyan-400 hover:text-cyan-300 h-auto p-0"
                       >
                         + 追加
                       </Button>
@@ -1169,7 +1206,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                   {isExpanded && (
                     <div className="space-y-2 ml-4">
                       {subtasks.length === 0 && !isEditing && (
-                        <p className="text-base text-zinc-500">サブタスクがありません</p>
+                        <p className="text-zinc-500">サブタスクがありません</p>
                       )}
                       {subtasks.map((subtask) => (
                         <div
@@ -1191,7 +1228,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                                 type="text"
                                 value={subtaskFormData.subtask_name}
                                 onChange={(e) => setSubtaskFormData({ subtask_name: e.target.value })}
-                                className="flex-1 px-2 py-1 bg-zinc-900 border-zinc-700 text-base text-zinc-100 focus:ring-cyan-500"
+                                className="flex-1 px-2 py-1 bg-zinc-900 border-zinc-700 text-zinc-100 focus:ring-cyan-500"
                                 placeholder="サブタスク名"
                                 autoFocus
                               />
@@ -1199,7 +1236,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                                 onClick={() => handleEditSubtask(subtask)}
                                 size="sm"
                                 aria-label="サブタスクの編集を保存する"
-                                className="px-2 py-1 text-base bg-cyan-600 hover:bg-cyan-700 text-white h-auto"
+                                className="px-2 py-1 text-sm bg-cyan-600 hover:bg-cyan-700 text-white h-auto"
                               >
                                 保存
                               </Button>
@@ -1211,29 +1248,31 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                                 variant="outline"
                                 size="sm"
                                 aria-label="サブタスクの編集をキャンセルする"
-                                className="px-2 py-1 text-base bg-zinc-700 hover:bg-zinc-600 text-zinc-300 border-zinc-600 h-auto"
+                                className="px-2 py-1 text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-300 border-zinc-600 h-auto"
                               >
                                 キャンセル
                               </Button>
                             </div>
                           ) : (
                             <>
-                              <span className="flex-1 text-base flex items-center gap-2 flex-wrap">
+                              <span className="flex-1 flex items-center gap-2 flex-wrap min-w-0">
                                 <span
                                   className={
-                                    subtask.is_completed ? 'text-zinc-200 line-through' : 'text-zinc-300'
+                                    subtask.is_completed
+                                      ? 'text-sm text-zinc-200 line-through'
+                                      : 'text-sm text-zinc-300'
                                   }
                                 >
                                   {subtask.subtask_name}
                                 </span>
                                 {subtask.is_completed && (subtask.completed_at ?? subtask.updated_at) && (
-                                  <span className="text-zinc-300 text-sm font-normal no-underline">
-                                    （{formatDate(subtask.completed_at ?? subtask.updated_at)}）
+                                  <span className="text-zinc-300 text-sm font-normal no-underline shrink-0">
+                                    {formatCompletedDateTime(subtask.completed_at ?? subtask.updated_at)}
                                   </span>
                                 )}
                               </span>
                               {!isCompleted && (
-                                <div className="flex items-center gap-0 shrink-0 ml-auto pl-4">
+                                <div className="flex items-center gap-0 shrink-0 ml-auto pl-4 text-xs">
                                   <Button
                                     onClick={() => {
                                       setEditingSubtask({ todoId: todo.id, subtask });
@@ -1275,7 +1314,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                                 setSubtaskFormData({ subtask_name: '' });
                               }
                             }}
-                            className="flex-1 px-2 py-1 bg-zinc-900 border-zinc-700 text-base text-zinc-100 focus:ring-cyan-500"
+                            className="flex-1 px-2 py-1 bg-zinc-900 border-zinc-700 text-zinc-100 focus:ring-cyan-500"
                             placeholder="サブタスク名を入力"
                             autoFocus
                           />
@@ -1283,7 +1322,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                             onClick={() => handleAddSubtask(todo.id)}
                             size="sm"
                             aria-label="サブタスクを追加する"
-                            className="px-2 py-1 text-base bg-cyan-600 hover:bg-cyan-700 text-white h-auto"
+                            className="px-2 py-1 text-sm bg-cyan-600 hover:bg-cyan-700 text-white h-auto"
                           >
                             追加
                           </Button>
@@ -1295,7 +1334,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                             variant="outline"
                             size="sm"
                             aria-label="サブタスクの追加をキャンセルする"
-                            className="px-2 py-1 text-base bg-zinc-700 hover:bg-zinc-600 text-zinc-300 border-zinc-600 h-auto"
+                            className="px-2 py-1 text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-300 border-zinc-600 h-auto"
                           >
                             キャンセル
                           </Button>
@@ -1518,7 +1557,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
 
       {/* 3列カラムレイアウト（ドラッグ&ドロップ対応） */}
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 overflow-visible">
           {/* アクティブカラム */}
           <DroppableColumn id="active" todos={activeTodos} status="active" renderTodoCard={renderTodoCard} />
           
@@ -1569,21 +1608,38 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
         description={editingTodo ? 'ToDoの内容を編集します' : '新しいToDoタスクを作成します'}
         footer={
           <>
-            <Button
-              onClick={handleSaveTodo}
-              disabled={isSubmitting}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white"
-            >
-              {isSubmitting ? '保存中...' : editingTodo ? '更新' : '作成'}
-            </Button>
-            <Button
-              onClick={handleCloseModal}
-              disabled={isSubmitting}
-              variant="outline"
-              className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
-            >
-              キャンセル
-            </Button>
+            <div className="flex flex-1 items-center justify-end gap-2 flex-wrap">
+              {editingTodo && (
+                <Button
+                  type="button"
+                  onClick={async () => {
+                    if (!editingTodo) return;
+                    const ok = await handleDeleteTodo(editingTodo);
+                    if (ok) handleCloseModal();
+                  }}
+                  disabled={isSubmitting}
+                  variant="outline"
+                  className="text-red-400 border-red-700 hover:bg-red-950 hover:text-red-300"
+                >
+                  削除
+                </Button>
+              )}
+              <Button
+                onClick={handleSaveTodo}
+                disabled={isSubmitting}
+                className="bg-cyan-600 hover:bg-cyan-700 text-white"
+              >
+                {isSubmitting ? '保存中...' : editingTodo ? '更新' : '作成'}
+              </Button>
+              <Button
+                onClick={handleCloseModal}
+                disabled={isSubmitting}
+                variant="outline"
+                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
+              >
+                キャンセル
+              </Button>
+            </div>
           </>
         }
       >
@@ -1598,83 +1654,123 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
               placeholder="例: 沖縄旅行の準備"
             />
 
-            {/* 報酬（ゴルド・EXP）。難易度で倍率がかかります */}
-            <FormCard variant="nested" className="p-4 space-y-3">
-              <h4 className="text-base font-medium text-zinc-300 mb-3">報酬</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FormInputSmall
-                  id="sp_points"
-                  label="ゴルド"
-                  type="number"
-                  min="0"
-                  value={formData.sp_points}
-                  onChange={(e) => setFormData({ ...formData, sp_points: parseInt(e.target.value) || 0 })}
-                />
-                <FormInputSmall
-                  id="sp_exp_body"
-                  label="身体EXP"
-                  type="number"
-                  min="0"
-                  value={formData.sp_exp_body}
-                  onChange={(e) => setFormData({ ...formData, sp_exp_body: parseInt(e.target.value) || 0 })}
-                />
-                <FormInputSmall
-                  id="sp_exp_mind"
-                  label="頭脳EXP"
-                  type="number"
-                  min="0"
-                  value={formData.sp_exp_mind}
-                  onChange={(e) => setFormData({ ...formData, sp_exp_mind: parseInt(e.target.value) || 0 })}
-                />
-                <FormInputSmall
-                  id="sp_exp_spirit"
-                  label="精神EXP"
-                  type="number"
-                  min="0"
-                  value={formData.sp_exp_spirit}
-                  onChange={(e) => setFormData({ ...formData, sp_exp_spirit: parseInt(e.target.value) || 0 })}
-                />
-              </div>
-            </FormCard>
-
-            {/* ステータス */}
-            <div>
-              <FormLabel htmlFor="status">ステータス</FormLabel>
-              <select
-                id="status"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'in_progress' | 'completed' })}
-                className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
-              >
-                  <option value="active">アクティブ</option>
-                  <option value="in_progress">進行中</option>
-                  <option value="completed">完了済み</option>
-                </select>
-              </div>
-
-            {/* 期限 */}
-            <FormInput
-              id="due_date"
-              label="期限（任意）"
-              type="date"
-              value={formData.due_date}
-              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-            />
-
-            {/* 難易度 */}
+            {/* 難易度（やさしい1G/1EXP・ふつう2G/2EXP・むずかしい3G/3EXP） */}
             <div>
               <FormLabel htmlFor="difficulty">難易度</FormLabel>
               <select
                 id="difficulty"
                 value={formData.difficulty}
-                onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as Difficulty })}
+                onChange={(e) => {
+                  const d = e.target.value as Difficulty;
+                  let attrs = selectedAttributes;
+                  if (d === 'easy' && attrs.length > 1) attrs = [attrs[0]];
+                  if (d === 'medium' && attrs.length > 2) attrs = attrs.slice(0, 2);
+                  setSelectedAttributes(attrs);
+                  const gold = PRESET_GOLD_BY_DIFFICULTY[d];
+                  const totalExp = PRESET_EXP_BY_DIFFICULTY[d];
+                  const effective = attrs.length > 0 ? attrs : ['mind'];
+                  const dist = distributePresetExp(totalExp, effective);
+                  setFormData((prev) => ({
+                    ...prev,
+                    difficulty: d,
+                    sp_points: gold,
+                    sp_exp_body: dist.body,
+                    sp_exp_mind: dist.mind,
+                    sp_exp_spirit: dist.spirit,
+                  }));
+                }}
                 className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
               >
-                <option value="easy">やさしい</option>
-                <option value="medium">ふつう</option>
-                <option value="hard">むずかしい</option>
+                <option value="easy">やさしい（1Gold・1EXP）</option>
+                <option value="medium">ふつう（2Gold・2EXP）</option>
+                <option value="hard">むずかしい（3Gold・3EXP）</option>
               </select>
             </div>
+
+            {/* 属性（体・頭・心）。やさしい=1つのみ／ふつう=1or2／むずかしい=1or2or3。説明文は難易度で切り替え */}
+            <FormCard variant="nested" className="p-4 space-y-3">
+              <h4 className="text-base font-medium text-zinc-300 mb-3">属性（EXPの振り分け先）</h4>
+              <p className="text-sm text-zinc-400 mb-2">
+                {formData.difficulty === 'easy' && '1つ選べます'}
+                {formData.difficulty === 'medium' && '1つ or 2つ選べます'}
+                {formData.difficulty === 'hard' && '1つ or 2つ or 3つ選べます'}
+              </p>
+              <div className="flex flex-wrap gap-4">
+                {(['body', 'mind', 'spirit'] as ExpAttribute[]).map((attr) => {
+                  const checked = selectedAttributes.includes(attr);
+                  const isEasy = formData.difficulty === 'easy';
+                  const isMedium = formData.difficulty === 'medium';
+                  const disabled =
+                    (isEasy && !checked && selectedAttributes.length >= 1) ||
+                    (isMedium && !checked && selectedAttributes.length >= 2);
+                  return (
+                    <label
+                      key={attr}
+                      className={`flex items-center gap-2 cursor-pointer ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={disabled}
+                        onChange={() => {
+                          let next: ExpAttribute[];
+                          if (checked) {
+                            next = selectedAttributes.filter((a) => a !== attr);
+                            // いったん0個にして別の属性を選べるようにする（保存時に1つ以上必須で検証）
+                          } else {
+                            if (isEasy) next = [attr];
+                            else if (isMedium && selectedAttributes.length >= 2) next = selectedAttributes;
+                            else next = [...selectedAttributes, attr];
+                          }
+                          setSelectedAttributes(next);
+                          const gold = PRESET_GOLD_BY_DIFFICULTY[formData.difficulty];
+                          const totalExp = PRESET_EXP_BY_DIFFICULTY[formData.difficulty];
+                          const dist = distributePresetExp(totalExp, next);
+                          setFormData((prev) => ({
+                            ...prev,
+                            sp_points: gold,
+                            sp_exp_body: dist.body,
+                            sp_exp_mind: dist.mind,
+                            sp_exp_spirit: dist.spirit,
+                          }));
+                        }}
+                        className="w-4 h-4 text-cyan-600 bg-zinc-700 border-zinc-600 rounded focus:ring-cyan-500"
+                      />
+                      <span className="text-zinc-300">{EXP_ATTRIBUTE_LABELS[attr]}</span>
+                    </label>
+                  );
+                })}
+              </div>
+              <p className="text-sm text-zinc-500 mt-1">
+                報酬: {formData.sp_points}Gold / 身体+{formData.sp_exp_body} 頭脳+{formData.sp_exp_mind} 精神+{formData.sp_exp_spirit}
+              </p>
+            </FormCard>
+
+            {/* ステータス（編集時のみ選択可。新規は常にアクティブ） */}
+            {editingTodo && (
+              <div>
+                <FormLabel htmlFor="status">ステータス</FormLabel>
+                <select
+                  id="status"
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'in_progress' | 'completed' })}
+                  className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
+                >
+                  <option value="active">アクティブ</option>
+                  <option value="in_progress">進行中</option>
+                  <option value="completed">完了済み</option>
+                </select>
+              </div>
+            )}
+
+            {/* 期限（ヘッダーと同じダークカレンダーで選択） */}
+            <DatePickerField
+              id="due_date"
+              label="期限（任意）"
+              value={formData.due_date}
+              onChange={(value) => setFormData({ ...formData, due_date: value })}
+              optional
+            />
 
             {/* タグ選択 */}
             <div>

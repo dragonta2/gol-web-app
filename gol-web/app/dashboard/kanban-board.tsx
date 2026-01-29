@@ -22,12 +22,13 @@ import { FormCard } from '@/components/ui/form-card';
 import { ClipboardList, ChevronDown, ChevronUp, Edit } from 'lucide-react';
 
 // ドラッグ可能なカードコンポーネント
-function DraggableTodoCard({ todo, isOverdue, icon, totalExp, rewardPoints, formatDeadline, onMoveToActive, onEditTodo }: {
+type Reward = { points: number; exp_body: number; exp_mind: number; exp_spirit: number };
+
+function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMoveToActive, onEditTodo }: {
   todo: Todo;
   isOverdue: boolean;
   icon: string;
-  totalExp: number;
-  rewardPoints: number;
+  reward: Reward;
   formatDeadline: (dueDate: string | null) => string;
   onMoveToActive?: () => void;
   onEditTodo?: (todoId: string) => void;
@@ -40,6 +41,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, totalExp, rewardPoints, form
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
   };
+  const hasReward = reward.points > 0 || reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0;
 
   return (
     <div
@@ -57,23 +59,23 @@ function DraggableTodoCard({ todo, isOverdue, icon, totalExp, rewardPoints, form
         isDragging ? 'opacity-50' : ''
       }`}
     >
+      {/* 1. ToDoタイトル（左寄せ）｜難易度ラベル（右寄せ） */}
       <div className="flex items-start gap-2 mb-2">
-        <span className="text-lg">{icon}</span>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-base font-medium text-zinc-100 flex-1" suppressHydrationWarning>
+        <span className="text-lg shrink-0">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-base font-medium text-zinc-100 flex-1 min-w-0 truncate" suppressHydrationWarning>
               {todo.task_name}
             </span>
             {todo.difficulty && (
               <span
-                className={`px-2 py-0.5 text-xs rounded ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
+                className={`px-2 py-0.5 text-xs rounded shrink-0 ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
                 title={`難易度: ${DIFFICULTY_LABELS[todo.difficulty]}`}
               >
                 {DIFFICULTY_LABELS[todo.difficulty]}
               </span>
             )}
           </div>
-          {/* タグチップ */}
           {todo.tags && todo.tags.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1">
               {todo.tags.map((tag) => (
@@ -90,17 +92,28 @@ function DraggableTodoCard({ todo, isOverdue, icon, totalExp, rewardPoints, form
           )}
         </div>
       </div>
-      <div className="space-y-1 text-base text-zinc-400">
-        {(rewardPoints > 0 || totalExp > 0) && (
-          <div>
-            {rewardPoints > 0 && <>{rewardPoints}G </>}
-            {totalExp > 0 && <>{totalExp}ex</>}
+
+      {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと） */}
+      <div className="space-y-1 text-base text-zinc-400 mb-2">
+        {hasReward && (
+          <div className="text-zinc-300">
+            <span className="text-zinc-400">報酬</span>
+            {' ｜ '}
+            {reward.points > 0 && <>{reward.points}Gold</>}
+            {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
+              <span className={reward.points > 0 ? ' ml-1' : ''}>
+                {reward.exp_body > 0 && <>身体+{reward.exp_body}</>}
+                {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳+{reward.exp_mind}</>}
+                {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神+{reward.exp_spirit}</>}
+              </span>
+            )}
           </div>
         )}
+        {/* 3. （期限超過時はここに表示）期限 */}
         {todo.due_date && (
           <div className={isOverdue ? 'text-red-400' : ''} id={isOverdue ? `overdue-${todo.id}` : undefined} suppressHydrationWarning>
+            {isOverdue && <span className="mr-1.5" aria-label="超過">⚠️</span>}
             期限: {formatDeadline(todo.due_date)}
-            {isOverdue && <span aria-label="期限超過"> (期限超過)</span>}
           </div>
         )}
         {todo.status === 'in_progress' && onMoveToActive && (
@@ -139,25 +152,26 @@ function DraggableTodoCard({ todo, isOverdue, icon, totalExp, rewardPoints, form
 }
 
 // 完了済みカードの見た目（中身だけ）
-function CompletedTodoCardInner({ todo, icon, totalExp, rewardPoints, formatCompletedDate }: {
+function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
   todo: Todo;
   icon: string;
-  totalExp: number;
-  rewardPoints: number;
+  reward: Reward;
   formatCompletedDate: (completedAt: string | null) => string;
 }) {
+  const hasReward = reward.points > 0 || reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0;
   return (
     <>
+      {/* 2. ToDoタイトル（左寄せ）｜難易度ラベル（右寄せ） */}
       <div className="flex items-start gap-2 mb-2">
-        <span className="text-lg">{icon}</span>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-base font-medium text-zinc-100 flex-1 line-through" suppressHydrationWarning>
+        <span className="text-lg shrink-0">{icon}</span>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2 mb-1">
+            <span className="text-base font-medium text-zinc-100 flex-1 min-w-0 truncate line-through" suppressHydrationWarning>
               {todo.task_name}
             </span>
             {todo.difficulty && (
               <span
-                className={`px-2 py-0.5 text-xs rounded ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
+                className={`px-2 py-0.5 text-xs rounded shrink-0 ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
                 title={`難易度: ${DIFFICULTY_LABELS[todo.difficulty]}`}
               >
                 {DIFFICULTY_LABELS[todo.difficulty]}
@@ -180,11 +194,20 @@ function CompletedTodoCardInner({ todo, icon, totalExp, rewardPoints, formatComp
           )}
         </div>
       </div>
+      {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと） */}
       <div className="space-y-1 text-base text-zinc-400">
-        {(rewardPoints > 0 || totalExp > 0) && (
-          <div>
-            {rewardPoints > 0 && <>{rewardPoints}G </>}
-            {totalExp > 0 && <>{totalExp}ex</>}
+        {hasReward && (
+          <div className="text-zinc-300">
+            <span className="text-zinc-400">報酬</span>
+            {' ｜ '}
+            {reward.points > 0 && <>{reward.points}Gold</>}
+            {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
+              <span className={reward.points > 0 ? ' ml-1' : ''}>
+                {reward.exp_body > 0 && <>身体+{reward.exp_body}</>}
+                {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳+{reward.exp_mind}</>}
+                {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神+{reward.exp_spirit}</>}
+              </span>
+            )}
           </div>
         )}
         {todo.completed_at && (
@@ -196,11 +219,10 @@ function CompletedTodoCardInner({ todo, icon, totalExp, rewardPoints, formatComp
 }
 
 // 完了済みカードコンポーネント（ドラッグ可能・アクティブ/進行中へ戻せる）
-function DraggableCompletedTodoCard({ todo, icon, totalExp, rewardPoints, formatCompletedDate, onEditTodo }: {
+function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, onEditTodo }: {
   todo: Todo;
   icon: string;
-  totalExp: number;
-  rewardPoints: number;
+  reward: Reward;
   formatCompletedDate: (completedAt: string | null) => string;
   onEditTodo?: (todoId: string) => void;
 }) {
@@ -222,7 +244,7 @@ function DraggableCompletedTodoCard({ todo, icon, totalExp, rewardPoints, format
       aria-label={`${todo.task_name}をドラッグしてアクティブまたは進行中へ戻す`}
       className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-cyan-600 transition-colors opacity-75 cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-950"
     >
-      <CompletedTodoCardInner todo={todo} icon={icon} totalExp={totalExp} rewardPoints={rewardPoints} formatCompletedDate={formatCompletedDate} />
+      <CompletedTodoCardInner todo={todo} icon={icon} reward={reward} formatCompletedDate={formatCompletedDate} />
       {onEditTodo && (
         <div className="pt-1 mt-1 border-t border-zinc-700">
           <button
@@ -244,16 +266,15 @@ function DraggableCompletedTodoCard({ todo, icon, totalExp, rewardPoints, format
 }
 
 // 完了済みカード（ドラッグ不可・DragOverlay 用など）
-function CompletedTodoCard({ todo, icon, totalExp, rewardPoints, formatCompletedDate }: {
+function CompletedTodoCard({ todo, icon, reward, formatCompletedDate }: {
   todo: Todo;
   icon: string;
-  totalExp: number;
-  rewardPoints: number;
+  reward: Reward;
   formatCompletedDate: (completedAt: string | null) => string;
 }) {
   return (
     <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-cyan-600 transition-colors opacity-75">
-      <CompletedTodoCardInner todo={todo} icon={icon} totalExp={totalExp} rewardPoints={rewardPoints} formatCompletedDate={formatCompletedDate} />
+      <CompletedTodoCardInner todo={todo} icon={icon} reward={reward} formatCompletedDate={formatCompletedDate} />
     </div>
   );
 }
@@ -271,8 +292,7 @@ function DroppableColumn({
   todos,
   isOverdue,
   getIcon,
-  getTotalExp,
-  getRewardPoints,
+  getReward,
   formatDeadline,
   formatCompletedDate,
   sortOrder,
@@ -286,8 +306,7 @@ function DroppableColumn({
   todos: Todo[];
   isOverdue: (dueDate: string | null, status: string) => boolean;
   getIcon: (status: string) => string;
-  getTotalExp: (todo: Todo) => number;
-  getRewardPoints: (todo: Todo) => number;
+  getReward: (todo: Todo) => Reward;
   formatDeadline: (dueDate: string | null) => string;
   formatCompletedDate: (completedAt: string | null) => string;
   sortOrder?: 'asc' | 'desc';
@@ -350,8 +369,7 @@ function DroppableColumn({
           todos.map((todo) => {
             const overdue = isOverdue(todo.due_date, todo.status);
             const icon = getIcon(todo.status);
-            const totalExp = getTotalExp(todo);
-            const rewardPoints = getRewardPoints(todo);
+            const reward = getReward(todo);
 
             if (todo.status === 'completed') {
               return (
@@ -359,8 +377,7 @@ function DroppableColumn({
                   key={todo.id}
                   todo={todo}
                   icon={icon}
-                  totalExp={totalExp}
-                  rewardPoints={rewardPoints}
+                  reward={reward}
                   formatCompletedDate={formatCompletedDate}
                   onEditTodo={onEditTodo}
                 />
@@ -373,8 +390,7 @@ function DroppableColumn({
                   todo={todo}
                   isOverdue={overdue}
                   icon={icon}
-                  totalExp={totalExp}
-                  rewardPoints={rewardPoints}
+                  reward={reward}
                   formatDeadline={formatDeadline}
                   onMoveToActive={onMoveToActive ? () => onMoveToActive(todo.id) : undefined}
                   onEditTodo={onEditTodo}
@@ -631,14 +647,18 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
     return `${year}/${month}/${day}`;
   };
 
-  // 完了日表示用フォーマット関数（西暦下2桁含む YY/MM/DD形式）
+  // 完了日時表示用フォーマット（26/01/28-水 HH:mm 形式、括弧付き）
+  const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'];
   const formatCompletedDate = (completedAt: string | null): string => {
     if (!completedAt) return '';
     const date = new Date(completedAt);
     const year = String(date.getFullYear()).slice(-2);
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${year}/${month}/${day}`;
+    const weekday = WEEKDAY_JA[date.getDay()];
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    return `(${year}/${month}/${day}-${weekday} ${hour}:${minute})`;
   };
 
   // EXP合計計算関数
@@ -1174,8 +1194,7 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             todos={activeTodos}
             isOverdue={isOverdue}
             getIcon={getIcon}
-            getTotalExp={getTotalExp}
-            getRewardPoints={getRewardPoints}
+            getReward={calculateReward}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
             sortOrder={sortDateActive}
@@ -1191,8 +1210,7 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             todos={inProgressTodos}
             isOverdue={isOverdue}
             getIcon={getIcon}
-            getTotalExp={getTotalExp}
-            getRewardPoints={getRewardPoints}
+            getReward={calculateReward}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
             sortOrder={sortDateInProgress}
@@ -1209,8 +1227,7 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             todos={completedTodos}
             isOverdue={isOverdue}
             getIcon={getIcon}
-            getTotalExp={getTotalExp}
-            getRewardPoints={getRewardPoints}
+            getReward={calculateReward}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
             sortOrder={sortDateCompleted}
@@ -1228,8 +1245,7 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
                 <CompletedTodoCardInner
                   todo={activeTodo}
                   icon={getIcon(activeTodo.status)}
-                  totalExp={getTotalExp(activeTodo)}
-                  rewardPoints={getRewardPoints(activeTodo)}
+                  reward={calculateReward(activeTodo)}
                   formatCompletedDate={formatCompletedDate}
                 />
               </div>
@@ -1242,12 +1258,22 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
                   </span>
                 </div>
                 <div className="space-y-1 text-base text-zinc-400">
-                  {(getRewardPoints(activeTodo) > 0 || getTotalExp(activeTodo) > 0) && (
-                    <div>
-                      {getRewardPoints(activeTodo) > 0 && <>{getRewardPoints(activeTodo)}G </>}
-                      {getTotalExp(activeTodo) > 0 && <>{getTotalExp(activeTodo)}ex</>}
-                    </div>
-                  )}
+                  {(() => {
+                    const r = calculateReward(activeTodo);
+                    const hasR = r.points > 0 || r.exp_body > 0 || r.exp_mind > 0 || r.exp_spirit > 0;
+                    return hasR && (
+                      <div className="text-zinc-300">
+                        {r.points > 0 && <>{r.points}G</>}
+                        {(r.exp_body > 0 || r.exp_mind > 0 || r.exp_spirit > 0) && (
+                          <span className={r.points > 0 ? ' ml-2' : ''}>
+                            {r.exp_body > 0 && <>身体+{r.exp_body}</>}
+                            {r.exp_mind > 0 && <>{r.exp_body > 0 ? ' ' : ''}頭脳+{r.exp_mind}</>}
+                            {r.exp_spirit > 0 && <>{r.exp_mind > 0 || r.exp_body > 0 ? ' ' : ''}精神+{r.exp_spirit}</>}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )
