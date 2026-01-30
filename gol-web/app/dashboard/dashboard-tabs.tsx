@@ -153,7 +153,8 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
             {/* ToDoリスト */}
             <KanbanBoard 
               todos={todos} 
-              todoLogs={todoLogs} 
+              todoLogs={todoLogs}
+              todoSubtasks={todoSubtasks}
               dailyLogId={dailyLogId}
               isExpanded={isKanbanExpanded}
               onExpandedChange={setIsKanbanExpanded}

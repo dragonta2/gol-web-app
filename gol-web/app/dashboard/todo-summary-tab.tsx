@@ -986,11 +986,11 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
         ref={setNodeRef}
         style={style}
         {...(canDrag ? { ...listeners, ...attributes } : {})}
-        className={`bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 transition-colors overflow-visible ${
+        className={`bg-zinc-900 border border-zinc-700 rounded-lg p-3 transition-colors overflow-visible ${
           isCompleted ? 'opacity-75' : canDrag ? 'hover:border-cyan-600 cursor-grab active:cursor-grabbing' : ''
         }`}
       >
-            {/* 1. ToDoタイトル（左寄せ）｜難易度ラベル（右寄せ） */}
+            {/* 1. ToDoタイトル（左寄せ）｜難易度ラベル（右寄せ）・日誌カードと同じレイアウト */}
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className={`text-zinc-100 font-bold text-base flex-1 min-w-0 truncate ${isCompleted ? 'line-through' : ''}`}>
                 {isCompleted && <span className="text-green-400 mr-1">✅</span>}
@@ -1006,43 +1006,29 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
               )}
             </div>
 
-            {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと）｜ 編集ボタン（右寄せ・難易度の下の行） */}
-            <div className="flex items-center justify-between gap-2 text-sm text-white mb-2">
-              <div className="text-white min-w-0 flex-1">
-                {(reward.points > 0 || reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
-                  <>
-                    <span className="text-white">報酬</span>
-                    {' ｜ '}
-                    {reward.points > 0 && <>{reward.points}Gold</>}
-                    {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
-                      <span className={reward.points > 0 ? ' ml-1' : ''}>
-                        {reward.exp_body > 0 && <>身体+{reward.exp_body}</>}
-                        {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳+{reward.exp_mind}</>}
-                        {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神+{reward.exp_spirit}</>}
-                      </span>
-                    )}
-                  </>
+            {/* 2＆3. 報酬・期限（日誌カードと同じ space-y-1 text-base の1ブロック） */}
+            <div className="space-y-1 text-base text-white">
+              {(reward.points > 0 || reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
+                <div className="text-white">
+                  <span className="text-white">報酬</span>
+                  {' ｜ '}
+                  {reward.points > 0 && <>{reward.points}Gold</>}
+                  {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
+                    <span className={reward.points > 0 ? ' ml-1' : ''}>
+                      {reward.exp_body > 0 && <>身体+{reward.exp_body}</>}
+                      {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳+{reward.exp_mind}</>}
+                      {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神+{reward.exp_spirit}</>}
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className={!isCompleted && isOverdue ? 'text-red-400' : ''}>
+                {!isCompleted && isOverdue && <span className="mr-1.5" aria-label="超過">⚠️</span>}
+                期限: {todo.due_date ? formatDate(todo.due_date) : '─'}
+                {isCompleted && todo.completed_at && (
+                  <> ／ 完了: {formatCompletedDateTime(todo.completed_at)}</>
                 )}
               </div>
-              <Button
-                onClick={() => handleOpenEditModal(todo)}
-                variant="ghost"
-                size="sm"
-                aria-label={`${todo.task_name}を編集する`}
-                className="text-xs text-cyan-400 hover:text-cyan-300 group h-auto px-2 py-0.5 flex items-center gap-0.5 min-h-0 shrink-0"
-              >
-                <Edit className="w-3 h-3 shrink-0" />
-                <span className="group-hover:underline">編集</span>
-              </Button>
-            </div>
-
-            {/* 3. （期限超過時はここに表示）期限 */}
-            <div className={`text-sm text-white mb-2 ${!isCompleted && isOverdue ? 'text-red-400' : ''}`}>
-              {!isCompleted && isOverdue && <span className="mr-1.5" aria-label="超過">⚠️</span>}
-              期限: {todo.due_date ? formatDate(todo.due_date) : '─'}
-              {isCompleted && todo.completed_at && (
-                <> ／ 完了: {formatCompletedDateTime(todo.completed_at)}</>
-              )}
             </div>
 
             {/* サブタスク表示 */}
@@ -1223,6 +1209,19 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                 </div>
               );
             })()}
+
+            {/* 編集ボタン（カードの一番右下） */}
+            <div className="pt-3 mt-3 border-t border-zinc-700 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => handleOpenEditModal(todo)}
+                className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1"
+                aria-label={`${todo.task_name}を編集する`}
+              >
+                <Edit className="w-3 h-3" />
+                編集
+              </button>
+            </div>
           </div>
         );
   };
@@ -1438,37 +1437,40 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
         description={editingTodo ? 'ToDoの内容を編集します' : '新しいToDoタスクを作成します'}
         footer={
           <>
-            <div className="flex flex-1 items-center justify-end gap-2 flex-wrap">
-              {editingTodo && (
+            <div className="flex flex-1 items-center justify-between gap-2 flex-wrap">
+              <div>
+                {editingTodo && (
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      if (!editingTodo) return;
+                      const ok = await handleDeleteTodo(editingTodo);
+                      if (ok) handleCloseModal();
+                    }}
+                    disabled={isSubmitting}
+                    className="bg-red-600 hover:bg-red-700 text-white border-red-600"
+                  >
+                    削除
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
                 <Button
-                  type="button"
-                  onClick={async () => {
-                    if (!editingTodo) return;
-                    const ok = await handleDeleteTodo(editingTodo);
-                    if (ok) handleCloseModal();
-                  }}
+                  onClick={handleSaveTodo}
+                  disabled={isSubmitting}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                >
+                  {isSubmitting ? '保存中...' : editingTodo ? '更新' : '作成'}
+                </Button>
+                <Button
+                  onClick={handleCloseModal}
                   disabled={isSubmitting}
                   variant="outline"
-                  className="text-red-400 border-red-700 hover:bg-red-950 hover:text-red-300"
+                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
                 >
-                  削除
+                  キャンセル
                 </Button>
-              )}
-              <Button
-                onClick={handleSaveTodo}
-                disabled={isSubmitting}
-                className="bg-cyan-600 hover:bg-cyan-700 text-white"
-              >
-                {isSubmitting ? '保存中...' : editingTodo ? '更新' : '作成'}
-              </Button>
-              <Button
-                onClick={handleCloseModal}
-                disabled={isSubmitting}
-                variant="outline"
-                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
-              >
-                キャンセル
-              </Button>
+              </div>
             </div>
           </>
         }

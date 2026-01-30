@@ -14,7 +14,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import type { KanbanBoardProps, Todo, Difficulty } from '@/lib/types';
+import type { KanbanBoardProps, Todo, TodoSubtask, Difficulty } from '@/lib/types';
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, DIFFICULTY_MULTIPLIERS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { FormLabel } from '@/components/ui/form-input';
@@ -24,7 +24,7 @@ import { ClipboardList, ChevronDown, ChevronUp, Edit } from 'lucide-react';
 // ドラッグ可能なカードコンポーネント
 type Reward = { points: number; exp_body: number; exp_mind: number; exp_spirit: number };
 
-function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMoveToActive, onEditTodo }: {
+function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMoveToActive, onEditTodo, subtasks, isSubtaskExpanded, onSubtaskExpandToggle, onToggleSubtaskCompletion, formatSubtaskCompletedDate }: {
   todo: Todo;
   isOverdue: boolean;
   icon: string;
@@ -32,6 +32,11 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
   formatDeadline: (dueDate: string | null) => string;
   onMoveToActive?: () => void;
   onEditTodo?: (todoId: string) => void;
+  subtasks: TodoSubtask[];
+  isSubtaskExpanded: boolean;
+  onSubtaskExpandToggle: () => void;
+  onToggleSubtaskCompletion?: (subtask: TodoSubtask) => void;
+  formatSubtaskCompletedDate: (completedAt: string | null) => string;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: todo.id,
@@ -64,7 +69,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
         <span className="text-lg shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <span className="text-base font-medium text-zinc-100 flex-1 min-w-0 truncate" suppressHydrationWarning>
+            <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate" suppressHydrationWarning>
               {todo.task_name}
             </span>
             {todo.difficulty && (
@@ -80,10 +85,10 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
       </div>
 
       {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと） */}
-      <div className="space-y-1 text-base text-zinc-400 mb-2">
+      <div className="space-y-1 text-base text-white">
         {hasReward && (
-          <div className="text-zinc-300">
-            <span className="text-zinc-400">報酬</span>
+          <div className="text-white">
+            <span className="text-white">報酬</span>
             {' ｜ '}
             {reward.points > 0 && <>{reward.points}Gold</>}
             {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
@@ -102,37 +107,86 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
             期限: {formatDeadline(todo.due_date)}
           </div>
         )}
-        {todo.status === 'in_progress' && onMoveToActive && (
-          <div className="pt-1 mt-1 border-t border-zinc-700">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onMoveToActive();
-              }}
-              className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline"
-            >
-              ← アクティブに戻す
-            </button>
-          </div>
-        )}
-        {onEditTodo && (
-          <div className="pt-1 mt-1 border-t border-zinc-700 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEditTodo(todo.id);
-              }}
-              className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1"
-              aria-label={`${todo.task_name}を編集する`}
-            >
-              <Edit className="w-3 h-3" />
-              編集
-            </button>
+      </div>
+
+      {/* サブタスク（日誌カード・表示＋完了切替のみ） */}
+      <div className="mt-3 pt-3 border-t border-zinc-700 text-sm shrink-0" role="region" aria-label="サブタスク" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onSubtaskExpandToggle(); }}
+          aria-label={`${todo.task_name}のサブタスクを${isSubtaskExpanded ? '折りたたむ' : '展開する'}`}
+          aria-expanded={isSubtaskExpanded}
+          className="flex items-center gap-2 text-zinc-400 hover:text-zinc-300 w-full text-left"
+        >
+          <span aria-hidden="true">{isSubtaskExpanded ? '▼' : '▶'}</span>
+          <span>サブタスク ({subtasks.length}件)</span>
+        </button>
+        {isSubtaskExpanded && (
+          <div className="space-y-2 ml-4 mt-2">
+            {subtasks.length === 0 && (
+              <p className="text-zinc-500">サブタスクがありません</p>
+            )}
+            {subtasks.map((subtask) => (
+              <div
+                key={subtask.id}
+                className="flex items-center gap-2 p-2 bg-zinc-800 rounded hover:bg-zinc-750"
+              >
+                <input
+                  type="checkbox"
+                  id={`kanban-subtask-${subtask.id}`}
+                  checked={subtask.is_completed}
+                  onChange={() => onToggleSubtaskCompletion?.(subtask)}
+                  disabled={!onToggleSubtaskCompletion}
+                  aria-label={`${subtask.subtask_name}を${subtask.is_completed ? '未完了' : '完了'}にする`}
+                  className="w-4 h-4 text-cyan-600 bg-zinc-700 border-zinc-600 rounded focus:ring-cyan-500 shrink-0"
+                />
+                <span className={`flex-1 min-w-0 ${subtask.is_completed ? 'text-zinc-200 line-through' : 'text-zinc-300'}`}>
+                  {subtask.subtask_name}
+                </span>
+                {subtask.is_completed && (subtask.completed_at ?? subtask.updated_at) && (
+                  <span className="text-zinc-400 text-xs shrink-0">
+                    {formatSubtaskCompletedDate(subtask.completed_at ?? subtask.updated_at ?? null)}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
+
+      {/* 進行中のみ：アクティブに戻す（サブタスクと編集の間） */}
+      {todo.status === 'in_progress' && onMoveToActive && (
+        <div className="pt-3 mt-3 border-t border-zinc-700" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onMoveToActive();
+            }}
+            className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline"
+          >
+            ← アクティブに戻す
+          </button>
+        </div>
+      )}
+
+      {/* 編集ボタン（カードの一番右下） */}
+      {onEditTodo && (
+        <div className="pt-3 mt-3 border-t border-zinc-700 flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditTodo(todo.id);
+            }}
+            className="text-xs text-cyan-400 hover:text-cyan-300 hover:underline flex items-center gap-1"
+            aria-label={`${todo.task_name}を編集する`}
+          >
+            <Edit className="w-3 h-3" />
+            編集
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -152,7 +206,7 @@ function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
         <span className="text-lg shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <span className="text-base font-medium text-zinc-100 flex-1 min-w-0 truncate line-through" suppressHydrationWarning>
+            <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate line-through" suppressHydrationWarning>
               {todo.task_name}
             </span>
             {todo.difficulty && (
@@ -167,10 +221,10 @@ function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
         </div>
       </div>
       {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと） */}
-      <div className="space-y-1 text-base text-zinc-400">
+      <div className="space-y-1 text-base text-white">
         {hasReward && (
-          <div className="text-zinc-300">
-            <span className="text-zinc-400">報酬</span>
+          <div className="text-white">
+            <span className="text-white">報酬</span>
             {' ｜ '}
             {reward.points > 0 && <>{reward.points}Gold</>}
             {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
@@ -191,12 +245,17 @@ function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
 }
 
 // 完了済みカードコンポーネント（ドラッグ可能・アクティブ/進行中へ戻せる）
-function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, onEditTodo }: {
+function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, onEditTodo, subtasks, isSubtaskExpanded, onSubtaskExpandToggle, onToggleSubtaskCompletion, formatSubtaskCompletedDate }: {
   todo: Todo;
   icon: string;
   reward: Reward;
   formatCompletedDate: (completedAt: string | null) => string;
   onEditTodo?: (todoId: string) => void;
+  subtasks: TodoSubtask[];
+  isSubtaskExpanded: boolean;
+  onSubtaskExpandToggle: () => void;
+  onToggleSubtaskCompletion?: (subtask: TodoSubtask) => void;
+  formatSubtaskCompletedDate: (completedAt: string | null) => string;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: todo.id,
@@ -217,8 +276,54 @@ function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, o
       className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-cyan-600 transition-colors opacity-75 cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-950"
     >
       <CompletedTodoCardInner todo={todo} icon={icon} reward={reward} formatCompletedDate={formatCompletedDate} />
+      {/* サブタスク（日誌カード・表示＋完了切替のみ） */}
+      <div className="mt-3 pt-3 border-t border-zinc-700 text-sm shrink-0" role="region" aria-label="サブタスク" onClick={(e) => e.stopPropagation()}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onSubtaskExpandToggle(); }}
+          aria-label={`${todo.task_name}のサブタスクを${isSubtaskExpanded ? '折りたたむ' : '展開する'}`}
+          aria-expanded={isSubtaskExpanded}
+          className="flex items-center gap-2 text-zinc-400 hover:text-zinc-300 w-full text-left"
+        >
+          <span aria-hidden="true">{isSubtaskExpanded ? '▼' : '▶'}</span>
+          <span>サブタスク ({subtasks.length}件)</span>
+        </button>
+        {isSubtaskExpanded && (
+          <div className="space-y-2 ml-4 mt-2">
+            {subtasks.length === 0 && (
+              <p className="text-zinc-500">サブタスクがありません</p>
+            )}
+            {subtasks.map((subtask) => (
+              <div
+                key={subtask.id}
+                className="flex items-center gap-2 p-2 bg-zinc-800 rounded opacity-75"
+              >
+                <input
+                  type="checkbox"
+                  id={`kanban-completed-subtask-${subtask.id}`}
+                  checked={subtask.is_completed}
+                  onChange={() => onToggleSubtaskCompletion?.(subtask)}
+                  disabled={!onToggleSubtaskCompletion}
+                  aria-label={`${subtask.subtask_name}を${subtask.is_completed ? '未完了' : '完了'}にする`}
+                  className="w-4 h-4 text-cyan-600 bg-zinc-700 border-zinc-600 rounded focus:ring-cyan-500 shrink-0"
+                />
+                <span className={`flex-1 min-w-0 ${subtask.is_completed ? 'text-zinc-200 line-through' : 'text-zinc-300'}`}>
+                  {subtask.subtask_name}
+                </span>
+                {subtask.is_completed && (subtask.completed_at ?? subtask.updated_at) && (
+                  <span className="text-zinc-400 text-xs shrink-0">
+                    {formatSubtaskCompletedDate(subtask.completed_at ?? subtask.updated_at ?? null)}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 編集ボタン（カードの一番右下） */}
       {onEditTodo && (
-        <div className="pt-1 mt-1 border-t border-zinc-700">
+        <div className="pt-3 mt-3 border-t border-zinc-700 flex justify-end" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
             onClick={(e) => {
@@ -272,6 +377,11 @@ function DroppableColumn({
   dateSortLabel,
   onMoveToActive,
   onEditTodo,
+  getSubtasksForTodo,
+  expandedSubtaskTodoIds,
+  onSubtaskExpandToggle,
+  onToggleSubtaskCompletion,
+  formatSubtaskCompletedDate,
 }: {
   id: string;
   title: string;
@@ -286,6 +396,11 @@ function DroppableColumn({
   dateSortLabel?: string;
   onMoveToActive?: (todoId: string) => void;
   onEditTodo?: (todoId: string) => void;
+  getSubtasksForTodo: (todoId: string) => TodoSubtask[];
+  expandedSubtaskTodoIds: Set<string>;
+  onSubtaskExpandToggle: (todoId: string) => void;
+  onToggleSubtaskCompletion?: (subtask: TodoSubtask) => void;
+  formatSubtaskCompletedDate: (completedAt: string | null) => string;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -343,6 +458,9 @@ function DroppableColumn({
             const icon = getIcon(todo.status);
             const reward = getReward(todo);
 
+            const subtasksForTodo = getSubtasksForTodo(todo.id);
+            const isSubtaskExpanded = expandedSubtaskTodoIds.has(todo.id);
+
             if (todo.status === 'completed') {
               return (
                 <DraggableCompletedTodoCard
@@ -352,6 +470,11 @@ function DroppableColumn({
                   reward={reward}
                   formatCompletedDate={formatCompletedDate}
                   onEditTodo={onEditTodo}
+                  subtasks={subtasksForTodo}
+                  isSubtaskExpanded={isSubtaskExpanded}
+                  onSubtaskExpandToggle={() => onSubtaskExpandToggle(todo.id)}
+                  onToggleSubtaskCompletion={onToggleSubtaskCompletion}
+                  formatSubtaskCompletedDate={formatSubtaskCompletedDate}
                 />
               );
             }
@@ -366,6 +489,11 @@ function DroppableColumn({
                   formatDeadline={formatDeadline}
                   onMoveToActive={onMoveToActive ? () => onMoveToActive(todo.id) : undefined}
                   onEditTodo={onEditTodo}
+                  subtasks={subtasksForTodo}
+                  isSubtaskExpanded={isSubtaskExpanded}
+                  onSubtaskExpandToggle={() => onSubtaskExpandToggle(todo.id)}
+                  onToggleSubtaskCompletion={onToggleSubtaskCompletion}
+                  formatSubtaskCompletedDate={formatSubtaskCompletedDate}
                 />
               </DroppableCardSlot>
             );
@@ -376,10 +504,12 @@ function DroppableColumn({
   );
 }
 
-function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsExpanded, onExpandedChange, onEditTodo }: KanbanBoardProps) {
+function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, dailyLogId, isExpanded: externalIsExpanded, onExpandedChange, onEditTodo }: KanbanBoardProps) {
 
   // ローカル状態でtodosを管理（ドラッグ&ドロップで即座に反映）
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
+  const [subtasks, setSubtasks] = useState<TodoSubtask[]>(initialSubtasks ?? []);
+  const [expandedSubtaskTodoIds, setExpandedSubtaskTodoIds] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [internalIsExpanded, setInternalIsExpanded] = useState(true); // アコーディオンの開閉状態（内部管理）
@@ -390,6 +520,10 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
   const [sortDateCompleted, setSortDateCompleted] = useState<'asc' | 'desc'>('desc');
   // @dnd-kit の aria-* がサーバーと一致しないため、DndContext 配下はクライアントマウント後のみ描画する
   const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setSubtasks(initialSubtasks ?? []);
+  }, [initialSubtasks]);
 
   // マウント後に localStorage からフィルター・ソートを復元（Hydration 後のみ実行）
   useEffect(() => {
@@ -587,6 +721,63 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
     return `(${year}/${month}/${day}-${weekday} ${hour}:${minute})`;
+  };
+
+  const formatSubtaskCompletedDate = (completedAt: string | null): string => {
+    if (!completedAt) return '';
+    const date = new Date(completedAt);
+    const year = String(date.getFullYear()).slice(-2);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const weekday = WEEKDAY_JA[date.getDay()];
+    const hour = String(date.getHours()).padStart(2, '0');
+    const minute = String(date.getMinutes()).padStart(2, '0');
+    return `(${year}/${month}/${day}-${weekday} ${hour}:${minute})`;
+  };
+
+  const getSubtasksForTodo = (todoId: string): TodoSubtask[] =>
+    subtasks.filter((st) => st.todo_id === todoId);
+
+  const toggleSubtaskExpand = (todoId: string) => {
+    setExpandedSubtaskTodoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(todoId)) next.delete(todoId);
+      else next.add(todoId);
+      return next;
+    });
+  };
+
+  const handleToggleSubtaskCompletion = async (subtask: TodoSubtask) => {
+    const willBeCompleted = !subtask.is_completed;
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from('todo_subtasks')
+        .update({
+          is_completed: willBeCompleted,
+          completed_at: willBeCompleted ? new Date().toISOString() : null,
+        })
+        .eq('id', subtask.id);
+      if (error) {
+        toast.error('サブタスクの更新に失敗しました', { description: error.message });
+        return;
+      }
+      setSubtasks((prev) =>
+        prev.map((st) =>
+          st.id === subtask.id
+            ? {
+                ...st,
+                is_completed: willBeCompleted,
+                completed_at: willBeCompleted ? new Date().toISOString() : null,
+                updated_at: new Date().toISOString(),
+              }
+            : st
+        )
+      );
+    } catch (err) {
+      console.error('サブタスク完了切替エラー:', err);
+      toast.error('サブタスクの更新に失敗しました');
+    }
   };
 
   // EXP合計計算関数
@@ -1079,6 +1270,11 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             onSortChange={setSortDateActive}
             dateSortLabel="期限"
             onEditTodo={onEditTodo}
+            getSubtasksForTodo={getSubtasksForTodo}
+            expandedSubtaskTodoIds={expandedSubtaskTodoIds}
+            onSubtaskExpandToggle={toggleSubtaskExpand}
+            onToggleSubtaskCompletion={handleToggleSubtaskCompletion}
+            formatSubtaskCompletedDate={formatSubtaskCompletedDate}
           />
 
           {/* 進行中カラム */}
@@ -1096,6 +1292,11 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             dateSortLabel="期限"
             onMoveToActive={handleMoveToActive}
             onEditTodo={onEditTodo}
+            getSubtasksForTodo={getSubtasksForTodo}
+            expandedSubtaskTodoIds={expandedSubtaskTodoIds}
+            onSubtaskExpandToggle={toggleSubtaskExpand}
+            onToggleSubtaskCompletion={handleToggleSubtaskCompletion}
+            formatSubtaskCompletedDate={formatSubtaskCompletedDate}
           />
 
           {/* 完了済みカラム */}
@@ -1112,6 +1313,11 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             onSortChange={setSortDateCompleted}
             dateSortLabel="完了日"
             onEditTodo={onEditTodo}
+            getSubtasksForTodo={getSubtasksForTodo}
+            expandedSubtaskTodoIds={expandedSubtaskTodoIds}
+            onSubtaskExpandToggle={toggleSubtaskExpand}
+            onToggleSubtaskCompletion={handleToggleSubtaskCompletion}
+            formatSubtaskCompletedDate={formatSubtaskCompletedDate}
           />
         </div>
 
@@ -1131,16 +1337,16 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
               <div className="bg-zinc-900 border border-cyan-600 rounded-lg p-3 shadow-lg opacity-90 rotate-2">
                 <div className="flex items-start gap-2 mb-2">
                   <span className="text-lg">{getIcon(activeTodo.status)}</span>
-                  <span className="text-base font-medium text-zinc-100 flex-1">
+                  <span className="text-base font-bold text-zinc-100 flex-1">
                     {activeTodo.task_name}
                   </span>
                 </div>
-                <div className="space-y-1 text-base text-zinc-400">
+                <div className="space-y-1 text-base text-white">
                   {(() => {
                     const r = calculateReward(activeTodo);
                     const hasR = r.points > 0 || r.exp_body > 0 || r.exp_mind > 0 || r.exp_spirit > 0;
                     return hasR && (
-                      <div className="text-zinc-300">
+                      <div className="text-white">
                         {r.points > 0 && <>{r.points}G</>}
                         {(r.exp_body > 0 || r.exp_mind > 0 || r.exp_spirit > 0) && (
                           <span className={r.points > 0 ? ' ml-2' : ''}>

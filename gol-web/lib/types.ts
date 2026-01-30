@@ -422,6 +422,8 @@ export interface KanbanBoardProps {
   todos: Todo[];
   /** 今日のToDo完了記録（配列） */
   todoLogs: TodoLog[];
+  /** ToDoサブタスクリスト（配列）・日誌カードでサブタスク表示用 */
+  todoSubtasks: TodoSubtask[];
   /** 今日の日誌ID */
   dailyLogId: string | null;
   /** アコーディオンの開閉状態（外部制御用） */
