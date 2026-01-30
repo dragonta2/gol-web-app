@@ -52,26 +52,44 @@
 
 ### 260130-金
 
-#### 完了済み取り消し線・ヘッダー日付の修正
+#### 権利設定・ダッシュボード・習慣・完了済みUIなど
 
 **作業内容:**
 
-1. **完了済みテキストの取り消し線**
-   - 二重線（decoration-double）をやめ、一本線で太さを3px（decoration-[3px]）に統一
-   - 変更箇所: 設定ToDoページの完了済みカード、ToDoサマリータブの完了済みカード・サブタスク完了時、Kanbanの完了済みカード・サブタスク完了時（計6箇所）
+1. **権利設定の拡張・UI**
+   - 「表示コード」→「権利記号」に変更。カード見出しを「権利」＋記号入力にし、記号部分のみ編集可能に。重複入力欄を削除、青い見出しスタイル（bg-blue-600/90 等）
+   - 権利記号の大文字自動変換（normalizeRightCode、uppercase クラス）、保存時バリデーション（空・重複・消費量1未満）、削除時確認ダイアログ
+   - 権利の上限を24件に。`lib/rights.ts` で RIGHT_COLUMNS_BY_INDEX / MAX_RIGHTS を定義し、設定API・日誌API・journal-form で共有
+   - 保存時に権利記号の昇順でソート。並び替え・追加・保存ボタンのレイアウト・スタイル（左に権利追加・右に保存、昇順/降順は右端セグメント風）
+
+2. **ダッシュボード・日誌**
+   - ヘッダー左に日付を「YYYY年MM月DD日(W)」で表示（text-cyan-400、text-2xl〜4xl）。デフォルト日付と「今日」判定を日本時間に変更: `getTodayJST()` で `Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date())` を使用
+   - 「本日の利用ゴルド」カード内のフォント色を明るく（text-zinc-300→200 等）。日誌タブ内の重複日付表示を削除
+
+3. **習慣リストモーダル**
+   - 習慣の種類セレクトを削除（「良習慣を追加」「悪習慣を追加」「ボーナスを追加」のどのボタンから開いても、種類はボタンで決定）
+   - 入力タイプのセレクトに custom-select-arrow と pr-10 でカスタム矢印を適用
+
+4. **アカウント設定・API**
+   - アカウント設定ページ（`app/settings/account/page.tsx`）とプロファイル取得API（`/api/user/profile`）を追加
+   - 設定ページ（settings/page.tsx）の調整
+
+5. **API・型**
+   - settings/rights と daily-logs で RIGHT_COLUMNS_BY_INDEX をインポートして使用。MAX_RIGHTS を 24 に。points の文字列→数値変換、保存エラー時に Supabase の詳細メッセージを返すように変更
+   - DailyLog 型に 24 件の権利使用回数カラム（right_g_count 等）を追加。daily_logs テーブルに 24 カラム分を保存するには別途マイグレーションが必要な旨をコメント
+
+6. **完了済みテキストの取り消し線**
+   - 二重線（decoration-double）をやめ、一本線で太さを 3px（decoration-[3px]）に統一
+   - 変更箇所: 設定ToDoの完了済みカード、ToDoサマリータブの完了済みカード・サブタスク完了時、Kanbanの完了済みカード・サブタスク完了時（計6箇所）
    - 変更ファイル: `settings/todos/page.tsx`, `todo-summary-tab.tsx`, `kanban-board.tsx`
 
-2. **ヘッダー日付が「今日」にならない問題の修正**
-   - 原因: `new Date().toISOString().split('T')[0]` はUTC日付のため、日本時間では前日/翌日になることがある
-   - 対応: デフォルト日付と「今日」判定を日本時間で取得。`Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date())` で YYYY-MM-DD を取得
-   - 変更ファイル: `app/dashboard/page.tsx`
+**変更したファイル（コミット df000c1 より）**
 
-**変更したファイル**
-
-- `gol-web/app/dashboard/page.tsx`: getTodayJST() を追加、selectedDate・isToday で使用
-- `gol-web/app/settings/todos/page.tsx`: 完了済みタイトルに line-through decoration-[3px]
-- `gol-web/app/dashboard/todo-summary-tab.tsx`: 完了済みタイトル・サブタスクに line-through decoration-[3px]
-- `gol-web/app/dashboard/kanban-board.tsx`: 完了済みタイトル・サブタスクに line-through decoration-[3px]
+- docs: 00-AI-prompt-memo, 04-project-progress, 05-dev-log / sql-snippet/supabase-add-rights-config-column.sql
+- gol-web/app/api: daily-logs/route.ts, settings/rights/route.ts, user/profile/route.ts（新規）
+- gol-web/app/dashboard: habit-list.tsx, journal-form.tsx, kanban-board.tsx, page.tsx, todo-summary-tab.tsx
+- gol-web/app/settings: account/page.tsx（新規）, page.tsx, rights/page.tsx, todos/page.tsx
+- gol-web/lib: rights.ts（新規）, types.ts
 
 **学んだこと**
 
