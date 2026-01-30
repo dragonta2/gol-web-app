@@ -241,7 +241,7 @@ export default function TodosSettingsPage() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'active':
-        return 'アクティブ';
+        return 'アクティブタスク';
       case 'in_progress':
         return '進行中';
       case 'completed':
@@ -462,7 +462,7 @@ export default function TodosSettingsPage() {
                             onChange={(e) => setFormData({ ...formData, status: 'active' as const })}
                             className="w-4 h-4 text-cyan-600"
                           />
-                          <span className="text-zinc-300">アクティブ</span>
+                          <span className="text-zinc-300">アクティブタスク</span>
                         </label>
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -527,11 +527,11 @@ export default function TodosSettingsPage() {
           <div className="text-center py-12 text-zinc-400">読み込み中...</div>
         ) : (
           <div className="space-y-6">
-            {/* アクティブ */}
+            {/* アクティブタスク */}
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <ClipboardList className="w-5 h-5 text-blue-400" />
-                <h2 className="text-xl font-semibold text-blue-400">アクティブ</h2>
+                <h2 className="text-xl font-semibold text-blue-400">アクティブタスク</h2>
                 <span className="text-sm text-zinc-500">({activeTodos.length}件)</span>
               </div>
               {activeTodos.length === 0 ? (

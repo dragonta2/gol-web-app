@@ -21,7 +21,7 @@ import { FormInput, FormLabel } from '@/components/ui/form-input';
 import { DatePickerField } from '@/components/date-picker-field';
 import { FormCard } from '@/components/ui/form-card';
 import { toast } from 'sonner';
-import { ClipboardList, Edit } from 'lucide-react';
+import { ClipboardList, Edit, Search } from 'lucide-react';
 import {
   DndContext,
   DragEndEvent,
@@ -1234,7 +1234,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     renderTodoCard: (todo: Todo, isCompleted: boolean) => React.ReactElement;
   }) => {
     const { setNodeRef } = useDroppable({ id });
-    const columnLabel = status === 'active' ? 'アクティブ' : '進行中';
+    const columnLabel = status === 'active' ? 'アクティブタスク' : '進行中';
     
     return (
       <div>
@@ -1282,20 +1282,20 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
           >
             + 新規タスク
           </Button>
-          <div className="relative w-full sm:w-auto">
+          <div className="relative w-full sm:w-auto sm:min-w-[280px]">
             <label htmlFor="todo-search" className="sr-only">
               ToDoタスクを検索する
             </label>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 shrink-0 pointer-events-none" aria-hidden />
             <Input
               id="todo-search"
               type="text"
-              placeholder="🔍 検索"
+              placeholder="検索"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="ToDoタスクを検索する"
-              className="pl-10 pr-4 bg-zinc-800 border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:ring-cyan-500 text-base w-full sm:w-auto"
+              className="pl-10 pr-4 bg-zinc-800 border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:ring-cyan-500 text-base w-full sm:min-w-[280px]"
             />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" aria-hidden="true">🔍</span>
           </div>
         </div>
       </div>
@@ -1307,7 +1307,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
             <h3 className="text-base sm:text-lg font-medium text-zinc-300">フィルター</h3>
             {(filterDifficulties.length > 0 || monthFilter !== 'all') && (
               <span className="text-xs text-cyan-400 bg-cyan-900/30 px-2 py-1 rounded">
-                フィルター適用中: アクティブ {activeTodos.length}件 / 完了 {completedTodos.length}件
+                フィルター適用中: アクティブタスク {activeTodos.length}件 / 完了 {completedTodos.length}件
               </span>
             )}
           </div>
@@ -1588,7 +1588,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                   onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'in_progress' | 'completed' })}
                   className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
                 >
-                  <option value="active">アクティブ</option>
+                  <option value="active">アクティブタスク</option>
                   <option value="in_progress">進行中</option>
                   <option value="completed">完了済み</option>
                 </select>

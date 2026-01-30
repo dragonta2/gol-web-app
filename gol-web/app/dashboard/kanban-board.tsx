@@ -448,7 +448,7 @@ function DroppableColumn({
       >
         {todos.length === 0 ? (
           <div className="text-center py-8 text-zinc-500 text-base">
-            {title === 'アクティブ' && 'アクティブなタスクはありません'}
+            {title === 'アクティブタスク' && 'アクティブなタスクはありません'}
             {title === '進行中' && '進行中のタスクはありません'}
             {title === '完了済み' && '完了済みのタスクはありません'}
           </div>
@@ -1192,7 +1192,7 @@ function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, daily
                 <h3 className="text-base sm:text-lg font-medium text-zinc-300">フィルター</h3>
                 {filterDifficulties.length > 0 && (
                   <span className="text-xs text-cyan-400 bg-cyan-900/30 px-2 py-1 rounded">
-                    フィルター適用中: アクティブ {activeTodos.length}件 / 進行中 {inProgressTodos.length}件 / 完了 {completedTodos.length}件
+                    フィルター適用中: アクティブタスク {activeTodos.length}件 / 進行中 {inProgressTodos.length}件 / 完了 {completedTodos.length}件
                   </span>
                 )}
               </div>
@@ -1259,7 +1259,7 @@ function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, daily
           {/* アクティブカラム */}
           <DroppableColumn
             id="column-active"
-            title="アクティブ"
+            title="アクティブタスク"
             todos={activeTodos}
             isOverdue={isOverdue}
             getIcon={getIcon}
