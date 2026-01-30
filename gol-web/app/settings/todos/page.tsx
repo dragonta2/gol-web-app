@@ -271,7 +271,7 @@ export default function TodosSettingsPage() {
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-2">
           <GripVertical className="w-4 h-4 text-zinc-500" />
-          <h3 className="text-lg font-medium text-zinc-100">{todo.task_name}</h3>
+          <h3 className={`text-lg font-medium text-zinc-100 ${todo.status === 'completed' ? 'line-through decoration-[3px]' : ''}`}>{todo.task_name}</h3>
           <span className={`text-xs px-2 py-0.5 rounded ${getStatusColor(todo.status)} bg-opacity-20`}>
             {getStatusLabel(todo.status)}
           </span>

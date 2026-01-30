@@ -55,13 +55,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         },
       };
 
-  // URLパラメータから日付を取得、なければ今日
-  const selectedDate = searchParams?.date || new Date().toISOString().split('T')[0];
+  // URLパラメータから日付を取得、なければ今日（日本時間で判定）
+  const getTodayJST = () =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date());
+  const selectedDate = searchParams?.date || getTodayJST();
 
   // 選択された日付のdaily_logsを取得（なければ作成）
   let dailyLogId: string | null = null;
   let dailyLogData: any = null;
-  const isToday = selectedDate === new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === getTodayJST();
   
   const { data: dailyLog, error: dailyLogError } = await supabase
     .from('daily_logs')
@@ -180,22 +182,34 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           </div>
 
-          {/* 2行目: EXP表示 */}
-          <div className="flex items-center gap-3 sm:gap-6 text-base sm:text-lg">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>身体:</span>
-              <span className="font-semibold text-cyan-400">{userProfile.exp.body}</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>頭脳:</span>
-              <span className="font-semibold text-cyan-400">{userProfile.exp.intellect}</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>精神:</span>
-              <span className="font-semibold text-cyan-400">{userProfile.exp.mind}</span>
+          {/* 2行目: 左＝日付（YYYY年MM月DD日）、右＝EXP表示 */}
+          <div className="flex items-center justify-between gap-4">
+            {selectedDate && (
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-cyan-400">
+                {(() => {
+                  const [y, m, d] = selectedDate.split('-');
+                  const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+                  const dayIndex = new Date(selectedDate + 'T12:00:00').getDay();
+                  return `${y}年${m}月${d}日(${dayNames[dayIndex]})`;
+                })()}
+              </p>
+            )}
+            <div className="flex items-center gap-3 sm:gap-6 text-lg sm:text-xl ml-auto">
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>身体:</span>
+                <span className="font-semibold text-cyan-400">{userProfile.exp.body}</span>
+              </div>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>頭脳:</span>
+                <span className="font-semibold text-cyan-400">{userProfile.exp.intellect}</span>
+              </div>
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span>精神:</span>
+                <span className="font-semibold text-cyan-400">{userProfile.exp.mind}</span>
+              </div>
             </div>
           </div>
         </div>

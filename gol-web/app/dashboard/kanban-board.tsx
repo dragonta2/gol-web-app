@@ -140,7 +140,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
                   aria-label={`${subtask.subtask_name}を${subtask.is_completed ? '未完了' : '完了'}にする`}
                   className="w-4 h-4 text-cyan-600 bg-zinc-700 border-zinc-600 rounded focus:ring-cyan-500 shrink-0"
                 />
-                <span className={`flex-1 min-w-0 ${subtask.is_completed ? 'text-zinc-200 line-through' : 'text-zinc-300'}`}>
+                <span className={`flex-1 min-w-0 ${subtask.is_completed ? 'text-zinc-200 line-through decoration-[3px]' : 'text-zinc-300'}`}>
                   {subtask.subtask_name}
                 </span>
                 {subtask.is_completed && (subtask.completed_at ?? subtask.updated_at) && (
@@ -206,7 +206,7 @@ function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
         <span className="text-lg shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate line-through" suppressHydrationWarning>
+            <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate line-through decoration-[3px]" suppressHydrationWarning>
               {todo.task_name}
             </span>
             {todo.difficulty && (
@@ -307,7 +307,7 @@ function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, o
                   aria-label={`${subtask.subtask_name}を${subtask.is_completed ? '未完了' : '完了'}にする`}
                   className="w-4 h-4 text-cyan-600 bg-zinc-700 border-zinc-600 rounded focus:ring-cyan-500 shrink-0"
                 />
-                <span className={`flex-1 min-w-0 ${subtask.is_completed ? 'text-zinc-200 line-through' : 'text-zinc-300'}`}>
+                <span className={`flex-1 min-w-0 ${subtask.is_completed ? 'text-zinc-200 line-through decoration-[3px]' : 'text-zinc-300'}`}>
                   {subtask.subtask_name}
                 </span>
                 {subtask.is_completed && (subtask.completed_at ?? subtask.updated_at) && (

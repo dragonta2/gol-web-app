@@ -10,6 +10,7 @@ import { FormInput, FormTextarea } from '@/components/ui/form-input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { fetchWithRetry } from '@/lib/api-retry';
+import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 import type { DailyLog } from '@/lib/types';
 import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp } from 'lucide-react';
 
@@ -18,7 +19,7 @@ interface Right {
   code: string;
   name: string;
   points: number;
-  maxCount?: number;
+  unit?: string;
   count: number;
 }
 
@@ -134,64 +135,39 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     return targetDate < today;
   })();
 
-  // 権利設定を取得
-  const [rightsConfig, setRightsConfig] = useState<Record<string, { points: number; name: string; maxCount?: number }>>({
-    A: { points: 5, name: 'TVゲーム2時間' },
-    B: { points: 4, name: 'お酒4杯まで' },
-    C: { points: 1, name: '食事時動画1時間毎', maxCount: 10 },
-    D: { points: 0, name: '睡眠導入剤' },
-    E: { points: 3, name: '朝食 or 昼食を食べる', maxCount: 3 },
-    F: { points: 10, name: 'EMKF' },
-    O: { points: 5, name: 'ON (PLN以外)' },
-    U: { points: 1, name: '宇都宮ダンス' },
-    X: { points: 10, name: 'PLN動画 & ON 1時間' },
-  });
+  // 権利設定を取得（配列形式）
+  const [rightsList, setRightsList] = useState<Array<{ code: string; name: string; points: number; unit: string }>>([]);
 
-  // 権利設定をAPIから取得
   useEffect(() => {
-    const fetchRightsConfig = async () => {
+    const fetchRights = async () => {
       try {
-        const response = await fetch('/api/settings/rights');
-        const result = await response.json();
-        if (response.ok && result.rightsConfig) {
-          setRightsConfig(result.rightsConfig);
+        const res = await fetch('/api/settings/rights');
+        const result = await res.json();
+        if (res.ok && Array.isArray(result.rights)) {
+          setRightsList(result.rights);
         }
       } catch (error) {
         console.error('権利設定取得エラー:', error);
-        // エラー時はデフォルト値のまま
       }
     };
-    fetchRightsConfig();
+    fetchRights();
   }, []);
 
-  // dailyLogから初期値を計算（useMemoでキャッシュ）
-  const initialValues = useMemo(() => {
-    const rightsMapping: Record<string, string> = {
-      A: 'right_a_count',
-      B: 'right_b_count',
-      C: 'right_c_count',
-      D: 'right_d_count',
-      E: 'right_e_count',
-      F: 'right_f_count',
-      O: 'right_o_count',
-      U: 'right_u_count',
-      X: 'right_x_count',
-    };
+  // 配列の並び順で daily_logs の権利カラムにマッピング（権利記号はアルファベットのみ、最大24件）
 
+  // dailyLogから初期値を計算（useMemoでキャッシュ）。id は配列順で安定化（コードはユーザーが変えうるため）
+  const initialValues = useMemo(() => {
     return {
-      rights: Object.entries(rightsMapping).map(([code, countKey], index) => {
-        const config = rightsConfig[code] || { points: 0, name: `権利${code}` };
-        return {
-          id: String(index + 1),
-          code,
-          name: config.name,
-          points: config.points,
-          maxCount: config.maxCount,
-          count: (dailyLog as any)?.[countKey] || 0,
-        } as Right;
-      }),
+      rights: rightsList.map((r, index) => ({
+        id: `right-${index}`,
+        code: r.code,
+        name: r.name,
+        points: r.points,
+        unit: r.unit,
+        count: (dailyLog as any)?.[RIGHT_COLUMNS_BY_INDEX[index]] ?? 0,
+      })) as Right[],
     };
-  }, [dailyLog, rightsConfig]);
+  }, [dailyLog, rightsList]);
 
   // 日誌の本文と一言感想は新しいコンポーネント（JournalImpressionSections）で管理されるため、
   // ここではdailyLogから取得する（AI判定や保存処理で使用）
@@ -200,6 +176,11 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
   // 利用ポイント（権利）
   const [rights, setRights] = useState<Right[]>(initialValues.rights);
+
+  // 権利設定または日誌が変わったら rights を同期
+  useEffect(() => {
+    setRights(initialValues.rights);
+  }, [initialValues.rights.length, dailyLog?.id, rightsList.length]);
 
   // AI判定結果
   const [aiJudgmentResult, setAIJudgmentResult] = useState<AIJudgmentResult | null>(
@@ -221,15 +202,11 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   const [aiStory, setAIStory] = useState<string | null>(dailyLog?.ai_story_past || null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
 
-  // 権利の回数更新
+  // 権利の回数更新（上限なし・使用単位は自由記述のため）
   const updateRightCount = (rightId: string, newCount: number) => {
-    setRights(rights.map(right => {
-      if (right.id === rightId) {
-        const maxCount = right.maxCount || 99; // 上限設定（デフォルト99）
-        return { ...right, count: Math.max(0, Math.min(newCount, maxCount)) };
-      }
-      return right;
-    }));
+    setRights(rights.map((right) =>
+      right.id === rightId ? { ...right, count: Math.max(0, newCount) } : right
+    ));
   };
 
   // 日誌保存ハンドラー（権利の保存のみ。日誌本文と一言感想はJournalImpressionSectionsで自動保存される）
@@ -242,19 +219,17 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     }
 
     try {
+      const countByIndex = RIGHT_COLUMNS_BY_INDEX.map((_, i) => rights[i]?.count ?? 0);
+      const updatePayload: Record<string, number> = {};
+      RIGHT_COLUMNS_BY_INDEX.forEach((col, i) => {
+        updatePayload[col] = countByIndex[i];
+      });
+
       const { error } = await supabase
         .from('daily_logs')
         .update({
           // journal_textとone_line_commentはJournalImpressionSectionsで自動保存されるため、ここでは更新しない
-          right_a_count: rights.find(r => r.code === 'A')?.count || 0,
-          right_b_count: rights.find(r => r.code === 'B')?.count || 0,
-          right_c_count: rights.find(r => r.code === 'C')?.count || 0,
-          right_d_count: rights.find(r => r.code === 'D')?.count || 0,
-          right_e_count: rights.find(r => r.code === 'E')?.count || 0,
-          right_f_count: rights.find(r => r.code === 'F')?.count || 0,
-          right_o_count: rights.find(r => r.code === 'O')?.count || 0,
-          right_u_count: rights.find(r => r.code === 'U')?.count || 0,
-          right_x_count: rights.find(r => r.code === 'X')?.count || 0,
+          ...updatePayload,
         })
         .eq('id', dailyLogId);
 
@@ -648,34 +623,34 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             aria-expanded={isRightsExpanded}
             aria-controls="rights-content"
           >
-            <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2">
+            <h3 className="text-xl sm:text-2xl font-medium text-zinc-200 flex items-center gap-2">
               <Gift className="w-5 h-5 sm:w-6 sm:h-6" />
               <span>本日の利用ゴルド</span>
             </h3>
             {isRightsExpanded ? (
-              <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
+              <ChevronUp className="w-5 h-5 text-zinc-300 shrink-0" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-zinc-400 shrink-0" />
+              <ChevronDown className="w-5 h-5 text-zinc-300 shrink-0" />
             )}
           </button>
           {isRightsExpanded && (
             <div id="rights-content" className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 space-y-3">
               {rights.map((right) => (
                 <div key={right.id} className="flex items-center gap-3 text-base">
-                  {/* 権利名 */}
-                  <span className={`flex-1 ${right.count > 0 ? 'text-zinc-100' : 'text-zinc-400'}`}>
+                  {/* 権利名・使用単位 */}
+                  <span className={`flex-1 ${right.count > 0 ? 'text-zinc-50' : 'text-zinc-300'}`}>
                     権利{right.code}｜{right.name}
+                    {right.unit && <span className="text-zinc-400 text-sm ml-1">（{right.unit}）</span>}
                   </span>
 
-                  {/* 数値入力 */}
+                  {/* 数値入力（上限なし） */}
                   <Input
                     type="number"
                     min="0"
-                    max={right.maxCount || 99}
                     value={right.count}
                     onChange={(e) => updateRightCount(right.id, parseInt(e.target.value) || 0)}
                     disabled={isPastDate}
-                    className="w-16 px-2 py-1 bg-zinc-800 border-zinc-600 text-zinc-100 text-center text-base focus:border-red-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-16 px-2 py-1 bg-zinc-800 border-zinc-600 text-zinc-50 text-center text-base focus:border-red-500 disabled:opacity-60 disabled:cursor-not-allowed"
                   />
 
                   {/* ポイント表示（常に領域確保） */}
@@ -689,7 +664,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               {totalPoints > 0 && (
                 <div className="pt-3 mt-3 border-t border-zinc-800 text-lg">
                   <div className="flex justify-between items-center">
-                    <span className="text-zinc-300 font-medium">本日消費ゴルド合計</span>
+                    <span className="text-zinc-200 font-medium">本日消費ゴルド合計</span>
                     <span className="text-red-400 font-bold">-{totalPoints}G</span>
                   </div>
                 </div>

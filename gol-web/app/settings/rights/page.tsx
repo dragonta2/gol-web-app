@@ -1,234 +1,338 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { ArrowLeft, Save, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Save, Plus, Trash2, ArrowUpAZ, ArrowDownZA } from 'lucide-react';
 
-interface RightConfig {
-  points: number;
+const MAX_RIGHTS = 24;
+
+const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+/** 権利記号は大文字アルファベットのみ（自由記述・入力時に正規化） */
+function normalizeRightCode(value: string): string {
+  return value.replace(/[^A-Za-z]/g, '').toUpperCase();
+}
+
+interface RightItem {
+  code: string;
   name: string;
-  maxCount?: number;
+  points: number;
+  unit: string;
 }
 
-interface RightsConfig {
-  A: RightConfig;
-  B: RightConfig;
-  C: RightConfig;
-  D: RightConfig;
-  E: RightConfig;
-  F: RightConfig;
-  O: RightConfig;
-  U: RightConfig;
-  X: RightConfig;
-}
-
-// デフォルト設定
-const DEFAULT_RIGHTS_CONFIG: RightsConfig = {
-  A: { points: 5, name: 'TVゲーム2時間' },
-  B: { points: 4, name: 'お酒4杯まで' },
-  C: { points: 1, name: '食事時動画1時間毎', maxCount: 10 },
-  D: { points: 0, name: '睡眠導入剤' },
-  E: { points: 3, name: '朝食 or 昼食を食べる', maxCount: 3 },
-  F: { points: 10, name: 'EMKF' },
-  O: { points: 5, name: 'ON (PLN以外)' },
-  U: { points: 1, name: '宇都宮ダンス' },
-  X: { points: 10, name: 'PLN動画 & ON 1時間' },
-};
+const DEFAULT_RIGHTS: RightItem[] = [
+  { code: 'A', name: 'TVゲーム2時間', points: 5, unit: '2時間' },
+  { code: 'B', name: 'お酒4杯まで', points: 4, unit: '4杯まで' },
+  { code: 'C', name: '食事時動画1時間毎', points: 1, unit: '1時間毎' },
+  { code: 'D', name: '睡眠導入剤', points: 0, unit: '1回' },
+  { code: 'E', name: '朝食 or 昼食を食べる', points: 3, unit: '1回' },
+  { code: 'F', name: 'EMKF', points: 10, unit: '1回' },
+  { code: 'O', name: 'ON (PLN以外)', points: 5, unit: '1回' },
+  { code: 'U', name: '宇都宮ダンス', points: 1, unit: '1回' },
+  { code: 'X', name: 'PLN動画 & ON 1時間', points: 10, unit: '1時間' },
+];
 
 export default function RightsSettingsPage() {
-  const router = useRouter();
-  const [rightsConfig, setRightsConfig] = useState<RightsConfig>(DEFAULT_RIGHTS_CONFIG);
+  const [rights, setRights] = useState<RightItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  /** 権利記号入力にフォーカスしているカードの index（利用可能記号を表示するため） */
+  const [focusedCodeIndex, setFocusedCodeIndex] = useState<number | null>(null);
+  /** 並び替えの選択状態（セグメントUIのハイライト用） */
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc' | null>(null);
 
-  // 権利設定を取得
-  const fetchRightsConfig = async () => {
+  const fetchRights = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/settings/rights');
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || '設定の取得に失敗しました');
-      }
-
-      setRightsConfig(result.rightsConfig || DEFAULT_RIGHTS_CONFIG);
+      const res = await fetch('/api/settings/rights');
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || '取得に失敗しました');
+      setRights(Array.isArray(result.rights) && result.rights.length > 0 ? result.rights : DEFAULT_RIGHTS);
       setHasChanges(false);
-    } catch (error) {
-      console.error('権利設定取得エラー:', error);
-      toast.error(error instanceof Error ? error.message : '設定の取得に失敗しました');
-      // エラー時はデフォルト値を使用
-      setRightsConfig(DEFAULT_RIGHTS_CONFIG);
+      setSortOrder(null);
+    } catch (e) {
+      console.error(e);
+      toast.error(e instanceof Error ? e.message : '設定の取得に失敗しました');
+      setRights(DEFAULT_RIGHTS);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchRightsConfig();
+    fetchRights();
   }, []);
 
-  // 権利設定を更新
-  const handleUpdateRight = (rightCode: keyof RightsConfig, field: 'points' | 'maxCount', value: number) => {
-    setRightsConfig((prev) => ({
-      ...prev,
-      [rightCode]: {
-        ...prev[rightCode],
-        [field]: value,
-      },
-    }));
+  const canAddMore = rights.length < MAX_RIGHTS;
+
+  const updateRight = (index: number, field: keyof RightItem, value: string | number) => {
+    const normalized = field === 'code' && typeof value === 'string' ? normalizeRightCode(value) : value;
+    setRights((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, [field]: normalized } : r))
+    );
     setHasChanges(true);
   };
 
-  // 設定を保存
+  const addRight = () => {
+    if (!canAddMore) {
+      toast.error('これ以上権利を追加できません（最大24件）');
+      return;
+    }
+    setRights((prev) => [{ code: '', name: '', points: 0, unit: '' }, ...prev]);
+    setHasChanges(true);
+  };
+
+  const removeRight = (index: number) => {
+    setRights((prev) => prev.filter((_, i) => i !== index));
+    setHasChanges(true);
+  };
+
+  const handleRemoveRight = (index: number) => {
+    const right = rights[index];
+    const label = right?.code ? `権利${right.code}` : `${index + 1}件目`;
+    if (!window.confirm(`${label}を削除してもよろしいですか？`)) return;
+    removeRight(index);
+  };
+
+  const sortRights = (order: 'asc' | 'desc') => {
+    setSortOrder(order);
+    setRights((prev) =>
+      [...prev].sort((a, b) => {
+        const ca = (a.code || '').toUpperCase();
+        const cb = (b.code || '').toUpperCase();
+        return order === 'asc' ? ca.localeCompare(cb) : cb.localeCompare(ca);
+      })
+    );
+    setHasChanges(true);
+  };
+
   const handleSave = async () => {
+    const emptyCode = rights.find((r) => !r.code.trim());
+    if (emptyCode) {
+      toast.error('権利記号を入力してください');
+      return;
+    }
+    const invalidName = rights.find((r) => !r.name.trim());
+    if (invalidName) {
+      toast.error('すべての権利に名前を入力してください');
+      return;
+    }
+    const zeroPoints = rights.find((r) => r.points < 1);
+    if (zeroPoints) {
+      toast.error('消費量は1以上で設定してください。');
+      return;
+    }
+    const codesUpper = rights.map((r) => r.code.trim().toUpperCase()).filter(Boolean);
+    const seen = new Set<string>();
+    const duplicates: string[] = [];
+    for (const c of codesUpper) {
+      if (seen.has(c)) {
+        if (!duplicates.includes(c)) duplicates.push(c);
+      } else {
+        seen.add(c);
+      }
+    }
+    if (duplicates.length > 0) {
+      toast.error(`権利${duplicates.join('・')}が重複しています`);
+      return;
+    }
     try {
       setSaving(true);
-      const response = await fetch('/api/settings/rights', {
+      const sorted = [...rights].sort((a, b) =>
+        (a.code || '').toUpperCase().localeCompare((b.code || '').toUpperCase())
+      );
+      const res = await fetch('/api/settings/rights', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rightsConfig }),
+        body: JSON.stringify({ rights: sorted }),
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || '設定の保存に失敗しました');
+      const result = await res.json();
+      if (!res.ok) {
+        const msg = result.details ? `${result.error}\n${result.details}` : (result.error || '保存に失敗しました');
+        throw new Error(msg);
       }
-
       toast.success('権利設定を保存しました');
       setHasChanges(false);
-    } catch (error) {
-      console.error('権利設定保存エラー:', error);
-      toast.error(error instanceof Error ? error.message : '設定の保存に失敗しました');
+      await fetchRights();
+      setSortOrder('asc');
+    } catch (e) {
+      const message = e instanceof Error ? e.message : '保存に失敗しました';
+      toast.error(message);
     } finally {
       setSaving(false);
     }
   };
 
-  // 設定をリセット（デフォルト値に戻す）
-  const handleReset = () => {
-    if (confirm('設定をデフォルト値にリセットしますか？')) {
-      setRightsConfig(DEFAULT_RIGHTS_CONFIG);
-      setHasChanges(true);
-    }
-  };
-
-  // 権利カードコンポーネント
-  const RightCard = ({ rightCode, config }: { rightCode: keyof RightsConfig; config: RightConfig }) => (
-    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <div>
-          <h3 className="text-lg font-medium text-zinc-100 mb-1">
-            権利{rightCode}: {config.name}
-          </h3>
-        </div>
-      </div>
-      <div className="space-y-3">
-        <div>
-          <Label htmlFor={`${rightCode}-points`} className="text-zinc-300">
-            ゴルド消費量
-          </Label>
-          <Input
-            id={`${rightCode}-points`}
-            type="number"
-            value={config.points}
-            onChange={(e) => handleUpdateRight(rightCode, 'points', parseInt(e.target.value) || 0)}
-            className="bg-zinc-900 border-zinc-700 text-zinc-100 mt-1"
-            min="0"
-          />
-          <p className="text-xs text-zinc-500 mt-1">
-            1回使用するごとに消費されるゴルド数
-          </p>
-        </div>
-        {config.maxCount !== undefined && (
-          <div>
-            <Label htmlFor={`${rightCode}-maxCount`} className="text-zinc-300">
-              最大使用回数
-            </Label>
-            <Input
-              id={`${rightCode}-maxCount`}
-              type="number"
-              value={config.maxCount}
-              onChange={(e) => handleUpdateRight(rightCode, 'maxCount', parseInt(e.target.value) || 0)}
-              className="bg-zinc-900 border-zinc-700 text-zinc-100 mt-1"
-              min="1"
-            />
-            <p className="text-xs text-zinc-500 mt-1">
-              1日あたりの最大使用回数
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        {/* ヘッダー */}
-        <div className="mb-6">
+        <div className="mb-4">
           <Link
-            href="/settings"
+            href="/dashboard"
             className="inline-flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>設定に戻る</span>
+            <span>ダッシュボードに戻る</span>
           </Link>
-          <div className="flex items-center justify-between">
+          <div>
             <h1 className="text-3xl font-bold text-cyan-400">権利設定</h1>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleReset}
-                variant="outline"
-                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+            <p className="text-zinc-400 mt-2">
+              権利の追加・編集・削除ができます。権利記号はアルファベットのみ、最大24件。仕様単位・使用条件は自由記述です。
+            </p>
+          </div>
+          <div className="flex items-center justify-between gap-4 mt-4">
+            <Button
+              onClick={addRight}
+              disabled={!canAddMore}
+              variant="outline"
+              className="px-4 bg-[#35353b] border-[#35353b] text-white hover:bg-zinc-800 hover:text-white hover:border-zinc-800"
+            >
+              <Plus className="w-4 h-4 mr-1.5 shrink-0" />
+              権利を追加
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || saving}
+              className="bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {saving ? '保存中...' : '保存'}
+            </Button>
+          </div>
+          <div className="flex justify-end mt-6">
+            <div
+              className="inline-flex rounded overflow-hidden border border-zinc-700 bg-zinc-800/80"
+              role="group"
+              aria-label="並び替え"
+            >
+              <button
+                type="button"
+                onClick={() => sortRights('asc')}
+                disabled={loading || rights.length === 0}
+                title="権利記号の昇順（A→Z）で並び替え"
+                className={`inline-flex items-center gap-0.5 px-1.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                  sortOrder === 'asc'
+                    ? 'bg-cyan-600 text-white'
+                    : 'bg-transparent text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100'
+                }`}
               >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                リセット
-              </Button>
-              <Button
-                onClick={handleSave}
-                disabled={!hasChanges || saving}
-                className="bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                <ArrowUpAZ className="w-3 h-3" />
+                昇順
+              </button>
+              <button
+                type="button"
+                onClick={() => sortRights('desc')}
+                disabled={loading || rights.length === 0}
+                title="権利記号の降順（Z→A）で並び替え"
+                className={`inline-flex items-center gap-0.5 px-1.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-l border-zinc-600 ${
+                  sortOrder === 'desc'
+                    ? 'bg-cyan-600 text-white'
+                    : 'bg-transparent text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100'
+                }`}
               >
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? '保存中...' : '保存'}
-              </Button>
+                <ArrowDownZA className="w-3 h-3" />
+                降順
+              </button>
             </div>
           </div>
-          <p className="text-zinc-400 mt-2">
-            各権利のゴルド消費量を設定します。変更は保存ボタンをクリックすると反映されます。
-          </p>
         </div>
 
-        {/* 権利設定一覧 */}
         {loading ? (
           <div className="text-center py-12 text-zinc-400">読み込み中...</div>
         ) : (
           <div className="space-y-4">
-            {(Object.keys(rightsConfig) as Array<keyof RightsConfig>).map((rightCode) => (
-              <RightCard key={rightCode} rightCode={rightCode} config={rightsConfig[rightCode]} />
+            {rights.map((right, index) => (
+              <div
+                key={`right-${index}`}
+                className="bg-zinc-900 border border-zinc-800 rounded-lg p-4"
+              >
+                <div className="flex items-center justify-between gap-4 mb-3">
+                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-l-4 border-blue-500 pl-2 py-0.5">
+                    <span className="text-lg font-semibold text-blue-400">権利</span>
+                    <input
+                      type="text"
+                      id={`right-${index}-code`}
+                      value={right.code}
+                      onChange={(e) => updateRight(index, 'code', e.target.value)}
+                      onFocus={() => setFocusedCodeIndex(index)}
+                      onBlur={() => setFocusedCodeIndex(null)}
+                      placeholder="A"
+                      maxLength={10}
+                      autoCapitalize="characters"
+                      className="w-12 min-w-0 text-lg font-semibold text-blue-400 bg-transparent border-none outline-none placeholder:text-blue-400/50 focus:ring-0 p-0 uppercase"
+                    />
+                    {focusedCodeIndex === index && (
+                      <span className="text-base font-medium text-white">
+                        利用可能記号：{LETTERS.filter((c) => !rights.some((r, i) => i !== index && r.code.toUpperCase() === c)).join('・')}
+                      </span>
+                    )}
+                  </div>
+                  <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveRight(index)}
+                      className="text-red-400 hover:text-red-300 hover:bg-red-950"
+                      aria-label="この権利を削除"
+                    >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    削除
+                  </Button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <Label htmlFor={`right-${index}-name`} className="text-zinc-300">
+                      名前
+                    </Label>
+                    <Input
+                      id={`right-${index}-name`}
+                      value={right.name}
+                      onChange={(e) => updateRight(index, 'name', e.target.value)}
+                      placeholder="例: TVゲーム2時間"
+                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor={`right-${index}-points`} className="text-zinc-300">
+                      ゴルド消費量
+                    </Label>
+                    <Input
+                      id={`right-${index}-points`}
+                      type="number"
+                      min={0}
+                      value={right.points}
+                      onChange={(e) => updateRight(index, 'points', parseInt(e.target.value) || 0)}
+                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <Label htmlFor={`right-${index}-unit`} className="text-zinc-300">
+                    仕様単位・使用条件｜自由記述
+                  </Label>
+                  <Input
+                    id={`right-${index}-unit`}
+                    value={right.unit}
+                    onChange={(e) => updateRight(index, 'unit', e.target.value)}
+                    placeholder="例: 2時間、4杯まで、1回"
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                  />
+                  <p className="text-xs text-zinc-500 mt-1">
+                    1回使用あたりの単位を自由に記述します（日誌の入力時の目安）
+                  </p>
+                </div>
+              </div>
             ))}
           </div>
         )}
 
-        {/* 保存ボタン（下部にも配置） */}
         {!loading && (
-          <div className="mt-8 flex justify-end gap-2">
-            <Button
-              onClick={handleReset}
-              variant="outline"
-              className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              リセット
-            </Button>
+          <div className="mt-8 flex justify-end">
             <Button
               onClick={handleSave}
               disabled={!hasChanges || saving}

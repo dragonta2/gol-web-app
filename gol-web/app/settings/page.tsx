@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, AlertTriangle, ArrowLeft, Sparkles, ClipboardList, Settings as SettingsIcon } from 'lucide-react';
+import { Trash2, AlertTriangle, ArrowLeft, Sparkles, ClipboardList, Settings as SettingsIcon, User, Key, Bot, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -60,7 +60,51 @@ export default function SettingsPage() {
           <h1 className="text-3xl font-bold text-cyan-400">設定</h1>
         </div>
 
+        {/* アカウント・AI設定 */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-zinc-300 mb-3">アカウント・AI設定</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <Link href="/settings/account#nickname">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 mb-2">
+                  <User className="w-5 h-5 text-cyan-400" />
+                  <h3 className="text-base font-semibold text-zinc-100">ニックネーム</h3>
+                </div>
+                <p className="text-sm text-zinc-400">表示名の変更</p>
+              </div>
+            </Link>
+            <Link href="/settings/account#password">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 mb-2">
+                  <Key className="w-5 h-5 text-cyan-400" />
+                  <h3 className="text-base font-semibold text-zinc-100">パスワード変更</h3>
+                </div>
+                <p className="text-sm text-zinc-400">ログインパスワードの変更</p>
+              </div>
+            </Link>
+            <Link href="/settings/account#ai-personality">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 mb-2">
+                  <Bot className="w-5 h-5 text-cyan-400" />
+                  <h3 className="text-base font-semibold text-zinc-100">AIの性格</h3>
+                </div>
+                <p className="text-sm text-zinc-400">AIの話し方・性格の設定</p>
+              </div>
+            </Link>
+            <Link href="/settings/account#story-world">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 mb-2">
+                  <BookOpen className="w-5 h-5 text-cyan-400" />
+                  <h3 className="text-base font-semibold text-zinc-100">物語の世界観</h3>
+                </div>
+                <p className="text-sm text-zinc-400">物語の世界観・設定</p>
+              </div>
+            </Link>
+          </div>
+        </div>
+
         {/* 設定メニュー */}
+        <h2 className="text-lg font-semibold text-zinc-300 mb-3">データ管理</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Link href="/settings/habits">
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">

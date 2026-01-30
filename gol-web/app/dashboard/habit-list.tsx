@@ -11,8 +11,6 @@ import { FormInput, FormInputSmall, FormLabel } from '@/components/ui/form-input
 import { FormCard, FormCardContent } from '@/components/ui/form-card';
 import { toast } from 'sonner';
 import { Settings, Edit, ChevronDown, ChevronUp } from 'lucide-react';
-import type { Difficulty } from '@/lib/types';
-import { DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/types';
 
 interface Habit {
   id: string;
@@ -28,7 +26,7 @@ interface Habit {
   input_type: 'checkbox' | 'number';
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
-  difficulty?: Difficulty;
+  difficulty?: string;
   created_at: string;
   updated_at: string;
 }
@@ -65,7 +63,6 @@ interface HabitFormData {
   input_type: 'checkbox' | 'number';
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
-  difficulty: Difficulty;
 }
 
 function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
@@ -75,20 +72,6 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
   const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
-  // フィルター状態（ローカルストレージから復元）
-  const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('habit-filter-difficulties');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
-
-  // フィルター状態をローカルストレージに保存
-  useEffect(() => {
-    localStorage.setItem('habit-filter-difficulties', JSON.stringify(filterDifficulties));
-  }, [filterDifficulties]);
-
   const [formData, setFormData] = useState<HabitFormData>({
     habit_name: '',
     habit_type: 'good',
@@ -99,7 +82,6 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
     input_type: 'checkbox',
     exclude_weekends: false,
     exclude_from_complete: false,
-    difficulty: 'medium',
   });
 
   // habitsとhabit_logsをマージ（useMemoで計算）
@@ -139,19 +121,8 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
   const [isBadHabitsExpanded, setIsBadHabitsExpanded] = useState(true);
   const [isBonusExpanded, setIsBonusExpanded] = useState(true);
 
-  // フィルター適用関数
-  const applyFilters = (habits: HabitWithLog[]) => {
-    return habits.filter((habit) => {
-      // 難易度フィルター（OR条件：選択された難易度のいずれかに一致）
-      if (filterDifficulties.length > 0) {
-        if (!habit.difficulty || !filterDifficulties.includes(habit.difficulty)) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  };
+  // フィルター適用（習慣では難易度フィルターなし）
+  const applyFilters = (habits: HabitWithLog[]) => habits;
 
   // 良習慣、悪習慣、ボーナスに分類（フィルター適用後）
   const goodHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'good'));
@@ -394,7 +365,6 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
       input_type: 'checkbox',
       exclude_weekends: false,
       exclude_from_complete: false,
-      difficulty: 'medium',
     });
     setIsModalOpen(true);
   };
@@ -429,7 +399,6 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
       input_type: habit.input_type,
       exclude_weekends: habit.exclude_weekends,
       exclude_from_complete: habit.exclude_from_complete,
-      difficulty: habit.difficulty || 'medium',
     });
     setIsManagementModalOpen(false);
     setIsModalOpen(true);
@@ -589,8 +558,9 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
       toast.error('習慣名を入力してください');
       return;
     }
+    const pointsLabel = formData.habit_type === 'good' ? '加点ポイント' : formData.habit_type === 'bad' ? '減点ポイント' : 'ボーナスポイント';
     const numericFields = [
-      { label: 'ゴルド', value: formData.points },
+      { label: pointsLabel, value: formData.points },
       { label: '身体EXP', value: formData.exp_body },
       { label: '頭脳EXP', value: formData.exp_mind },
       { label: '精神EXP', value: formData.exp_spirit },
@@ -627,7 +597,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
             input_type: formData.input_type,
             exclude_weekends: formData.exclude_weekends,
             exclude_from_complete: formData.exclude_from_complete,
-            difficulty: formData.difficulty,
+            difficulty: 'medium',
           })
           .eq('id', editingHabit.id);
 
@@ -667,7 +637,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
             input_type: formData.input_type,
             exclude_weekends: formData.exclude_weekends,
             exclude_from_complete: formData.exclude_from_complete,
-            difficulty: formData.difficulty,
+            difficulty: 'medium',
             is_custom: true,
             display_order: displayOrder,
           })
@@ -702,70 +672,6 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      {/* フィルターUI */}
-      <FormCard className="p-3 sm:p-4">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-base sm:text-lg font-medium text-zinc-300">フィルター</h3>
-            {filterDifficulties.length > 0 && (
-              <span className="text-xs text-cyan-400 bg-cyan-900/30 px-2 py-1 rounded">
-                フィルター適用中: 良習慣 {goodHabits.length}件 / 悪習慣 {badHabits.length}件 / ボーナス {bonusHabits.length}件
-              </span>
-            )}
-          </div>
-
-          {/* 難易度フィルター */}
-          <div>
-            <FormLabel>難易度</FormLabel>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                onClick={() => setFilterDifficulties([])}
-                className={`px-3 py-1 text-sm rounded ${
-                  filterDifficulties.length === 0
-                    ? 'bg-cyan-600 text-white'
-                    : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                }`}
-              >
-                すべて
-              </button>
-              {(['easy', 'medium', 'hard'] as Difficulty[]).map((difficulty) => (
-                <button
-                  key={difficulty}
-                  onClick={() => {
-                    if (filterDifficulties.includes(difficulty)) {
-                      setFilterDifficulties(filterDifficulties.filter((d) => d !== difficulty));
-                    } else {
-                      setFilterDifficulties([...filterDifficulties, difficulty]);
-                    }
-                  }}
-                  className={`px-3 py-1 text-sm rounded ${
-                    filterDifficulties.includes(difficulty)
-                      ? `${DIFFICULTY_COLORS[difficulty]} text-white`
-                      : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                  }`}
-                >
-                  {DIFFICULTY_LABELS[difficulty]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* フィルターリセットボタン */}
-          {filterDifficulties.length > 0 && (
-            <div>
-              <Button
-                onClick={() => setFilterDifficulties([])}
-                variant="outline"
-                size="sm"
-                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
-              >
-                フィルターをクリア
-              </Button>
-            </div>
-          )}
-        </div>
-      </FormCard>
-
       {/* 良習慣実行 */}
       <div>
         <button
@@ -823,14 +729,6 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
                   >
                     {habit.habit_name}
                   </label>
-                  {habit.difficulty && (
-                    <span
-                      className={`px-2 py-0.5 text-xs rounded ${DIFFICULTY_COLORS[habit.difficulty]} text-white`}
-                      title={`難易度: ${DIFFICULTY_LABELS[habit.difficulty]}`}
-                    >
-                      {DIFFICULTY_LABELS[habit.difficulty]}
-                    </span>
-                  )}
                 </div>
               </div>
 
@@ -933,7 +831,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
                 )}
               </button>
 
-              {/* 習慣名、難易度、タグ */}
+              {/* 習慣名 */}
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <label
@@ -942,14 +840,6 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
                   >
                     {habit.habit_name}
                   </label>
-                  {habit.difficulty && (
-                    <span
-                      className={`px-2 py-0.5 text-xs rounded ${DIFFICULTY_COLORS[habit.difficulty]} text-white`}
-                      title={`難易度: ${DIFFICULTY_LABELS[habit.difficulty]}`}
-                    >
-                      {DIFFICULTY_LABELS[habit.difficulty]}
-                    </span>
-                  )}
                 </div>
               </div>
 
@@ -1100,21 +990,6 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
               placeholder="例: 筋トレ、読書、タバコを吸わない"
             />
 
-            {/* 習慣の種類 */}
-            <div>
-              <FormLabel htmlFor="habit_type">習慣の種類</FormLabel>
-              <select
-                id="habit_type"
-                value={formData.habit_type}
-                onChange={(e) => setFormData({ ...formData, habit_type: e.target.value as 'good' | 'bad' | 'bonus' })}
-                className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-              >
-                <option value="good">良習慣（やった場合にチェック）</option>
-                <option value="bad">悪習慣（やってしまった場合にチェック）</option>
-                <option value="bonus">ボーナス</option>
-              </select>
-            </div>
-
             {/* 入力タイプ */}
             <div>
               <FormLabel htmlFor="input_type">入力タイプ</FormLabel>
@@ -1122,40 +997,32 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
                 id="input_type"
                 value={formData.input_type}
                 onChange={(e) => setFormData({ ...formData, input_type: e.target.value as 'checkbox' | 'number' })}
-                className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
               >
                 <option value="checkbox">チェックボックス</option>
                 <option value="number">数値入力（回数・距離など）</option>
               </select>
             </div>
 
-            {/* 難易度 */}
+            {/* ポイント（種類に応じたラベル：加点/減点/ボーナス） */}
             <div>
-              <FormLabel htmlFor="difficulty">難易度</FormLabel>
-              <select
-                id="difficulty"
-                value={formData.difficulty}
-                onChange={(e) => setFormData({ ...formData, difficulty: e.target.value as Difficulty })}
-                className="mt-2 w-full pl-4 pr-8 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-              >
-                <option value="easy">やさしい</option>
-                <option value="medium">ふつう</option>
-                <option value="hard">むずかしい</option>
-              </select>
+              <FormLabel htmlFor="points">
+                {formData.habit_type === 'good' ? '加点ポイント（ゴルド）' : formData.habit_type === 'bad' ? '減点ポイント（ゴルド）' : 'ボーナスポイント（ゴルド）'}
+              </FormLabel>
+              <input
+                id="points"
+                type="number"
+                min="0"
+                value={formData.points}
+                onChange={(e) => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
+                className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              />
             </div>
 
-            {/* 報酬設定 */}
+            {/* 報酬設定（EXP） */}
             <FormCard variant="nested" className="p-4 space-y-3">
-              <h4 className="text-base font-medium text-yellow-400 mb-3">報酬設定</h4>
+              <h4 className="text-base font-medium text-yellow-400 mb-3">EXP設定</h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <FormInputSmall
-                  id="points"
-                  label="ゴルド"
-                  type="number"
-                  min="0"
-                  value={formData.points}
-                  onChange={(e) => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
-                />
                 <FormInputSmall
                   id="exp_body"
                   label="身体EXP"

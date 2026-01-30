@@ -1,129 +1,143 @@
 /**
  * 権利設定管理API Route
- * 
- * 権利のポイント消費量の取得・更新をサーバー側でバリデーション
+ * 権利の追加・編集・削除。配列形式で保存（code, name, points, unit）。
+ * unit: 使用単位の自由記述（旧 maxCount を廃止）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { validatePoints, validateAll } from '@/lib/validation';
+import { validatePoints } from '@/lib/validation';
+import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 
-// 権利設定のデフォルト値
-const DEFAULT_RIGHTS_CONFIG = {
-  A: { points: 5, name: 'TVゲーム2時間' },
-  B: { points: 4, name: 'お酒4杯まで' },
-  C: { points: 1, name: '食事時動画1時間毎', maxCount: 10 },
-  D: { points: 0, name: '睡眠導入剤' },
-  E: { points: 3, name: '朝食 or 昼食を食べる', maxCount: 3 },
-  F: { points: 10, name: 'EMKF' },
-  O: { points: 5, name: 'ON (PLN以外)' },
-  U: { points: 1, name: '宇都宮ダンス' },
-  X: { points: 10, name: 'PLN動画 & ON 1時間' },
-};
+export type RightItem = { code: string; name: string; points: number; unit: string };
 
-// GET: 権利設定を取得
-export async function GET(request: NextRequest) {
+/** 権利記号はアルファベットのみ。最大文字数 */
+const CODE_MAX_LENGTH = 10;
+
+/** 権利記号をアルファベットのみに正規化 */
+function sanitizeCode(code: string): string {
+  return code.replace(/[^a-zA-Z]/g, '').slice(0, CODE_MAX_LENGTH);
+}
+
+export { RIGHT_COLUMNS_BY_INDEX };
+
+const LEGACY_CODES = ['A', 'B', 'C', 'D', 'E', 'F', 'O', 'U', 'X'] as const;
+
+const DEFAULT_RIGHTS: RightItem[] = [
+  { code: 'A', name: 'TVゲーム2時間', points: 5, unit: '2時間' },
+  { code: 'B', name: 'お酒4杯まで', points: 4, unit: '4杯まで' },
+  { code: 'C', name: '食事時動画1時間毎', points: 1, unit: '1時間毎' },
+  { code: 'D', name: '睡眠導入剤', points: 0, unit: '1回' },
+  { code: 'E', name: '朝食 or 昼食を食べる', points: 3, unit: '1回' },
+  { code: 'F', name: 'EMKF', points: 10, unit: '1回' },
+  { code: 'O', name: 'ON (PLN以外)', points: 5, unit: '1回' },
+  { code: 'U', name: '宇都宮ダンス', points: 1, unit: '1回' },
+  { code: 'X', name: 'PLN動画 & ON 1時間', points: 10, unit: '1時間' },
+];
+
+function toRightsArray(config: unknown): RightItem[] {
+  if (Array.isArray(config)) {
+    return config
+      .filter((r): r is RightItem => r != null && typeof r === 'object' && typeof (r as any).code === 'string')
+      .map((r) => ({
+        code: sanitizeCode(String((r as any).code)),
+        name: typeof (r as any).name === 'string' ? (r as any).name : '',
+        points: typeof (r as any).points === 'number' ? (r as any).points : 0,
+        unit: typeof (r as any).unit === 'string' ? (r as any).unit : '',
+      }));
+  }
+  if (config && typeof config === 'object') {
+    const obj = config as Record<string, { name?: string; points?: number; maxCount?: number }>;
+    return LEGACY_CODES.map((code) => {
+      const c = obj[code];
+      const name = c?.name ?? '';
+      const points = typeof c?.points === 'number' ? c.points : 0;
+      const unit = (c as any)?.unit ?? (c?.maxCount != null ? `${c.maxCount}回まで` : '1回');
+      return { code, name, points, unit };
+    }).filter((r) => r.name.trim() !== '');
+  }
+  return [];
+}
+
+// GET: 権利設定を取得（配列で返す）
+export async function GET() {
   try {
     const supabase = await createClient();
-
-    // 認証チェック
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json(
-        { error: '認証が必要です' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
 
-    // ユーザーの権利設定を取得
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error } = await supabase
       .from('profiles')
       .select('rights_config')
       .eq('id', user.id)
       .single();
 
-    if (profileError) {
-      console.error('プロファイル取得エラー:', profileError);
-      return NextResponse.json(
-        { error: '設定の取得に失敗しました' },
-        { status: 500 }
-      );
+    if (error) {
+      console.error('プロファイル取得エラー:', error);
+      return NextResponse.json({ error: '設定の取得に失敗しました' }, { status: 500 });
     }
 
-    // rights_configが存在する場合はそれを使用、なければデフォルト値
-    const rightsConfig = profile?.rights_config || DEFAULT_RIGHTS_CONFIG;
+    const raw = profile?.rights_config;
+    let rights: RightItem[];
+    if (raw && typeof raw === 'object' && Array.isArray((raw as any).rights)) {
+      rights = toRightsArray((raw as any).rights);
+    } else {
+      rights = toRightsArray(raw);
+    }
+    if (rights.length === 0) {
+      rights = [...DEFAULT_RIGHTS];
+    }
 
-    return NextResponse.json({ rightsConfig });
-  } catch (error) {
-    console.error('権利設定取得APIエラー:', error);
+    return NextResponse.json({ rights });
+  } catch (err) {
+    console.error('権利設定取得APIエラー:', err);
     return NextResponse.json(
-      { error: '予期しないエラーが発生しました', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: '予期しないエラーが発生しました' },
       { status: 500 }
     );
   }
 }
 
-// PUT: 権利設定を更新
+// PUT: 権利設定を更新（配列で受け取り保存）
 export async function PUT(request: NextRequest) {
   try {
     const supabase = await createClient();
-
-    // 認証チェック
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return NextResponse.json(
-        { error: '認証が必要です' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
 
     const body = await request.json();
-    const { rightsConfig } = body;
+    const rights = body.rights;
 
-    // バリデーション: rightsConfigがオブジェクトであることを確認
-    if (!rightsConfig || typeof rightsConfig !== 'object') {
-      return NextResponse.json(
-        { error: '権利設定の形式が不正です' },
-        { status: 400 }
-      );
+    if (!Array.isArray(rights)) {
+      return NextResponse.json({ error: 'rights は配列で送信してください' }, { status: 400 });
     }
 
-    // 各権利のポイント値をバリデーション
-    const validRights = ['A', 'B', 'C', 'D', 'E', 'F', 'O', 'U', 'X'];
-    const validationErrors: string[] = [];
+    const validated: RightItem[] = [];
+    const MAX_RIGHTS = RIGHT_COLUMNS_BY_INDEX.length;
 
-    for (const rightCode of validRights) {
-      const rightConfig = rightsConfig[rightCode];
-      if (rightConfig && typeof rightConfig.points === 'number') {
-        const pointValidation = validatePoints(rightConfig.points);
-        if (!pointValidation.valid) {
-          validationErrors.push(`権利${rightCode}: ${pointValidation.error}`);
-        }
-      }
+    for (let i = 0; i < rights.length && validated.length < MAX_RIGHTS; i++) {
+      const r = rights[i];
+      const rawCode = typeof r?.code === 'string' ? r.code : '';
+      const code = sanitizeCode(rawCode.trim());
+      const name = typeof r.name === 'string' ? r.name.trim() : '';
+      const pointsRaw = r?.points;
+      const points = typeof pointsRaw === 'number' && !Number.isNaN(pointsRaw)
+        ? pointsRaw
+        : parseInt(String(pointsRaw ?? 0), 10) || 0;
+      const unit = typeof r.unit === 'string' ? r.unit.trim() : '';
+      const pointCheck = validatePoints(points);
+      if (!pointCheck.valid) continue;
+      validated.push({ code: code || `R${i + 1}`, name, points, unit: unit || '1回' });
     }
 
-    if (validationErrors.length > 0) {
-      return NextResponse.json(
-        { error: 'バリデーションエラー', details: validationErrors },
-        { status: 400 }
-      );
-    }
-
-    // デフォルト設定とマージ（存在しない権利はデフォルト値を使用）
-    const mergedConfig = { ...DEFAULT_RIGHTS_CONFIG };
-    for (const rightCode of validRights) {
-      if (rightsConfig[rightCode]) {
-        mergedConfig[rightCode as keyof typeof DEFAULT_RIGHTS_CONFIG] = {
-          ...mergedConfig[rightCode as keyof typeof DEFAULT_RIGHTS_CONFIG],
-          ...rightsConfig[rightCode],
-        };
-      }
-    }
-
-    // プロファイルを更新
+    const payload = { rights: validated };
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({ rights_config: mergedConfig })
+      .update({ rights_config: payload })
       .eq('id', user.id);
 
     if (updateError) {
@@ -134,11 +148,11 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ success: true, rightsConfig: mergedConfig });
-  } catch (error) {
-    console.error('権利設定更新APIエラー:', error);
+    return NextResponse.json({ success: true, rights: validated });
+  } catch (err) {
+    console.error('権利設定更新APIエラー:', err);
     return NextResponse.json(
-      { error: '予期しないエラーが発生しました', details: error instanceof Error ? error.message : 'Unknown error' },
+      { error: '予期しないエラーが発生しました' },
       { status: 500 }
     );
   }

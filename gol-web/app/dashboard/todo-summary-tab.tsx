@@ -992,7 +992,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
       >
             {/* 1. ToDoタイトル（左寄せ）｜難易度ラベル（右寄せ）・日誌カードと同じレイアウト */}
             <div className="flex items-center justify-between gap-2 mb-2">
-              <span className={`text-zinc-100 font-bold text-base flex-1 min-w-0 truncate ${isCompleted ? 'line-through' : ''}`}>
+              <span className={`text-zinc-100 font-bold text-base flex-1 min-w-0 truncate ${isCompleted ? 'line-through decoration-[3px]' : ''}`}>
                 {isCompleted && <span className="text-green-400 mr-1">✅</span>}
                 {todo.task_name}
               </span>
@@ -1123,7 +1123,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                                 <span
                                   className={
                                     subtask.is_completed
-                                      ? 'text-sm text-zinc-200 line-through'
+                                      ? 'text-sm text-zinc-200 line-through decoration-[3px]'
                                       : 'text-sm text-zinc-300'
                                   }
                                 >

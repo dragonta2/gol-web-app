@@ -110,6 +110,23 @@ export interface DailyLog {
   right_u_count: number;
   /** 権利Xの使用回数（PLN動画 & ON 1時間） */
   right_x_count: number;
+  /** 権利G〜Zの使用回数（アルファベット24種対応、DBにカラム追加が必要） */
+  right_g_count?: number;
+  right_h_count?: number;
+  right_j_count?: number;
+  right_k_count?: number;
+  right_l_count?: number;
+  right_m_count?: number;
+  right_n_count?: number;
+  right_p_count?: number;
+  right_q_count?: number;
+  right_r_count?: number;
+  right_s_count?: number;
+  right_t_count?: number;
+  right_v_count?: number;
+  right_w_count?: number;
+  right_y_count?: number;
+  right_z_count?: number;
   /** AI判定: 体調スコア（0-100） */
   ai_condition_body: number | null;
   /** AI判定: 気分スコア（0-100） */
@@ -336,8 +353,8 @@ export interface Right {
   name: string;
   /** 消費ポイント */
   points: number;
-  /** 最大使用回数（省略可能） */
-  maxCount?: number;
+  /** 使用単位（自由記述。例: 2時間、4杯まで） */
+  unit?: string;
   /** 使用回数 */
   count: number;
 }

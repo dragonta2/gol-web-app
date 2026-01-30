@@ -50,6 +50,40 @@
 
 ## 2601 --------------
 
+### 260130-金
+
+#### 完了済み取り消し線・ヘッダー日付の修正
+
+**作業内容:**
+
+1. **完了済みテキストの取り消し線**
+   - 二重線（decoration-double）をやめ、一本線で太さを3px（decoration-[3px]）に統一
+   - 変更箇所: 設定ToDoページの完了済みカード、ToDoサマリータブの完了済みカード・サブタスク完了時、Kanbanの完了済みカード・サブタスク完了時（計6箇所）
+   - 変更ファイル: `settings/todos/page.tsx`, `todo-summary-tab.tsx`, `kanban-board.tsx`
+
+2. **ヘッダー日付が「今日」にならない問題の修正**
+   - 原因: `new Date().toISOString().split('T')[0]` はUTC日付のため、日本時間では前日/翌日になることがある
+   - 対応: デフォルト日付と「今日」判定を日本時間で取得。`Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date())` で YYYY-MM-DD を取得
+   - 変更ファイル: `app/dashboard/page.tsx`
+
+**変更したファイル**
+
+- `gol-web/app/dashboard/page.tsx`: getTodayJST() を追加、selectedDate・isToday で使用
+- `gol-web/app/settings/todos/page.tsx`: 完了済みタイトルに line-through decoration-[3px]
+- `gol-web/app/dashboard/todo-summary-tab.tsx`: 完了済みタイトル・サブタスクに line-through decoration-[3px]
+- `gol-web/app/dashboard/kanban-board.tsx`: 完了済みタイトル・サブタスクに line-through decoration-[3px]
+
+**学んだこと**
+
+- Tailwindの decoration は decoration-0, 1, 2, 4, 8 のみデフォルトで、3px は任意値 decoration-[3px] で指定する
+- サーバー側で「今日」を扱うときはタイムゾーンを明示（Intl + Asia/Tokyo）するとずれを防げる
+
+#### 作業終了
+
+本日の作業を終了しました。
+
+---
+
 ### 260129-木
 
 #### ToDoサマリー・カードUIの調整

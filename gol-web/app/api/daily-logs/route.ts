@@ -2,6 +2,7 @@
  * 日誌保存API Route
  * 
  * 日誌データの保存・更新をサーバー側でバリデーション
+ * 権利カラムは RIGHT_COLUMNS_BY_INDEX で動的に処理（最大24件）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,6 +14,7 @@ import {
   validateUUID,
   validateAll,
 } from '@/lib/validation';
+import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 
 export async function PUT(request: NextRequest) {
   try {
@@ -28,35 +30,22 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const {
-      dailyLogId,
-      journalText,
-      impressionText,
-      right_a_count,
-      right_b_count,
-      right_c_count,
-      right_d_count,
-      right_e_count,
-      right_f_count,
-      right_o_count,
-      right_u_count,
-      right_x_count,
-    } = body;
+    const { dailyLogId, journalText, impressionText, ...rest } = body;
 
-    // バリデーション
-    const validation = validateAll([
+    // 権利カラムの値を配列順で取得しバリデーション
+    const rightCounts = RIGHT_COLUMNS_BY_INDEX.map((col) => {
+      const v = rest[col];
+      return typeof v === 'number' ? v : typeof v === 'string' ? parseInt(v, 10) : 0;
+    });
+    const maxPerRight = 99;
+    const validations = [
       validateUUID(dailyLogId, '日誌ID'),
       validateJournalText(journalText),
       validateImpressionText(impressionText),
-      validateRightCount(right_a_count, 99),
-      validateRightCount(right_b_count, 99),
-      validateRightCount(right_c_count, 10), // 権利Cは最大10回
-      validateRightCount(right_d_count, 99),
-      validateRightCount(right_f_count, 99),
-      validateRightCount(right_o_count, 99),
-      validateRightCount(right_u_count, 99),
-      validateRightCount(right_x_count, 99),
-    ]);
+      ...rightCounts.map((n, i) => validateRightCount(Number.isNaN(n) ? 0 : n, i === 2 ? 10 : maxPerRight)), // 3番目(権利C相当)は最大10回
+    ];
+
+    const validation = validateAll(validations);
 
     if (!validation.valid) {
       return NextResponse.json(
@@ -86,22 +75,18 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    const updatePayload: Record<string, unknown> = {
+      journal_text: journalText || null,
+      one_line_comment: impressionText || null,
+    };
+    RIGHT_COLUMNS_BY_INDEX.forEach((col, i) => {
+      updatePayload[col] = rightCounts[i] ?? 0;
+    });
+
     // 日誌を更新
     const { error: updateError } = await supabase
       .from('daily_logs')
-      .update({
-        journal_text: journalText || null,
-        one_line_comment: impressionText || null,
-        right_a_count: right_a_count || 0,
-        right_b_count: right_b_count || 0,
-        right_c_count: right_c_count || 0,
-        right_d_count: right_d_count || 0,
-        right_e_count: right_e_count || 0,
-        right_f_count: right_f_count || 0,
-        right_o_count: right_o_count || 0,
-        right_u_count: right_u_count || 0,
-        right_x_count: right_x_count || 0,
-      })
+      .update(updatePayload)
       .eq('id', dailyLogId);
 
     if (updateError) {
