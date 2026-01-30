@@ -14,7 +14,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { createClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
-import type { KanbanBoardProps, Todo, Difficulty, Tag } from '@/lib/types';
+import type { KanbanBoardProps, Todo, Difficulty } from '@/lib/types';
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, DIFFICULTY_MULTIPLIERS } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { FormLabel } from '@/components/ui/form-input';
@@ -76,20 +76,6 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
               </span>
             )}
           </div>
-          {todo.tags && todo.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {todo.tags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="px-2 py-0.5 text-xs rounded text-white"
-                  style={{ backgroundColor: tag.tag_color }}
-                  title={tag.tag_name}
-                >
-                  {tag.tag_name}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 
@@ -178,20 +164,6 @@ function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
               </span>
             )}
           </div>
-          {todo.tags && todo.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-1">
-              {todo.tags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="px-2 py-0.5 text-xs rounded text-white"
-                  style={{ backgroundColor: tag.tag_color }}
-                  title={tag.tag_name}
-                >
-                  {tag.tag_name}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       </div>
       {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと） */}
@@ -412,10 +384,7 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
   const [isUpdating, setIsUpdating] = useState(false);
   const [internalIsExpanded, setInternalIsExpanded] = useState(true); // アコーディオンの開閉状態（内部管理）
   // フィルター状態（初回はサーバーとクライアントで同じにし、マウント後に localStorage から復元して Hydration エラーを防ぐ）
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
   const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>([]);
-  const [isLoadingTags, setIsLoadingTags] = useState(false);
   const [sortDateActive, setSortDateActive] = useState<'asc' | 'desc'>('asc');
   const [sortDateInProgress, setSortDateInProgress] = useState<'asc' | 'desc'>('asc');
   const [sortDateCompleted, setSortDateCompleted] = useState<'asc' | 'desc'>('desc');
@@ -424,15 +393,6 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
 
   // マウント後に localStorage からフィルター・ソートを復元（Hydration 後のみ実行）
   useEffect(() => {
-    const savedTagIds = localStorage.getItem('todo-kanban-filter-tag-ids');
-    if (savedTagIds) {
-      try {
-        const parsed = JSON.parse(savedTagIds);
-        if (Array.isArray(parsed)) setFilterTagIds(parsed);
-      } catch {
-        /* ignore */
-      }
-    }
     const savedDiff = localStorage.getItem('todo-kanban-filter-difficulties');
     if (savedDiff) {
       try {
@@ -455,10 +415,6 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
   }, []);
 
   // フィルター状態をローカルストレージに保存
-  useEffect(() => {
-    localStorage.setItem('todo-kanban-filter-tag-ids', JSON.stringify(filterTagIds));
-  }, [filterTagIds]);
-
   useEffect(() => {
     localStorage.setItem('todo-kanban-filter-difficulties', JSON.stringify(filterDifficulties));
   }, [filterDifficulties]);
@@ -494,37 +450,9 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
     setTodos(initialTodos);
   }, [initialTodos]);
 
-  // タグ一覧を取得
-  useEffect(() => {
-    const fetchTags = async () => {
-      setIsLoadingTags(true);
-      try {
-        const response = await fetch('/api/tags');
-        if (!response.ok) {
-          throw new Error('タグの取得に失敗しました');
-        }
-        const data = await response.json();
-        setTags(data.tags || []);
-      } catch (err) {
-        console.error('タグ取得エラー:', err);
-      } finally {
-        setIsLoadingTags(false);
-      }
-    };
-
-    fetchTags();
-  }, []);
-
   // フィルター適用関数
   const applyFilters = (todoList: Todo[]) => {
     return todoList.filter((todo) => {
-      // タグフィルター（AND条件：選択されたタグのすべてが含まれている必要がある）
-      if (filterTagIds.length > 0) {
-        const todoTagIds = todo.tags?.map((t) => t.id) || [];
-        const hasAllTags = filterTagIds.every((tagId) => todoTagIds.includes(tagId));
-        if (!hasAllTags) return false;
-      }
-
       // 難易度フィルター（OR条件：選択された難易度のいずれかに一致）
       if (filterDifficulties.length > 0) {
         if (!todo.difficulty || !filterDifficulties.includes(todo.difficulty)) {
@@ -1071,61 +999,15 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
             <div className="space-y-3">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-base sm:text-lg font-medium text-zinc-300">フィルター</h3>
-                {(filterTagIds.length > 0 || filterDifficulties.length > 0) && (
+                {filterDifficulties.length > 0 && (
                   <span className="text-xs text-cyan-400 bg-cyan-900/30 px-2 py-1 rounded">
                     フィルター適用中: アクティブ {activeTodos.length}件 / 進行中 {inProgressTodos.length}件 / 完了 {completedTodos.length}件
                   </span>
                 )}
               </div>
 
-              {/* タグ・難易度フィルター（並列表示） */}
-              <div className="flex flex-row flex-nowrap gap-4 w-full">
-                {/* タグフィルター */}
-                <div className="flex-1 min-w-0 shrink-0 basis-1/2">
-                  <FormLabel>タグ</FormLabel>
-                  {isLoadingTags ? (
-                    <div className="mt-2 text-sm text-zinc-400">読み込み中...</div>
-                  ) : (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setFilterTagIds([])}
-                        className={`px-3 py-1 text-sm rounded ${
-                          filterTagIds.length === 0
-                            ? 'bg-cyan-600 text-white'
-                            : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                        }`}
-                      >
-                        すべて
-                      </button>
-                      {tags.map((tag) => (
-                        <button
-                          key={tag.id}
-                          onClick={() => {
-                            if (filterTagIds.includes(tag.id)) {
-                              setFilterTagIds(filterTagIds.filter((id) => id !== tag.id));
-                            } else {
-                              setFilterTagIds([...filterTagIds, tag.id]);
-                            }
-                          }}
-                          className={`px-3 py-1 text-sm rounded flex items-center gap-2 ${
-                            filterTagIds.includes(tag.id)
-                              ? 'bg-cyan-600 text-white'
-                              : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                          }`}
-                        >
-                          <span
-                            className="w-3 h-3 rounded"
-                            style={{ backgroundColor: tag.tag_color }}
-                          />
-                          {tag.tag_name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 難易度フィルター */}
-                <div className="flex-1 min-w-0 shrink-0 basis-1/2">
+              {/* 難易度フィルター */}
+              <div>
                   <FormLabel>難易度</FormLabel>
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
@@ -1159,16 +1041,12 @@ function KanbanBoard({ todos: initialTodos, dailyLogId, isExpanded: externalIsEx
                     ))}
                   </div>
                 </div>
-              </div>
 
               {/* フィルターリセットボタン */}
-              {(filterTagIds.length > 0 || filterDifficulties.length > 0) && (
+              {filterDifficulties.length > 0 && (
                 <div>
                   <Button
-                    onClick={() => {
-                      setFilterTagIds([]);
-                      setFilterDifficulties([]);
-                    }}
+                    onClick={() => setFilterDifficulties([])}
                     variant="outline"
                     size="sm"
                     className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"

@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import type { Todo, TodoLog, TodoSubtask, Difficulty, Tag } from '@/lib/types';
+import type { Todo, TodoLog, TodoSubtask, Difficulty } from '@/lib/types';
 import {
   DIFFICULTY_LABELS,
   DIFFICULTY_COLORS,
@@ -70,11 +70,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
   });
   const [editingSubtask, setEditingSubtask] = useState<{ todoId: string; subtask: TodoSubtask | null } | null>(null);
   const [subtaskFormData, setSubtaskFormData] = useState({ subtask_name: '' });
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [isLoadingTags, setIsLoadingTags] = useState(false);
   // フィルター状態（初回はサーバーとクライアントで同じにし、マウント後に localStorage から復元して Hydration エラーを防ぐ）
-  const [filterTagIds, setFilterTagIds] = useState<string[]>([]);
   const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>([]);
   // 月ごとのフィルター状態（'all' = すべて、'YYYY-MM' = 特定の月）
   const [monthFilter, setMonthFilter] = useState<string>('all');
@@ -88,15 +84,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
 
   // マウント後に localStorage からフィルターを復元（Hydration 後のみ実行）
   useEffect(() => {
-    const savedTagIds = localStorage.getItem('todo-summary-filter-tag-ids');
-    if (savedTagIds) {
-      try {
-        const parsed = JSON.parse(savedTagIds);
-        if (Array.isArray(parsed)) setFilterTagIds(parsed);
-      } catch {
-        /* ignore */
-      }
-    }
     const savedDiff = localStorage.getItem('todo-summary-filter-difficulties');
     if (savedDiff) {
       try {
@@ -110,16 +97,9 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
 
   // フィルター状態をローカルストレージに保存
   useEffect(() => {
-    localStorage.setItem('todo-summary-filter-tag-ids', JSON.stringify(filterTagIds));
-  }, [filterTagIds]);
-
-  useEffect(() => {
     localStorage.setItem('todo-summary-filter-difficulties', JSON.stringify(filterDifficulties));
   }, [filterDifficulties]);
-  // タグ管理モーダル
-  const [isTagManagementModalOpen, setIsTagManagementModalOpen] = useState(false);
-  const [editingTag, setEditingTag] = useState<Tag | null>(null);
-  const [tagFormData, setTagFormData] = useState({ tag_name: '', tag_color: '#3b82f6' });
+
   /** 属性選択（体・頭・心）。やさしいは1つのみ。編集時も変更可 */
   const [selectedAttributes, setSelectedAttributes] = useState<ExpAttribute[]>(['mind']);
   const [formData, setFormData] = useState<TodoFormData>({
@@ -139,13 +119,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
       // 検索フィルター
       if (searchQuery && !todo.task_name.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
-      }
-
-      // タグフィルター（AND条件：選択されたタグのすべてが含まれている必要がある）
-      if (filterTagIds.length > 0) {
-        const todoTagIds = todo.tags?.map((t) => t.id) || [];
-        const hasAllTags = filterTagIds.every((tagId) => todoTagIds.includes(tagId));
-        if (!hasAllTags) return false;
       }
 
       // 難易度フィルター（OR条件：選択された難易度のいずれかに一致）
@@ -230,11 +203,11 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
   // ステータス別にtodosを分類（フィルター適用後、並び替え）。useMemoで参照を安定させ、useEffectの無限ループを防ぐ
   const filteredActiveTodos = useMemo(
     () => sortTodos(applyFilters(todos.filter((todo) => todo.status === 'active'))),
-    [todos, filterTagIds, filterDifficulties, searchQuery]
+    [todos, filterDifficulties, searchQuery]
   );
   const filteredInProgressTodos = useMemo(
     () => sortTodos(applyFilters(todos.filter((todo) => todo.status === 'in_progress'))),
-    [todos, filterTagIds, filterDifficulties, searchQuery]
+    [todos, filterDifficulties, searchQuery]
   );
 
   // ドラッグ&ドロップで並び替えられた順序を管理
@@ -398,48 +371,9 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     };
   };
 
-  // タグ一覧を取得
-  const fetchTags = async () => {
-    setIsLoadingTags(true);
-    try {
-      const response = await fetch('/api/tags');
-      if (!response.ok) {
-        throw new Error('タグの取得に失敗しました');
-      }
-      const data = await response.json();
-      setTags(data.tags || []);
-    } catch (err) {
-      console.error('タグ取得エラー:', err);
-      toast.error('タグの取得に失敗しました');
-    } finally {
-      setIsLoadingTags(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
-  // ToDoのタグを取得
-  const fetchTodoTags = async (todoId: string) => {
-    try {
-      const response = await fetch(`/api/todos/${todoId}/tags`);
-      if (!response.ok) {
-        throw new Error('ToDoのタグ取得に失敗しました');
-      }
-      const data = await response.json();
-      // todoTagsからtag_idを抽出
-      const tagIds = (data.tags || []).map((tt: any) => tt.tag_id);
-      setSelectedTagIds(tagIds);
-    } catch (err) {
-      console.error('ToDoのタグ取得エラー:', err);
-    }
-  };
-
   // モーダルを開く（新規作成）
   const handleOpenCreateModal = () => {
     setEditingTodo(null);
-    setSelectedTagIds([]);
     setSelectedAttributes(['mind']);
     const gold = PRESET_GOLD_BY_DIFFICULTY['medium'];
     const dist = distributePresetExp(PRESET_EXP_BY_DIFFICULTY['medium'], ['mind']);
@@ -480,7 +414,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
       status: todo.status,
       difficulty: todo.difficulty || 'medium',
     });
-    fetchTodoTags(todo.id);
     setIsModalOpen(true);
   };
 
@@ -488,7 +421,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingTodo(null);
-    setSelectedTagIds([]);
   };
 
   // 日誌カンバンから「編集」で飛んできたとき、該当タスクの編集モーダルを開く
@@ -508,7 +440,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
       status: todo.status,
       difficulty: todo.difficulty || 'medium',
     });
-    fetchTodoTags(todo.id);
     setIsModalOpen(true);
     onInitialEditConsumed?.();
   }, [initialEditTodoId, todos, onInitialEditConsumed]);
@@ -773,34 +704,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
           return;
         }
 
-        // タグの更新処理
-        if (editingTodo) {
-          // 既存のタグを取得
-          const existingTagsResponse = await fetch(`/api/todos/${editingTodo.id}/tags`);
-          if (existingTagsResponse.ok) {
-            const existingTagsData = await existingTagsResponse.json();
-            const existingTagIds = (existingTagsData.tags || []).map((tt: any) => tt.tag_id);
-
-            // 削除するタグ
-            const tagsToRemove = existingTagIds.filter((id: string) => !selectedTagIds.includes(id));
-            for (const tagId of tagsToRemove) {
-              await fetch(`/api/todos/${editingTodo.id}/tags/${tagId}`, {
-                method: 'DELETE',
-              });
-            }
-
-            // 追加するタグ
-            const tagsToAdd = selectedTagIds.filter((id: string) => !existingTagIds.includes(id));
-            for (const tagId of tagsToAdd) {
-              await fetch(`/api/todos/${editingTodo.id}/tags`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ tag_id: tagId }),
-              });
-            }
-          }
-        }
-
         // 報酬計算・反映処理
         if (!wasCompleted && willBeCompleted) {
           // 未完了 → 完了: 報酬を付与
@@ -835,17 +738,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
             description: error?.message || 'データベースエラーが発生しました',
           });
           return;
-        }
-
-        // タグを追加
-        if (newTodo && selectedTagIds.length > 0) {
-          for (const tagId of selectedTagIds) {
-            await fetch(`/api/todos/${newTodo.id}/tags`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ tag_id: tagId }),
-            });
-          }
         }
 
         // 新規作成で完了状態の場合、報酬を付与
@@ -1113,20 +1005,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                 </span>
               )}
             </div>
-            {todo.tags && todo.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mb-2">
-                {todo.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="px-2 py-0.5 text-xs rounded text-white"
-                    style={{ backgroundColor: tag.tag_color }}
-                    title={tag.tag_name}
-                  >
-                    {tag.tag_name}
-                  </span>
-                ))}
-              </div>
-            )}
 
             {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと）｜ 編集ボタン（右寄せ・難易度の下の行） */}
             <div className="flex items-center justify-between gap-2 text-sm text-white mb-2">
@@ -1354,7 +1232,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     id: string; 
     todos: Todo[]; 
     status: 'active' | 'in_progress';
-    renderTodoCard: (todo: Todo, isCompleted: boolean) => JSX.Element;
+    renderTodoCard: (todo: Todo, isCompleted: boolean) => React.ReactElement;
   }) => {
     const { setNodeRef } = useDroppable({ id });
     const columnLabel = status === 'active' ? 'アクティブ' : '進行中';
@@ -1428,7 +1306,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
         <div className="space-y-3">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-base sm:text-lg font-medium text-zinc-300">フィルター</h3>
-            {(filterTagIds.length > 0 || filterDifficulties.length > 0 || monthFilter !== 'all') && (
+            {(filterDifficulties.length > 0 || monthFilter !== 'all') && (
               <span className="text-xs text-cyan-400 bg-cyan-900/30 px-2 py-1 rounded">
                 フィルター適用中: アクティブ {activeTodos.length}件 / 完了 {completedTodos.length}件
               </span>
@@ -1451,55 +1329,9 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
               ))}
             </select>
           </div>
-          
-          {/* タグ・難易度フィルター（並列表示） */}
-          <div className="flex flex-row gap-4">
-            {/* タグフィルター */}
-            <div className="flex-1 min-w-0">
-              <FormLabel>タグ</FormLabel>
-              {isLoadingTags ? (
-                <div className="mt-2 text-sm text-zinc-400">読み込み中...</div>
-              ) : (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => setFilterTagIds([])}
-                    className={`px-3 py-1 text-sm rounded ${
-                      filterTagIds.length === 0
-                        ? 'bg-cyan-600 text-white'
-                        : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                    }`}
-                  >
-                    すべて
-                  </button>
-                  {tags.map((tag) => (
-                    <button
-                      key={tag.id}
-                      onClick={() => {
-                        if (filterTagIds.includes(tag.id)) {
-                          setFilterTagIds(filterTagIds.filter((id) => id !== tag.id));
-                        } else {
-                          setFilterTagIds([...filterTagIds, tag.id]);
-                        }
-                      }}
-                      className={`px-3 py-1 text-sm rounded flex items-center gap-2 ${
-                        filterTagIds.includes(tag.id)
-                          ? 'bg-cyan-600 text-white'
-                          : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
-                      }`}
-                    >
-                      <span
-                        className="w-3 h-3 rounded"
-                        style={{ backgroundColor: tag.tag_color }}
-                      />
-                      {tag.tag_name}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
 
-            {/* 難易度フィルター */}
-            <div className="flex-1 min-w-0">
+          {/* 難易度フィルター */}
+          <div>
               <FormLabel>難易度</FormLabel>
               <div className="mt-2 flex flex-wrap gap-2">
                 <button
@@ -1533,14 +1365,12 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                 ))}
               </div>
             </div>
-          </div>
 
           {/* フィルターリセットボタン */}
-          {(filterTagIds.length > 0 || filterDifficulties.length > 0 || monthFilter !== 'all') && (
+          {(filterDifficulties.length > 0 || monthFilter !== 'all') && (
             <div>
               <Button
                 onClick={() => {
-                  setFilterTagIds([]);
                   setFilterDifficulties([]);
                   setMonthFilter('all');
                 }}
@@ -1668,7 +1498,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                   setSelectedAttributes(attrs);
                   const gold = PRESET_GOLD_BY_DIFFICULTY[d];
                   const totalExp = PRESET_EXP_BY_DIFFICULTY[d];
-                  const effective = attrs.length > 0 ? attrs : ['mind'];
+                  const effective: ExpAttribute[] = attrs.length > 0 ? attrs : ['mind'];
                   const dist = distributePresetExp(totalExp, effective);
                   setFormData((prev) => ({
                     ...prev,
@@ -1771,229 +1601,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
               onChange={(value) => setFormData({ ...formData, due_date: value })}
               optional
             />
-
-            {/* タグ選択 */}
-            <div>
-              <FormLabel htmlFor="tags">タグ</FormLabel>
-              {isLoadingTags ? (
-                <div className="mt-2 text-sm text-zinc-400">読み込み中...</div>
-              ) : (
-                <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
-                  {tags.length === 0 ? (
-                    <div className="text-sm text-zinc-400">タグがありません</div>
-                  ) : (
-                    tags.map((tag) => (
-                      <div key={tag.id} className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          id={`todo-tag-${tag.id}`}
-                          checked={selectedTagIds.includes(tag.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedTagIds([...selectedTagIds, tag.id]);
-                            } else {
-                              setSelectedTagIds(selectedTagIds.filter((id) => id !== tag.id));
-                            }
-                          }}
-                          className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-700 rounded focus:ring-cyan-500"
-                        />
-                        <label
-                          htmlFor={`todo-tag-${tag.id}`}
-                          className="flex items-center gap-2 cursor-pointer flex-1"
-                        >
-                          <span
-                            className="w-4 h-4 rounded"
-                            style={{ backgroundColor: tag.tag_color }}
-                          />
-                          <span className="text-base text-zinc-300">{tag.tag_name}</span>
-                        </label>
-                      </div>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-      </Modal>
-
-      {/* タグ管理モーダル */}
-      <Modal
-        open={isTagManagementModalOpen}
-        onOpenChange={setIsTagManagementModalOpen}
-        title={editingTag ? 'タグを編集' : '+ 新規タグを作成'}
-        description={editingTag ? 'タグの内容を編集します' : '新しいタグを作成して、習慣やToDoを分類しましょう'}
-        footer={
-          <>
-            <Button
-              onClick={async () => {
-                if (!tagFormData.tag_name.trim()) {
-                  toast.error('タグ名を入力してください');
-                  return;
-                }
-
-                try {
-                  const url = editingTag ? `/api/tags/${editingTag.id}` : '/api/tags';
-                  const method = editingTag ? 'PUT' : 'POST';
-                  
-                  const response = await fetch(url, {
-                    method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      tag_name: tagFormData.tag_name.trim(),
-                      tag_color: tagFormData.tag_color,
-                    }),
-                  });
-
-                  if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'タグの保存に失敗しました');
-                  }
-
-                  toast.success(editingTag ? 'タグを更新しました' : 'タグを作成しました');
-                  setIsTagManagementModalOpen(false);
-                  setEditingTag(null);
-                  setTagFormData({ tag_name: '', tag_color: '#3b82f6' });
-                  await fetchTags(); // タグ一覧を再取得
-                } catch (err) {
-                  console.error('タグ保存エラー:', err);
-                  toast.error(err instanceof Error ? err.message : 'タグの保存に失敗しました');
-                }
-              }}
-              className="bg-cyan-600 hover:bg-cyan-700 text-white"
-            >
-              {editingTag ? '更新' : '作成'}
-            </Button>
-            <Button
-              onClick={() => {
-                setIsTagManagementModalOpen(false);
-                setEditingTag(null);
-                setTagFormData({ tag_name: '', tag_color: '#3b82f6' });
-              }}
-              variant="outline"
-              className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
-            >
-              キャンセル
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-4">
-          {/* タグ名 */}
-          <FormInput
-            id="tag_name"
-            label="タグ名"
-            required
-            type="text"
-            value={tagFormData.tag_name}
-            onChange={(e) => setTagFormData({ ...tagFormData, tag_name: e.target.value })}
-            placeholder="例: 運動、学習、仕事"
-          />
-
-          {/* タグの色 */}
-          <div>
-            <FormLabel htmlFor="tag_color">タグの色</FormLabel>
-            <div className="mt-2 flex items-center gap-3">
-              <input
-                type="color"
-                id="tag_color"
-                value={tagFormData.tag_color}
-                onChange={(e) => setTagFormData({ ...tagFormData, tag_color: e.target.value })}
-                className="w-16 h-10 rounded border border-zinc-700 cursor-pointer"
-              />
-              <input
-                type="text"
-                value={tagFormData.tag_color}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
-                    setTagFormData({ ...tagFormData, tag_color: value });
-                  }
-                }}
-                placeholder="#3b82f6"
-                className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              />
-            </div>
-          </div>
-
-          {/* 既存タグ一覧 */}
-          <div>
-            <FormLabel>既存のタグ</FormLabel>
-            {isLoadingTags ? (
-              <div className="mt-2 text-sm text-zinc-400">読み込み中...</div>
-            ) : tags.length === 0 ? (
-              <div className="mt-2 text-sm text-zinc-400">タグがありません</div>
-            ) : (
-              <div className="mt-2 space-y-2 max-h-64 overflow-y-auto">
-                {tags.map((tag) => (
-                  <div
-                    key={tag.id}
-                    className="flex items-center justify-between p-3 bg-zinc-800 border border-zinc-700 rounded-lg"
-                  >
-                    <div className="flex items-center gap-2 flex-1">
-                      <span
-                        className="w-4 h-4 rounded"
-                        style={{ backgroundColor: tag.tag_color }}
-                      />
-                      <span className="text-base text-zinc-300">{tag.tag_name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        onClick={() => {
-                          setEditingTag(tag);
-                          setTagFormData({
-                            tag_name: tag.tag_name,
-                            tag_color: tag.tag_color,
-                          });
-                        }}
-                        variant="ghost"
-                        size="sm"
-                        className="text-cyan-400 hover:text-cyan-300 h-8 px-2"
-                      >
-                        編集
-                      </Button>
-                      <Button
-                        onClick={async () => {
-                          if (!window.confirm(`「${tag.tag_name}」を削除してもよろしいですか？`)) {
-                            return;
-                          }
-
-                          try {
-                            const response = await fetch(`/api/tags/${tag.id}`, {
-                              method: 'DELETE',
-                            });
-
-                            if (!response.ok) {
-                              const error = await response.json();
-                              throw new Error(error.error || 'タグの削除に失敗しました');
-                            }
-
-                            toast.success('タグを削除しました');
-                            await fetchTags(); // タグ一覧を再取得
-                            
-                            // 選択中のタグが削除された場合は選択から除外
-                            if (selectedTagIds.includes(tag.id)) {
-                              setSelectedTagIds(selectedTagIds.filter((id) => id !== tag.id));
-                            }
-                            if (filterTagIds.includes(tag.id)) {
-                              setFilterTagIds(filterTagIds.filter((id) => id !== tag.id));
-                            }
-                          } catch (err) {
-                            console.error('タグ削除エラー:', err);
-                            toast.error(err instanceof Error ? err.message : 'タグの削除に失敗しました');
-                          }
-                        }}
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-400 hover:text-red-300 h-8 px-2"
-                      >
-                        削除
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
       </Modal>
     </div>
   );

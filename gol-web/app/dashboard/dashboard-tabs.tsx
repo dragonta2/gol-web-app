@@ -213,7 +213,7 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
               dailyLog={dailyLog} 
               logDate={selectedDate || dailyLog?.log_date}
               expandedStates={journalFormStates}
-              onExpandedStateChange={setJournalFormStates}
+              onExpandedStateChange={(state) => setJournalFormStates((prev) => ({ ...prev, ...state }))}
             />
 
             {/* 過去の日誌一覧 */}

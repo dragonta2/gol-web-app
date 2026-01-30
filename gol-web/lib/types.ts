@@ -44,8 +44,6 @@ export interface Habit {
   exclude_from_complete: boolean;
   /** 難易度 */
   difficulty: Difficulty;
-  /** タグリスト（UI表示用、JOINで取得） */
-  tags?: Tag[];
   /** 作成日時 */
   created_at: string;
   /** 更新日時 */
@@ -165,8 +163,6 @@ export interface Todo {
   display_order: number;
   /** 難易度 */
   difficulty: Difficulty;
-  /** タグリスト（UI表示用、JOINで取得） */
-  tags?: Tag[];
   /** 作成日時 */
   created_at: string;
   /** 更新日時 */
@@ -221,59 +217,6 @@ export interface TodoSubtask {
   created_at: string;
   /** 更新日時 */
   updated_at: string;
-}
-
-/**
- * tagsテーブル（タグマスタ）
- * 
- * ユーザーが作成したタグの定義を格納
- * 例: "運動", "仕事", "プライベート" など
- */
-export interface Tag {
-  /** タグの一意ID */
-  id: string;
-  /** ユーザーID */
-  user_id: string;
-  /** タグ名（例: "運動", "仕事"） */
-  tag_name: string;
-  /** タグの色（HEX形式、例: "#3b82f6"） */
-  tag_color: string;
-  /** 作成日時 */
-  created_at: string;
-  /** 更新日時 */
-  updated_at: string;
-}
-
-/**
- * habit_tagsテーブル（習慣-タグ関連）
- * 
- * 習慣とタグの多対多リレーション
- */
-export interface HabitTag {
-  /** 関連ID */
-  id: string;
-  /** 習慣ID */
-  habit_id: string;
-  /** タグID */
-  tag_id: string;
-  /** 作成日時 */
-  created_at: string;
-}
-
-/**
- * todo_tagsテーブル（ToDo-タグ関連）
- * 
- * ToDoとタグの多対多リレーション
- */
-export interface TodoTag {
-  /** 関連ID */
-  id: string;
-  /** ToDoタスクID */
-  todo_id: string;
-  /** タグID */
-  tag_id: string;
-  /** 作成日時 */
-  created_at: string;
 }
 
 /**

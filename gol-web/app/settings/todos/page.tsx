@@ -371,7 +371,7 @@ export default function TodosSettingsPage() {
                         setSelectedAttributes(attrs);
                         const gold = PRESET_GOLD_BY_DIFFICULTY[d];
                         const totalExp = PRESET_EXP_BY_DIFFICULTY[d];
-                        const effective = attrs.length > 0 ? attrs : ['mind'];
+                        const effective: ExpAttribute[] = attrs.length > 0 ? attrs : ['mind'];
                         const dist = distributePresetExp(totalExp, effective);
                         setFormData((prev) => ({
                           ...prev,

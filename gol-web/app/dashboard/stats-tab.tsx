@@ -406,7 +406,7 @@ export default function StatsTab() {
                   color: '#f4f4f5',
                 }}
                 labelStyle={{ color: '#a1a1aa' }}
-                formatter={(value: number) => [value, '']}
+                formatter={(value: number | undefined) => [value ?? 0, '']}
               />
               <Legend
                 wrapperStyle={{ color: '#a1a1aa', fontSize: '12px' }}
@@ -551,8 +551,8 @@ export default function StatsTab() {
                     color: '#f4f4f5',
                   }}
                   labelStyle={{ color: '#a1a1aa' }}
-                  formatter={(value: number, name: string, props: any) => [
-                    `${value}% (${props.payload.completedDays}/${props.payload.totalDays}日)`,
+                  formatter={(value: number | undefined, name: string | undefined, props: any) => [
+                    `${value ?? 0}% (${props.payload?.completedDays ?? 0}/${props.payload?.totalDays ?? 0}日)`,
                     '達成率',
                   ]}
                 />
@@ -619,8 +619,8 @@ export default function StatsTab() {
                       color: '#f4f4f5',
                     }}
                     labelStyle={{ color: '#a1a1aa' }}
-                    formatter={(value: number, name: string, props: any) => [
-                      `${value}% (${props.payload.completed}/${props.payload.total}個)`,
+                    formatter={(value: number | undefined, name: string | undefined, props: any) => [
+                      `${value ?? 0}% (${props.payload?.completed ?? 0}/${props.payload?.total ?? 0}個)`,
                       '完了率',
                     ]}
                   />

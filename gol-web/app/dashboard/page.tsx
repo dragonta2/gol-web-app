@@ -93,53 +93,22 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   // 並列で取得できるクエリを同時実行（パフォーマンス最適化）
   const [habitsResult, todosResult] = await Promise.all([
-    // ユーザーのhabitsを取得（タグもJOINで取得）
     supabase
       .from('habits')
-      .select(`
-        *,
-        habit_tags (
-          tag_id,
-          tags (
-            id,
-            tag_name,
-            tag_color
-          )
-        )
-      `)
+      .select('*')
       .eq('user_id', user.id)
       .order('habit_type', { ascending: true })
       .order('display_order', { ascending: true }),
-    // ユーザーのtodosを取得（タグもJOINで取得）
     supabase
       .from('todos')
-      .select(`
-        *,
-        todo_tags (
-          tag_id,
-          tags (
-            id,
-            tag_name,
-            tag_color
-          )
-        )
-      `)
+      .select('*')
       .eq('user_id', user.id)
       .order('status', { ascending: true })
       .order('display_order', { ascending: true }),
   ]);
 
-  // habitsとtodosのデータを整形（タグ情報をtagsプロパティに変換）
-  const habits = (habitsResult.data || []).map((habit: any) => ({
-    ...habit,
-    tags: (habit.habit_tags || []).map((ht: any) => ht.tags).filter(Boolean),
-  }));
-
-  // todosとtagsのデータを整形（タグ情報をtagsプロパティに変換）
-  const todos = (todosResult.data || []).map((todo: any) => ({
-    ...todo,
-    tags: (todo.todo_tags || []).map((tt: any) => tt.tags).filter(Boolean),
-  }));
+  const habits = habitsResult.data || [];
+  const todos = todosResult.data || [];
 
   const todosError = todosResult.error;
 

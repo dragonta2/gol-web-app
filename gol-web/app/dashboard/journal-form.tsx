@@ -22,10 +22,19 @@ interface Right {
   count: number;
 }
 
+export type JournalFormExpandedStates = {
+  journal: boolean;
+  impression: boolean;
+  rights: boolean;
+  ai: boolean;
+};
+
 interface JournalFormProps {
   dailyLogId: string | null;
   dailyLog: DailyLog | null;
   logDate?: string; // 選択された日付（YYYY-MM-DD形式）
+  expandedStates?: JournalFormExpandedStates;
+  onExpandedStateChange?: (state: Partial<JournalFormExpandedStates>) => void;
 }
 
 interface AIJudgmentResult {
