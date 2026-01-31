@@ -80,6 +80,22 @@ function JournalImpressionSections({
     return selected < today;
   })();
 
+  // 選択された日付が今日かどうかを判定
+  const isToday = (() => {
+    if (!logDate) return true; // デフォルトは今日
+    const selected = new Date(logDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    selected.setHours(0, 0, 0, 0);
+    return selected.getTime() === today.getTime();
+  })();
+
+  // 日誌が確定済みかどうか
+  const isConfirmed = dailyLog?.is_confirmed ?? false;
+
+  // 編集可能かどうか（当日 OR 未確定の過去）
+  const isEditable = isToday || (isPastDate && !isConfirmed);
+
   // 日誌本文と一言感想の状態
   const [journalText, setJournalText] = useState(dailyLog?.journal_text || '');
   const [impressionText, setImpressionText] = useState(dailyLog?.one_line_comment || '');
@@ -102,7 +118,7 @@ function JournalImpressionSections({
   // 日誌本文の保存（デバウンス付き）
   const handleJournalTextChange = (value: string) => {
     setJournalText(value);
-    if (!dailyLogId || isPastDate) return;
+    if (!dailyLogId || !isEditable) return;
 
     // 既存のタイマーをクリア
     if (journalTextTimeoutRef.current) {
@@ -129,7 +145,7 @@ function JournalImpressionSections({
   // 一言感想の保存（デバウンス付き）
   const handleImpressionTextChange = (value: string) => {
     setImpressionText(value);
-    if (!dailyLogId || isPastDate) return;
+    if (!dailyLogId || !isEditable) return;
 
     // 既存のタイマーをクリア
     if (impressionTextTimeoutRef.current) {
@@ -203,7 +219,7 @@ function JournalImpressionSections({
                   placeholder="0730｜起床&#10;1000｜デスク向かう&#10;1200｜筋トレ&#10;..."
                   aria-label="今日の日誌を入力する"
                   aria-describedby="journal-text-count"
-                  disabled={isPastDate}
+                  disabled={!isEditable}
                   className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[600px] overflow-y-auto"
                 />
                 <div id="journal-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 flex-shrink-0" aria-live="polite">
@@ -243,7 +259,7 @@ function JournalImpressionSections({
                   placeholder="今日は久しぶりに運動ができて..."
                   aria-label="一言感想を入力する"
                   aria-describedby="impression-text-count"
-                  disabled={isPastDate}
+                  disabled={!isEditable}
                   className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[600px] overflow-y-auto"
                 />
                 <div id="impression-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 flex-shrink-0" aria-live="polite">

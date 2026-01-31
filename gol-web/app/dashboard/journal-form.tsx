@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, memo, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,7 @@ import { toast } from 'sonner';
 import { fetchWithRetry } from '@/lib/api-retry';
 import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 import type { DailyLog } from '@/lib/types';
-import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp, Settings, Check, Unlock } from 'lucide-react';
 
 interface Right {
   id: string;
@@ -135,6 +136,26 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     return targetDate < today;
   })();
 
+  // 選択された日付が今日かどうかを判定
+  const isToday = (() => {
+    if (!logDate && !dailyLog?.log_date) return true; // デフォルトは今日
+    const selectedDate = logDate || dailyLog?.log_date;
+    if (!selectedDate) return true;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date(selectedDate);
+    targetDate.setHours(0, 0, 0, 0);
+    
+    return targetDate.getTime() === today.getTime();
+  })();
+
+  // 日誌が確定済みかどうか
+  const isConfirmed = dailyLog?.is_confirmed ?? false;
+
+  // 編集可能かどうか（当日 OR 未確定の過去）
+  const isEditable = isToday || (isPastDate && !isConfirmed);
+
   // 権利設定を取得（配列形式）
   const [rightsList, setRightsList] = useState<Array<{ code: string; name: string; points: number; unit: string }>>([]);
 
@@ -246,6 +267,63 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       toast.error('日誌の保存に失敗しました', {
         description: error instanceof Error ? error.message : '予期しないエラーが発生しました',
       });
+    }
+  };
+
+  // 日誌を確定する
+  const handleConfirm = async () => {
+    if (!dailyLogId) {
+      toast.error('日誌IDが取得できませんでした');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('daily_logs')
+        .update({ is_confirmed: true })
+        .eq('id', dailyLogId);
+
+      if (error) {
+        console.error('Error confirming journal:', error);
+        toast.error('日誌の確定に失敗しました');
+      } else {
+        toast.success('日誌を確定しました');
+        router.refresh();
+      }
+    } catch (error) {
+      console.error('Error confirming journal:', error);
+      toast.error('日誌の確定に失敗しました');
+    }
+  };
+
+  // 日誌の確定を取り消す（当日のみ）
+  const handleUnconfirm = async () => {
+    if (!dailyLogId) {
+      toast.error('日誌IDが取得できませんでした');
+      return;
+    }
+
+    if (!isToday) {
+      toast.error('確定の取り消しは当日のみ可能です');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('daily_logs')
+        .update({ is_confirmed: false })
+        .eq('id', dailyLogId);
+
+      if (error) {
+        console.error('Error unconfirming journal:', error);
+        toast.error('確定の取り消しに失敗しました');
+      } else {
+        toast.success('確定を取り消しました');
+        router.refresh();
+      }
+    } catch (error) {
+      console.error('Error unconfirming journal:', error);
+      toast.error('確定の取り消しに失敗しました');
     }
   };
 
@@ -595,25 +673,6 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
   return (
     <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-      {/* 過去の日誌の場合の警告 */}
-      {isPastDate && (
-        <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4">
-          <p className="text-yellow-400 text-center font-medium">
-            ⚠️ 過去の日誌は閲覧専用です。編集することはできません。
-          </p>
-        </div>
-      )}
-
-      {/* 過去の日付で日誌が存在しない場合のメッセージ */}
-      {isPastDate && !dailyLog && (
-        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-8 text-center">
-          <p className="text-zinc-400 text-lg">
-            この日付には日誌が記録されていません。
-          </p>
-        </div>
-      )}
-
-
       {/* 本日の利用ポイント（過去の日付で日誌が存在する場合のみ表示） */}
       {(!isPastDate || dailyLog) && (
         <div>
@@ -649,7 +708,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                     min="0"
                     value={right.count}
                     onChange={(e) => updateRightCount(right.id, parseInt(e.target.value) || 0)}
-                    disabled={isPastDate}
+                    disabled={!isEditable}
                     className="w-16 px-2 py-1 bg-zinc-800 border-zinc-600 text-zinc-50 text-center text-base focus:border-red-500 disabled:opacity-60 disabled:cursor-not-allowed"
                   />
 
@@ -669,14 +728,25 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                   </div>
                 </div>
               )}
+
+              {/* 権利設定へのリンク */}
+              <div className="pt-3 mt-3 border-t border-zinc-800 flex justify-end">
+                <Link
+                  href="/settings/rights"
+                  className="inline-flex items-center gap-1.5 text-sm text-cyan-400 hover:text-cyan-300 hover:underline"
+                >
+                  <Settings className="w-4 h-4" />
+                  権利設定
+                </Link>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* 日誌を保存ボタン */}
-      {!isPastDate && (
-        <div className="flex justify-center">
+      {/* 日誌を保存ボタン・確定ボタン */}
+      {isEditable && (
+        <div className="flex justify-center gap-3">
           <Button
             onClick={handleSave}
             aria-label="日誌を保存する"
@@ -685,6 +755,33 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           >
             <Save className="w-4 h-4 mr-1" />
             日誌を保存
+          </Button>
+          {!isConfirmed && (
+            <Button
+              onClick={handleConfirm}
+              aria-label="日誌を確定する"
+              className="bg-green-600 hover:bg-green-700 text-white"
+              size="lg"
+            >
+              <Check className="w-4 h-4 mr-1" />
+              確定
+            </Button>
+          )}
+        </div>
+      )}
+
+      {/* 確定取り消しボタン（当日かつ確定済みの場合のみ） */}
+      {isToday && isConfirmed && (
+        <div className="flex justify-center">
+          <Button
+            onClick={handleUnconfirm}
+            aria-label="確定を取り消す"
+            variant="outline"
+            className="border-yellow-600 text-yellow-400 hover:bg-yellow-600/20"
+            size="lg"
+          >
+            <Unlock className="w-4 h-4 mr-1" />
+            確定を取り消す
           </Button>
         </div>
       )}
@@ -711,7 +808,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           {isAiExpanded && (
             <div id="ai-content" className="space-y-6">
               {/* AI判定実行ボタン */}
-        {!isPastDate && (
+        {isEditable && (
           <div className="text-center">
             <Button
               onClick={handleAIJudgment}
@@ -726,9 +823,9 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             </Button>
           </div>
         )}
-        {isPastDate && (
+        {!isEditable && (
           <div className="text-center p-4 bg-zinc-800/50 rounded-lg">
-            <p className="text-zinc-400 text-sm">過去の日誌ではAI判定を実行できません</p>
+            <p className="text-zinc-400 text-sm">確定済みの日誌ではAI判定を実行できません</p>
           </div>
         )}
 
@@ -787,7 +884,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-medium text-cyan-400">辛口コーチング アドバイス</h3>
-              {!aiAdvice && !isGeneratingAdvice && !isPastDate && (
+              {!aiAdvice && !isGeneratingAdvice && isEditable && (
                 <Button
                   onClick={handleGenerateAdvice}
                   disabled={isGeneratingAdvice}
@@ -821,7 +918,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-medium text-cyan-400">RPG物語風あらすじ</h3>
-            {!aiStory && !isGeneratingStory && !isPastDate && (
+            {!aiStory && !isGeneratingStory && isEditable && (
               <Button
                 onClick={handleGenerateStory}
                 disabled={isGeneratingStory}

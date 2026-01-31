@@ -182,7 +182,7 @@ export default function RightsSettingsPage() {
           <div>
             <h1 className="text-3xl font-bold text-cyan-400">権利設定</h1>
             <p className="text-zinc-400 mt-2">
-              権利の追加・編集・削除ができます。権利記号はアルファベットのみ、最大24件。仕様単位・使用条件は自由記述です。
+              権利の追加・編集・削除ができます。権利記号はアルファベットのみ。
             </p>
           </div>
           <div className="flex items-center justify-between gap-4 mt-4">
@@ -204,7 +204,8 @@ export default function RightsSettingsPage() {
               {saving ? '保存中...' : '保存'}
             </Button>
           </div>
-          <div className="flex justify-end mt-6">
+          <div className="flex items-center justify-between mt-6">
+            <p className="text-sm text-zinc-200">現在の設定数 {rights.length}/{MAX_RIGHTS}</p>
             <div
               className="inline-flex rounded overflow-hidden border border-zinc-700 bg-zinc-800/80"
               role="group"
@@ -313,7 +314,7 @@ export default function RightsSettingsPage() {
                 </div>
                 <div className="mt-3">
                   <Label htmlFor={`right-${index}-unit`} className="text-zinc-300">
-                    仕様単位・使用条件｜自由記述
+                    使用単位・条件｜自由記述
                   </Label>
                   <Input
                     id={`right-${index}-unit`}

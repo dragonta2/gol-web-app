@@ -50,6 +50,44 @@
 
 ## 2601 --------------
 
+### 260131-土
+
+#### 権利設定・日誌確定・過去日誌ナビゲーション
+
+**作業内容:**
+
+1. **権利設定画面**
+   - 設定数 X/24 を昇順・降順と同じ行に配置、文言を「現在の設定数」に変更
+   - ディスクリプションを1行に簡略化「権利の追加・編集・削除ができます。権利記号はアルファベットのみ。」
+   - 仕様単位・使用条件 → 使用単位・条件 に表記変更
+
+2. **本日の利用ゴルド**
+   - 権利設定画面へのリンクをカード下部右寄せで追加（Settingsアイコン、/settings/rights）
+
+3. **日誌確定機能**
+   - `add-is-confirmed-to-daily-logs.sql`: daily_logs に is_confirmed (BOOLEAN DEFAULT false) カラム追加
+   - DailyLog 型に is_confirmed を追加
+   - 確定ボタン・確定取り消しボタンを実装。取り消しは当日のみ可能
+   - 編集可否ロジック: isEditable = isToday || (isPastDate && !isConfirmed)
+   - journal-form, journal-impression-sections で isEditable に基づき入力可否を制御
+   - 日誌一覧（journal-list）に確定済みバッジ（CheckCircle）を表示
+   - 編集可否メッセージを dashboard-tabs のタブ上（ページ最上部）に移動
+
+4. **過去の日誌・日付選択の修正**
+   - Next.js 15: searchParams が Promise になったため `await searchParams` で解決してから使用
+   - 過去の日誌クリックで左上の日付が変わらない問題を修正
+   - journal-list: handleDateClick で `window.location.href` によるフルリロードで確実に遷移
+
+**変更したファイル**
+- docs: 04-project-progress, 05-dev-log / sql-snippet/add-is-confirmed-to-daily-logs.sql（新規）
+- gol-web: app/dashboard/page.tsx, dashboard-tabs.tsx, journal-form.tsx, journal-impression-sections.tsx / components/journal-list.tsx / lib/types.ts
+- gol-web: app/settings/rights/page.tsx
+
+**学んだこと**
+- Next.js 15 では searchParams が Promise になる。page.tsx で `await searchParams` が必要
+
+---
+
 ### 260130-金
 
 #### 権利設定・ダッシュボード・習慣・完了済みUIなど

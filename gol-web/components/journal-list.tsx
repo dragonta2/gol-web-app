@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Calendar, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, FileText, ChevronDown, ChevronUp, CheckCircle } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
@@ -127,8 +127,8 @@ export default function JournalList({ onDateSelect, isExpanded: externalIsExpand
   }, [pastJournals, pastJournalsSortOrder]);
 
   const handleDateClick = (date: string) => {
-    onDateSelect(date);
-    router.push(`/dashboard?date=${date}`);
+    // フルリロードで日付を変更
+    window.location.href = `/dashboard?date=${date}`;
   };
 
   const renderJournalItem = (journal: any) => {
@@ -151,6 +151,12 @@ export default function JournalList({ onDateSelect, isExpanded: externalIsExpand
               {isToday && (
                 <span className="text-xs text-cyan-400 px-2 py-0.5 bg-cyan-400/10 rounded">
                   今日
+                </span>
+              )}
+              {journal.is_confirmed && (
+                <span className="text-xs text-green-400 px-2 py-0.5 bg-green-400/10 rounded flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  確定済み
                 </span>
               )}
             </div>

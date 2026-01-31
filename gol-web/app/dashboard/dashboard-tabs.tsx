@@ -9,7 +9,7 @@ import TodoSummaryTab from './todo-summary-tab';
 import JournalList from '@/components/journal-list';
 import type { DashboardTabsProps } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Home, ClipboardList, BarChart3, Sparkles, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
+import { Home, ClipboardList, BarChart3, Sparkles, ChevronDown, ChevronUp, Maximize2, Minimize2, Lock, Unlock } from 'lucide-react';
 
 // 統計タブを動的インポート（コード分割・パフォーマンス最適化）
 const StatsTab = lazy(() => import('./stats-tab'));
@@ -32,8 +32,41 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
     ai: true,
   });
 
+  // 日付判定
+  const getTodayJST = () =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date());
+  const todayStr = getTodayJST();
+  const isToday = selectedDate === todayStr;
+  const isPastDate = selectedDate ? selectedDate < todayStr : false;
+  const isConfirmed = dailyLog?.is_confirmed ?? false;
+
   return (
     <div>
+      {/* 編集可否メッセージ（ページ上部に表示） */}
+      {isPastDate && isConfirmed && (
+        <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4 mb-4">
+          <p className="text-yellow-400 text-center font-medium flex items-center justify-center gap-2">
+            <Lock className="w-4 h-4" />
+            この日誌は確定済みのため編集できません
+          </p>
+        </div>
+      )}
+      {isPastDate && !isConfirmed && dailyLog && (
+        <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 mb-4">
+          <p className="text-blue-400 text-center font-medium flex items-center justify-center gap-2">
+            <Unlock className="w-4 h-4" />
+            この日誌は未確定のため編集できます
+          </p>
+        </div>
+      )}
+      {isPastDate && !dailyLog && (
+        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4 mb-4 text-center">
+          <p className="text-zinc-400">
+            この日付には日誌が記録されていません
+          </p>
+        </div>
+      )}
+
       {/* タブナビゲーション */}
       <div
         role="tablist"

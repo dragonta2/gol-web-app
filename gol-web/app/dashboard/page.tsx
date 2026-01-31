@@ -8,7 +8,7 @@ import DateSelector from '@/components/date-selector';
 import { Trophy, Coins, Settings, Dumbbell, Brain, Sparkles } from 'lucide-react';
 
 interface DashboardPageProps {
-  searchParams: { date?: string };
+  searchParams: Promise<{ date?: string }>;
 }
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
@@ -56,9 +56,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       };
 
   // URLパラメータから日付を取得、なければ今日（日本時間で判定）
+  const resolvedParams = await searchParams;
   const getTodayJST = () =>
     new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date());
-  const selectedDate = searchParams?.date || getTodayJST();
+  const selectedDate = resolvedParams?.date || getTodayJST();
 
   // 選択された日付のdaily_logsを取得（なければ作成）
   let dailyLogId: string | null = null;
