@@ -86,15 +86,23 @@ ${impressionText || '（未記入）'}
  * @param impressionText 一言感想
  * @param habits 習慣の実行状況
  * @param todos 完了したToDo
+ * @param nickname ユーザーのニックネーム（あらすじ内の主人公名に使用）
  * @returns プロンプト文字列
  */
 export function createStoryPrompt(
   journalText: string,
   impressionText: string,
   habits: string[],
-  todos: string[]
+  todos: string[],
+  nickname: string = ''
 ): string {
+  const heroInstruction = nickname.trim()
+    ? `【重要】主人公の名前は、ユーザーのニックネーム「${nickname.trim()}」をそのまま使って「勇者${nickname.trim()}」のように表記してください。`
+    : '主人公の名前は「勇者」と表記してください。';
+
   return `あなたはRPGゲームのストーリーテラーです。以下の情報を基に、今日の出来事をRPG物語風のあらすじとして生成してください。
+
+${heroInstruction}
 
 【日誌本文】
 ${journalText || '（未記入）'}

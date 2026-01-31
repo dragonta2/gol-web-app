@@ -200,7 +200,7 @@ function JournalImpressionSections({
             >
               <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2">
                 <Edit className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span>{isPastDate ? '過去の日誌' : '今日の日誌'}</span>
+                <span>日誌</span>
               </h3>
               {isJournalExpanded ? (
                 <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
@@ -217,7 +217,7 @@ function JournalImpressionSections({
                   onChange={(e) => handleJournalTextChange(e.target.value)}
                   maxLength={journalMaxLength}
                   placeholder="0730｜起床&#10;1000｜デスク向かう&#10;1200｜筋トレ&#10;..."
-                  aria-label="今日の日誌を入力する"
+                  aria-label="日誌を入力する"
                   aria-describedby="journal-text-count"
                   disabled={!isEditable}
                   className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[600px] overflow-y-auto"
@@ -240,7 +240,7 @@ function JournalImpressionSections({
             >
               <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2">
                 <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span>一言感想</span>
+                <span>感想</span>
               </h3>
               {isImpressionExpanded ? (
                 <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
@@ -257,7 +257,7 @@ function JournalImpressionSections({
                   onChange={(e) => handleImpressionTextChange(e.target.value)}
                   maxLength={impressionMaxLength}
                   placeholder="今日は久しぶりに運動ができて..."
-                  aria-label="一言感想を入力する"
+                  aria-label="感想を入力する"
                   aria-describedby="impression-text-count"
                   disabled={!isEditable}
                   className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[600px] overflow-y-auto"

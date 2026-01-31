@@ -42,8 +42,8 @@ export interface Habit {
   exclude_weekends: boolean;
   /** 完了判定から除外するか */
   exclude_from_complete: boolean;
-  /** 難易度 */
-  difficulty: Difficulty;
+  /** 難易度（habitsテーブルにカラムがある場合のみ。未設定時は 'medium' として扱う） */
+  difficulty?: Difficulty;
   /** 作成日時 */
   created_at: string;
   /** 更新日時 */
@@ -141,8 +141,10 @@ export interface DailyLog {
   ai_exp_spirit: number | null;
   /** AI生成: 厳しめコーチングアドバイス */
   ai_advice: string | null;
-  /** AI生成: RPG物語風あらすじ */
+  /** AI生成: これまでの冒険（あらすじ・過去） */
   ai_story_past: string | null;
+  /** AI生成: これからの冒険（あらすじ・未来） */
+  ai_story_future: string | null;
   /** 日誌確定フラグ（確定済みの過去日誌は編集不可） */
   is_confirmed: boolean;
   /** 作成日時 */

@@ -1,15 +1,22 @@
 /**
  * AIあらすじ生成API Route
  * 
- * RPG物語風のあらすじを生成
+ * RPG物語風のあらすじを生成（ユーザーのニックネームを主人公名に反映）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { getOpenAIClient, createStoryPrompt } from '@/lib/ai/openai';
 import { validateJournalText, validateImpressionText, validateAll } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+
     const { journalText, impressionText, habits, todos } = await request.json();
 
     // サーバー側バリデーション
@@ -40,6 +47,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // プロフィールからニックネーム（表示名）を取得
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
+    const nickname = (profile?.username ?? '').trim();
+
     const openai = getOpenAIClient();
     if (!openai) {
       return NextResponse.json(
@@ -52,7 +67,8 @@ export async function POST(request: NextRequest) {
       journalText || '',
       impressionText || '',
       habits || [],
-      todos || []
+      todos || [],
+      nickname
     );
 
     const completion = await openai.chat.completions.create({

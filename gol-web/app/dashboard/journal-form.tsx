@@ -219,9 +219,16 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   const [aiAdvice, setAIAdvice] = useState<string | null>(dailyLog?.ai_advice || null);
   const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
 
-  // AIあらすじ
-  const [aiStory, setAIStory] = useState<string | null>(dailyLog?.ai_story_past || null);
+  // AIあらすじ（これまでの冒険 / これからの冒険）
+  const [aiStoryPast, setAIStoryPast] = useState<string | null>(dailyLog?.ai_story_past || null);
+  const [aiStoryFuture, setAIStoryFuture] = useState<string | null>(dailyLog?.ai_story_future ?? null);
   const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+
+  // 日誌が変わったらあらすじを同期
+  useEffect(() => {
+    setAIStoryPast(dailyLog?.ai_story_past ?? null);
+    setAIStoryFuture(dailyLog?.ai_story_future ?? null);
+  }, [dailyLog?.id, dailyLog?.ai_story_past, dailyLog?.ai_story_future]);
 
   // 権利の回数更新（上限なし・使用単位は自由記述のため）
   const updateRightCount = (rightId: string, newCount: number) => {
@@ -296,15 +303,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     }
   };
 
-  // 日誌の確定を取り消す（当日のみ）
+  // 日誌の確定を取り消す（全日誌で可能）
   const handleUnconfirm = async () => {
     if (!dailyLogId) {
       toast.error('日誌IDが取得できませんでした');
-      return;
-    }
-
-    if (!isToday) {
-      toast.error('確定の取り消しは当日のみ可能です');
       return;
     }
 
@@ -628,9 +630,9 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       );
 
       const result: AIStoryResult = await response.json();
-      setAIStory(result.story);
+      setAIStoryPast(result.story);
 
-      // daily_logsにAIあらすじを保存
+      // daily_logsにAIあらすじ（これまでの冒険）を保存
       const { error } = await supabase
         .from('daily_logs')
         .update({
@@ -770,14 +772,13 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         </div>
       )}
 
-      {/* 確定取り消しボタン（当日かつ確定済みの場合のみ） */}
-      {isToday && isConfirmed && (
+      {/* 確定取り消しボタン（確定済みの日誌ならいつでも可能） */}
+      {isConfirmed && (
         <div className="flex justify-center">
           <Button
             onClick={handleUnconfirm}
             aria-label="確定を取り消す"
-            variant="outline"
-            className="border-yellow-600 text-yellow-400 hover:bg-yellow-600/20"
+            className="bg-zinc-600 text-white hover:bg-zinc-500 border border-zinc-500"
             size="lg"
           >
             <Unlock className="w-4 h-4 mr-1" />
@@ -871,13 +872,68 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               </div>
             )}
             {dailyLog?.ai_points_earned !== null && dailyLog?.ai_points_earned !== undefined && (
-              <div className="text-sm text-zinc-300">
+              <div className="text-base text-zinc-300">
                 <div>獲得ゴルド: <span className="text-yellow-400 font-medium">+{dailyLog.ai_points_earned}G</span></div>
                 <div>獲得EXP: 身体+{dailyLog.ai_exp_body || 0} 頭脳+{dailyLog.ai_exp_mind || 0} 精神+{dailyLog.ai_exp_spirit || 0}</div>
               </div>
             )}
           </div>
         ) : null}
+
+        {/* AIあらすじ（これまでの冒険 / これからの冒険） */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-cyan-400">あらすじ</h3>
+            {isEditable && !isGeneratingStory && (
+              <Button
+                onClick={handleGenerateStory}
+                disabled={isGeneratingStory}
+                aria-label={aiStoryPast ? 'あらすじを再生成する' : 'あらすじを生成する'}
+                aria-busy={isGeneratingStory}
+                className="bg-purple-600 hover:bg-purple-700 text-white"
+                size="sm"
+              >
+                {aiStoryPast ? '再生成' : '生成'}
+              </Button>
+            )}
+            {isGeneratingStory && (
+              <span className="text-sm text-zinc-400">生成中...</span>
+            )}
+          </div>
+          <div className="space-y-3">
+            <div>
+              <p className="text-sm font-medium text-white mb-1">これまでの冒険</p>
+              {isGeneratingStory ? (
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                  <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+                  <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+                  <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+                  <Skeleton className="h-4 w-3/4 bg-zinc-700" />
+                </div>
+              ) : aiStoryPast ? (
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                  <p className="text-zinc-300 whitespace-pre-wrap">{aiStoryPast}</p>
+                </div>
+              ) : (
+                <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+                  <p className="text-zinc-500 text-sm">未生成</p>
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-medium text-white mb-1">これからの冒険</p>
+              {aiStoryFuture ? (
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                  <p className="text-zinc-300 whitespace-pre-wrap">{aiStoryFuture}</p>
+                </div>
+              ) : (
+                <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+                  <p className="text-zinc-500 text-sm">未生成</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
         {/* AIアドバイス生成 */}
         {aiJudgmentResult && (
@@ -913,40 +969,6 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             ) : null}
           </div>
         )}
-
-        {/* AIあらすじ生成 */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium text-cyan-400">RPG物語風あらすじ</h3>
-            {!aiStory && !isGeneratingStory && isEditable && (
-              <Button
-                onClick={handleGenerateStory}
-                disabled={isGeneratingStory}
-                aria-label="RPG物語風あらすじを生成する"
-                aria-busy={isGeneratingStory}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
-                size="sm"
-              >
-                生成
-              </Button>
-            )}
-            {isGeneratingStory && (
-              <span className="text-sm text-zinc-400">生成中...</span>
-            )}
-          </div>
-          {isGeneratingStory ? (
-            <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-              <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-              <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-              <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-              <Skeleton className="h-4 w-3/4 bg-zinc-700" />
-            </div>
-          ) : aiStory ? (
-            <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-              <p className="text-zinc-300 whitespace-pre-wrap">{aiStory}</p>
-            </div>
-          ) : null}
-            </div>
             </div>
           )}
         </div>

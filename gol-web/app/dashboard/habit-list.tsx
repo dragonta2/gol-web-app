@@ -597,7 +597,6 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
             input_type: formData.input_type,
             exclude_weekends: formData.exclude_weekends,
             exclude_from_complete: formData.exclude_from_complete,
-            difficulty: 'medium',
           })
           .eq('id', editingHabit.id);
 
@@ -637,7 +636,6 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
             input_type: formData.input_type,
             exclude_weekends: formData.exclude_weekends,
             exclude_from_complete: formData.exclude_from_complete,
-            difficulty: 'medium',
             is_custom: true,
             display_order: displayOrder,
           })
