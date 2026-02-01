@@ -41,11 +41,67 @@
 - 記載内容: 実施内容の箇条書き（要点のみ）、決定事項、成果物リスト、学んだこと（簡潔に）
 - 記述レベル: クリーンで読みやすい。「何を作ったか」を記録
 
-**このファイル（04-dev-log.md）:**
+**このファイル（05-dev-log.md）:**
 
 - 役割: 詳細にやったことを全て記録
 - 記載内容: 使用したコマンド（全て）、コードの詳細、実装手順（ステップバイステップ）、エラーと解決方法、学習メモ（詳細な技術解説）
 - 記述レベル: 雑多でOK、クリーンにする必要なし。「どうやって作ったか」を記録
+
+
+## 2602 --------------
+
+### 260201-日
+
+#### AI作成文章・表示、メール変更、02/07棲み分け、UI変更
+
+**作業内容:**
+
+1. **日誌・一言感想のフォントサイズ**
+   - `gol-web/app/dashboard/journal-impression-sections.tsx`: 日誌用 Textarea と感想用 Textarea の className に `text-[17px] md:text-[15px]` を追加（元は text-base / md:text-sm 相当のため 1px 上げた）
+
+2. **AI作成文章の改行ルール（。?の後は必ず改行）**
+   - `docs/02-gol-design-doc.md`: 改行ルールに「句点（。）・疑問符（？（全角）・?（半角））の後は必ず改行する」を追記。適用対象は AI が生成する文章（アドバイス、あらすじ）
+   - `gol-web/lib/utils.ts`: `applyAiTextLineBreaks(text)` を新規追加。`。` → `。\n`、`？` → `？\n`、`?` → `?\n` の置換と、連続改行を最大2つに正規化
+   - `gol-web/app/dashboard/journal-form.tsx`: あらすじ（これまでの冒険・これからの冒険）と辛口コーチングアドバイスの表示で `applyAiTextLineBreaks(...)` を適用してから表示
+
+3. **ユーザー名をボールド表示**
+   - `gol-web/app/dashboard/journal-form.tsx`: `userName` prop を追加。`renderAiText(text)` を定義し、`applyAiTextLineBreaks(text)` の結果を `userName` で split し、その部分を `<strong>{userName}</strong>` で挟んで表示。あらすじ2箇所・アドバイス1箇所で使用
+   - `gol-web/lib/types.ts`: DashboardTabsProps に `userName?: string` を追加
+   - `gol-web/app/dashboard/page.tsx`: DashboardTabs に `userName={userProfile.name}` を渡す
+   - `gol-web/app/dashboard/dashboard-tabs.tsx`: `userName` を受け取り JournalForm に渡す
+
+4. **メールアドレス（ログイン用）変更**
+   - `gol-web/app/settings/account/page.tsx`: 「メールアドレス（ログイン用）」セクションを追加。現在のメール（readonly）・新しいメール入力・「確認メールを送信」ボタン。`handleChangeEmail` で `supabase.auth.updateUser({ email: trimmed })` を実行。成功時 toast「確認リンクを新しいメールアドレスに送りました。そのリンクを開いて変更を完了してください。」説明文に「メールが届いただけでは変更されません。届いたメール内のリンクを開くと変更が完了します。」を記載
+   - `gol-web/app/settings/page.tsx`: アカウント・AI設定のカードに「メールアドレス」（/settings/account#email）を追加
+   - `docs/02-gol-design-doc.md`: Supabase Auth メール変更フロー（メモ）を追記。API・確認フロー・Secure email change 時の両方のメール確認が必要なこと、トラブルシュート（Secure email change の場所・オフにすると新メールのみで完了）、リダイレクト・端末の注意（localhost は同一PCで開く必要がある）、実装時のポイント（メールが届いただけでは変更されない旨）
+
+5. **02 と 07 の棲み分け**
+   - `docs/02-gol-design-doc.md`: 冒頭の「このファイルの役割」に「02には確定事項の仕様だけを書く。未確定・検討中の確認事項や案は 07 に書く」を追記。AIによる編集禁止・棲み分けルール内に「02 と 07 の棲み分け（徹底する）」を新設。02＝確定仕様のみ、07＝未確定・確認事項。進行中の確認用メモの置き場を `07-progress-support.md` に変更。00の説明内の「10」を「07」に。文中の 10-progress-support.md を 07-progress-support.md に一括置換
+   - `docs/07-progress-support.md`: 冒頭に「このファイルの役割」を追加。未確定事項を進める中での確認事項・検討案を記載する。確定した仕様は 02 に記載する旨を明記
+
+6. **世界観2種類（案C）の実装手順**
+   - `docs/02-gol-design-doc.md`: 将来の拡張機能「世界観テーマ切り替え機能」内に「案C: コードで2種類固定の実装手順」を追記。1.定数定義（lib/ai/story-worlds.ts 等）、2.設定画面を2択に、3.API で storyWorldId 受け取り、4.createStoryPrompt に storyWorldId、5.日誌フォームで localStorage の storyWorldId を API に送る、の5ステップ
+
+7. **過去の日誌一覧の表示変更**
+   - `gol-web/components/journal-list.tsx`: 一覧の各項目から日誌本文（journal_text）と一言感想（one_line_comment）のプレビュー表示を削除。日付・「今日」バッジ・「確定済み」バッジのみ表示するように変更
+
+8. **日付選択UIの簡素化**
+   - `gol-web/components/date-selector.tsx`: prev/next 矢印ボタンと日付入力欄（Input type=date）を削除。カレンダーアイコンボタンのみ残す。クリックで既存の Dialog（Calendar＋「今日に戻る」）を開く。state は selectedDate と open のみ。handlePreviousDay / handleNextDay / handleInputChange / handleInputBlur / inputValue を削除。不要になった Input, ChevronLeft, ChevronRight, parse の import を削除
+
+9. **ダッシュボード左上の日付の色**
+   - `gol-web/app/dashboard/page.tsx`: 2行目の日付表示（YYYY年MM月DD日(W)）の className を `text-cyan-400` から `text-white` に変更
+
+**変更したファイル**
+
+- docs: 00-AI-prompt-memo.md（参照のみ・ユーザー記載）, 02-gol-design-doc.md, 04-project-progress.md, 07-progress-support.md
+- gol-web: app/dashboard/page.tsx, dashboard-tabs.tsx, journal-form.tsx / app/settings/account/page.tsx, page.tsx / components/date-selector.tsx, journal-list.tsx / lib/types.ts, lib/utils.ts
+
+**学んだこと・メモ**
+
+- Supabase のメール変更: Secure email change が有効だと旧メール・新メールの両方で確認リンクを開く必要がある。オフにすると新メールの確認のみで完了。設定は Authentication → Providers → Email（または URL で /auth/providers）
+- 確認リンクはリダイレクト先（Site URL / Redirect URLs）に、開く端末からアクセスできる必要がある。localhost の場合は同一PCで開く必要がある
+
+---
 
 
 ## 2601 --------------
