@@ -160,16 +160,6 @@ export default function JournalList({ onDateSelect, isExpanded: externalIsExpand
                 </span>
               )}
             </div>
-            {journal.journal_text && (
-              <p className="text-sm text-zinc-400 line-clamp-2 mt-1">
-                {journal.journal_text}
-              </p>
-            )}
-            {journal.one_line_comment && (
-              <p className="text-sm text-zinc-500 mt-1">
-                {journal.one_line_comment}
-              </p>
-            )}
           </div>
         </div>
       </button>

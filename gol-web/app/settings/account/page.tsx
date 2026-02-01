@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Key, Bot, BookOpen } from 'lucide-react';
+import { ArrowLeft, User, Mail, Key, Bot, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function AccountSettingsPage() {
@@ -16,6 +16,11 @@ export default function AccountSettingsPage() {
   // ニックネーム
   const [username, setUsername] = useState('');
   const [usernameSaving, setUsernameSaving] = useState(false);
+
+  // メールアドレス（ログイン用）
+  const [currentEmail, setCurrentEmail] = useState<string>('');
+  const [newEmail, setNewEmail] = useState('');
+  const [emailSaving, setEmailSaving] = useState(false);
 
   // パスワード変更
   const [newPassword, setNewPassword] = useState('');
@@ -38,6 +43,8 @@ export default function AccountSettingsPage() {
           const data = await res.json();
           setUsername(data.username ?? '');
         }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) setCurrentEmail(user.email);
       } catch {
         toast.error('プロファイルの読み込みに失敗しました');
       }
@@ -49,6 +56,32 @@ export default function AccountSettingsPage() {
     };
     load();
   }, []);
+
+  const handleChangeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newEmail.trim();
+    if (!trimmed) {
+      toast.error('新しいメールアドレスを入力してください');
+      return;
+    }
+    if (trimmed === currentEmail) {
+      toast.error('現在のメールアドレスと同じです');
+      return;
+    }
+    setEmailSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ email: trimmed });
+      if (error) throw error;
+      toast.success(
+        '確認リンクを新しいメールアドレスに送りました。そのリンクを開いて変更を完了してください。'
+      );
+      setNewEmail('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'メールアドレスの変更に失敗しました');
+    } finally {
+      setEmailSaving(false);
+    }
+  };
 
   const handleSaveUsername = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,6 +188,48 @@ export default function AccountSettingsPage() {
               className="bg-cyan-600 hover:bg-cyan-700 text-white"
             >
               {usernameSaving ? '保存中...' : '保存'}
+            </Button>
+          </form>
+        </section>
+
+        {/* メールアドレス変更 */}
+        <section id="email" className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mb-6 scroll-mt-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Mail className="w-5 h-5 text-cyan-400" />
+            <h2 className="text-lg font-semibold text-zinc-100">メールアドレス（ログイン用）</h2>
+          </div>
+          <form onSubmit={handleChangeEmail} className="space-y-3">
+            <label htmlFor="current-email" className="block text-sm font-medium text-zinc-300">
+              現在のメールアドレス
+            </label>
+            <input
+              id="current-email"
+              type="email"
+              value={currentEmail}
+              readOnly
+              className="w-full px-4 py-2 bg-zinc-800/50 border border-zinc-700 rounded-lg text-zinc-400 cursor-not-allowed"
+            />
+            <label htmlFor="new-email" className="block text-sm font-medium text-zinc-300">
+              新しいメールアドレス
+            </label>
+            <input
+              id="new-email"
+              type="email"
+              value={newEmail}
+              onChange={(e) => setNewEmail(e.target.value)}
+              placeholder="新しいメールアドレスを入力"
+              autoComplete="email"
+              className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+            <p className="text-sm text-zinc-500">
+              変更すると、新しいメールアドレスに確認メールが送られます。メールが届いただけでは変更されません。届いたメール内のリンクを開くと変更が完了します。
+            </p>
+            <Button
+              type="submit"
+              disabled={emailSaving || !newEmail.trim() || newEmail.trim() === currentEmail}
+              className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            >
+              {emailSaving ? '送信中...' : '確認メールを送信'}
             </Button>
           </form>
         </section>

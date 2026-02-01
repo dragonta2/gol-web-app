@@ -403,6 +403,8 @@ export interface DashboardTabsProps {
   todoSubtasks: TodoSubtask[];
   /** 選択された日付（YYYY-MM-DD形式） */
   selectedDate?: string;
+  /** ユーザー表示名（あらすじ・アドバイス内の名前をボールド表示するために使用） */
+  userName?: string;
 }
 
 /**

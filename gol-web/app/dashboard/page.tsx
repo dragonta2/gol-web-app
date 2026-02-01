@@ -186,7 +186,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           {/* 2行目: 左＝日付（YYYY年MM月DD日）、右＝EXP表示 */}
           <div className="flex items-center justify-between gap-4">
             {selectedDate && (
-              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-cyan-400">
+              <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
                 {(() => {
                   const [y, m, d] = selectedDate.split('-');
                   const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
@@ -227,6 +227,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           todoLogs={todoLogs || []}
           todoSubtasks={todoSubtasks || []}
           selectedDate={selectedDate}
+          userName={userProfile.name}
         />
       </div>
     </div>

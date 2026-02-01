@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, memo, useEffect } from 'react';
+import { useState, useMemo, memo, useEffect, Fragment } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { fetchWithRetry } from '@/lib/api-retry';
 import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 import type { DailyLog } from '@/lib/types';
+import { applyAiTextLineBreaks } from '@/lib/utils';
 import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp, Settings, Check, Unlock } from 'lucide-react';
 
 interface Right {
@@ -37,6 +38,8 @@ interface JournalFormProps {
   logDate?: string; // 選択された日付（YYYY-MM-DD形式）
   expandedStates?: JournalFormExpandedStates;
   onExpandedStateChange?: (state: Partial<JournalFormExpandedStates>) => void;
+  /** ユーザー表示名（あらすじ・アドバイス内の名前をボールド表示するために使用） */
+  userName?: string;
 }
 
 interface AIJudgmentResult {
@@ -53,7 +56,7 @@ interface AIStoryResult {
   story: string;
 }
 
-function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpandedStateChange }: JournalFormProps) {
+function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpandedStateChange, userName = '' }: JournalFormProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -152,6 +155,20 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
   // 日誌が確定済みかどうか
   const isConfirmed = dailyLog?.is_confirmed ?? false;
+
+  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド） */
+  const renderAiText = (text: string) => {
+    const formatted = applyAiTextLineBreaks(text);
+    if (!userName) return formatted;
+    const parts = formatted.split(userName);
+    if (parts.length <= 1) return formatted;
+    return parts.map((part, i) => (
+      <Fragment key={i}>
+        {part}
+        {i < parts.length - 1 ? <strong>{userName}</strong> : null}
+      </Fragment>
+    ));
+  };
 
   // 編集可能かどうか（当日 OR 未確定の過去）
   const isEditable = isToday || (isPastDate && !isConfirmed);
@@ -912,7 +929,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                 </div>
               ) : aiStoryPast ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-300 whitespace-pre-wrap">{aiStoryPast}</p>
+                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryPast)}</p>
                 </div>
               ) : (
                 <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
@@ -924,7 +941,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               <p className="text-sm font-medium text-white mb-1">これからの冒険</p>
               {aiStoryFuture ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-300 whitespace-pre-wrap">{aiStoryFuture}</p>
+                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryFuture)}</p>
                 </div>
               ) : (
                 <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
@@ -964,7 +981,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               </div>
             ) : aiAdvice ? (
               <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                <p className="text-zinc-300 whitespace-pre-wrap">{aiAdvice}</p>
+                <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice)}</p>
               </div>
             ) : null}
           </div>

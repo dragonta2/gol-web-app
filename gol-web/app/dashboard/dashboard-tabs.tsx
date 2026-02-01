@@ -16,7 +16,7 @@ const StatsTab = lazy(() => import('./stats-tab'));
 
 type TabType = 'journal' | 'todo-summary' | 'stats';
 
-export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog, todos, todoLogs, todoSubtasks, selectedDate }: DashboardTabsProps) {
+export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog, todos, todoLogs, todoSubtasks, selectedDate, userName }: DashboardTabsProps) {
   const [activeTab, setActiveTab] = useState<TabType>('journal');
   /** 日誌カンバンから「編集」で飛んできたとき、このタスクの編集モーダルを開く */
   const [editTodoId, setEditTodoId] = useState<string | null>(null);
@@ -248,6 +248,7 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
               logDate={selectedDate || dailyLog?.log_date}
               expandedStates={journalFormStates}
               onExpandedStateChange={(state) => setJournalFormStates((prev) => ({ ...prev, ...state }))}
+              userName={userName}
             />
 
             {/* 過去の日誌一覧 */}

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, AlertTriangle, ArrowLeft, Sparkles, ClipboardList, Settings as SettingsIcon, User, Key, Bot, BookOpen } from 'lucide-react';
+import { Trash2, AlertTriangle, ArrowLeft, Sparkles, ClipboardList, Settings as SettingsIcon, User, Mail, Key, Bot, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
@@ -71,6 +71,15 @@ export default function SettingsPage() {
                   <h3 className="text-base font-semibold text-zinc-100">ニックネーム</h3>
                 </div>
                 <p className="text-sm text-zinc-400">表示名の変更</p>
+              </div>
+            </Link>
+            <Link href="/settings/account#email">
+              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 mb-2">
+                  <Mail className="w-5 h-5 text-cyan-400" />
+                  <h3 className="text-base font-semibold text-zinc-100">メールアドレス</h3>
+                </div>
+                <p className="text-sm text-zinc-400">ログイン用メールの変更</p>
               </div>
             </Link>
             <Link href="/settings/account#password">
