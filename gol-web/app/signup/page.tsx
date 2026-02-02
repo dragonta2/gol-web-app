@@ -66,16 +66,24 @@ export default function SignupPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            prompt: 'select_account', // 毎回 Google のアカウント選択画面を表示する
+          },
         },
       });
 
       if (error) {
         setError(error.message);
         setLoading(false);
+        return;
+      }
+      if (data?.url) {
+        await new Promise((r) => setTimeout(r, 300));
+        window.location.href = data.url;
       }
     } catch (err) {
       setError('予期しないエラーが発生しました');

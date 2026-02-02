@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [email, setEmail] = useState('');
@@ -15,6 +16,15 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // OAuth コールバック失敗で戻ってきたときの URL ?error=... / ?from=... を表示
+  useEffect(() => {
+    const err = searchParams.get('error');
+    const from = searchParams.get('from');
+    if (err) setError(decodeURIComponent(err));
+    else if (from === 'dashboard')
+      setError('ダッシュボードから戻されました（セッションがありません）。OAuth 後のクッキーが届いていない可能性があります。');
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,18 +60,26 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/dashboard`,
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams: {
+            prompt: 'select_account', // 毎回 Google のアカウント選択画面を表示する
+          },
         },
       });
 
       if (error) {
         setError(error.message);
         setLoading(false);
+        return;
       }
-      // OAuth は別ウィンドウで認証されるため、ローディングはそのまま
+      // code_verifier がクッキーに書き込まれてからリダイレクトする（別アカウント選択時も PKCE が通るように）
+      if (data?.url) {
+        await new Promise((r) => setTimeout(r, 300));
+        window.location.href = data.url;
+      }
     } catch (err) {
       setError('予期しないエラーが発生しました');
       setLoading(false);

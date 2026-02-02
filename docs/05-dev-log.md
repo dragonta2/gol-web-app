@@ -50,6 +50,58 @@
 
 ## 2602 --------------
 
+### 260202-月
+
+#### Google / Apple OAuth（Supabase Auth）の安定化・他アカウント対応
+
+**背景・起きたこと:**
+- Google / Apple でログインすると「Unsupported provider: provider is not enabled」→ Supabase でプロバイダ有効化・クライアントID/シークレット設定が必要
+- クライアントID入力で「無効な文字列」→ .apps.googleusercontent.com で終わる OAuth クライアント ID を Google Cloud Console の「認証情報」→「OAuth 2.0 クライアント ID」から取得
+- ログイン後「Error 400: redirect_uri_mismatch」→ Google の「承認済みのリダイレクト URI」に `https://lridxyccbxqglnoejntz.supabase.co/auth/v1/callback` を追加（プロジェクト参照は lridxyccbxqglnoejntz、先頭は小文字の L）
+- Google アカウント選択まで行くが、選択後にログイン画面に戻る → コールバックでセッションを確定する前にダッシュボードへ飛んでおり、サーバーが「未ログイン」と判断して /login にリダイレクトしていた
+- 「PKCE code verifier not found in storage」→ code_verifier をブラウザとサーバーで同じクッキー名・設定で共有する必要あり（@supabase/ssr を両方でクッキーに保存）
+- セッション用 Set-Cookie がネットワークに出ない → exchangeCodeForSession のあと onAuthStateChange で非同期に setAll が呼ばれるため、リダイレクトを返す時点で pendingCookies が空だった。setAll が呼ばれるまで Promise で待ってからリダイレクトするように変更
+- 通常ブラウザではログインできずシークレットのみ成功 → localhost の sb-auth-token 系クッキーを削除してから再試行で解消
+- アカウント選択画面が出なくなる → queryParams: { prompt: 'select_account' } を追加して毎回アカウント選択を表示
+- 別 Google アカウントでログインすると再び「PKCE code verifier not found」→ signInWithOAuth の戻り値 data.url で手動リダイレクトし、約 100ms→300ms 待ってから window.location.href = data.url で、code_verifier がクッキーに書き込まれてから Google へ飛ぶように変更
+
+**実装内容（詳細）:**
+
+1. **共通クッキー設定（PKCE code_verifier をクッキーで共有）**
+   - `gol-web/lib/supabase/cookie-options.ts` を新規作成: `supabaseCookieOptions`（name: 'sb-auth-token', path: '/', sameSite: 'lax', maxAge）
+   - `gol-web/lib/supabase/client.ts`: `createBrowserClient` に `cookieOptions: supabaseCookieOptions` を渡す
+   - `gol-web/lib/supabase/server.ts`: `createServerClient` に `cookieOptions: supabaseCookieOptions` を渡す
+
+2. **認証コールバック（サーバー側 Route Handler）**
+   - `gol-web/app/auth/callback/route.ts`: GET で `code` を取得 → `createServerClient`（cookies: getAll / setAll で pendingCookies に蓄積＋cookieStore.set）→ `exchangeCodeForSession(code)` → setAll が呼ばれるまで `Promise`（resolveSetAll）で最大3秒待機 → `NextResponse.redirect(origin + '/auth/success')` に `response.cookies.set(name, value, cookieOpts)` で各クッキーを付与して返す。失敗時は `/login?error=...` にリダイレクト
+   - cookieOpts: path: '/', maxAge, sameSite: 'lax', httpOnly: true, secure: 本番のみ
+
+3. **中間ページ /auth/success**
+   - `gol-web/app/auth/success/page.tsx`: クライアントコンポーネント。3秒カウントダウン表示＋現在URL表示（遷移元確認用）→ `router.replace('/dashboard')` でダッシュボードへ。コールバックで付与したセッションクッキーが確実に送られた状態でダッシュボードを開くため
+
+4. **ログイン・サインアップの OAuth 呼び出し**
+   - `gol-web/app/login/page.tsx`, `app/signup/page.tsx`: `signInWithOAuth` の options に `redirectTo: origin + '/auth/callback'`, `queryParams: { prompt: 'select_account' }` を指定。戻り値 `data.url` を取得し、`await new Promise(r => setTimeout(r, 300))` のあと `window.location.href = data.url` で手動リダイレクト（code_verifier をクッキーに書き込んでから遷移）
+
+5. **デバッグ・遷移元確認**
+   - `gol-web/app/dashboard/page.tsx`: 未ログイン時は `redirect('/login?from=dashboard')` に変更（セッションがない場合の遷移元を判別するため）
+   - `gol-web/app/login/page.tsx`: `useSearchParams` で `error` と `from` を取得し、`?error=...` なら decodeURIComponent して表示、`?from=dashboard` なら「ダッシュボードから戻されました（セッションがありません）…」を表示
+
+6. **07 へのメモ追記**
+   - `docs/07-progress-support.md` の 260202-月 に以下を記載: Google クライアント ID の表示手順、redirect_uri_mismatch の対処（承認済みリダイレクト URI に Supabase コールバック URL を追加）、PKCE code verifier not found / コールバック後にログインに戻る問題の対処（共通 cookieOptions、コールバックを Route Handler で setAll 待ち、redirectTo /auth/callback、Supabase Redirect URLs に /auth/callback 追加）
+
+**変更・追加したファイル:**
+- gol-web: lib/supabase/cookie-options.ts（新規）, client.ts, server.ts / app/auth/callback/route.ts, app/auth/success/page.tsx（新規）/ app/login/page.tsx, app/signup/page.tsx, app/dashboard/page.tsx
+- docs: 07-progress-support.md
+
+**学んだこと・メモ:**
+- Supabase OAuth で PKCE を使う場合、code_verifier はブラウザに保存され、コールバック時は同じブラウザ（同一タブ）で受け取る必要がある。Next.js など SSR では @supabase/ssr でブラウザ・サーバー両方に同じ cookieOptions を渡し、クッキーで code_verifier を共有する
+- exchangeCodeForSession 成功後、セッション用クッキーは onAuthStateChange の setAll で非同期に渡されるため、Route Handler では setAll が呼ばれるまで待ってからリダイレクトしないと Set-Cookie がレスポンスに載らない
+- Google OAuth で毎回アカウント選択を出したい場合は queryParams: { prompt: 'select_account' }
+- 別アカウントでログインするときも code_verifier がコールバックリクエストに含まれるよう、OAuth 開始後に少し待ってからリダイレクトすると安定する（300ms 程度）
+
+---
+
+
 ### 260201-日
 
 #### AI作成文章・表示、メール変更、02/07棲み分け、UI変更

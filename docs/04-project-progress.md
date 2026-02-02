@@ -269,6 +269,31 @@
 
 ## 2602 --------------
 
+### 260202-月
+
+#### 実施内容
+
+**Google / Apple OAuth（Supabase Auth）の安定化:**
+- Supabase で Google/Apple プロバイダを有効化し、クライアントID・シークレット・承認済みリダイレクト URI を設定
+- PKCE の code_verifier をクッキーで共有するため、共通 cookieOptions（lib/supabase/cookie-options.ts）を用意し、ブラウザ・サーバー両方の Supabase クライアントに適用
+- 認証コールバックを Route Handler（/auth/callback）で実装: exchangeCodeForSession 後、setAll が呼ばれるまで待ってからセッション用クッキーを付与して /auth/success へリダイレクト
+- 中間ページ /auth/success を経由してからダッシュボードへ遷移（セッションクッキーが確実に送られるようにする）
+- ログイン・サインアップで queryParams: { prompt: 'select_account' } を指定し、毎回 Google のアカウント選択を表示
+- signInWithOAuth の戻り値 data.url で手動リダイレクトし、300ms 待ってから遷移（code_verifier をクッキーに書き込んでから Google へ飛ぶ）
+- 07 に Google クライアント ID の表示手順、redirect_uri_mismatch の対処、PKCE/コールバックの対処を追記
+
+#### 決定事項
+
+- コールバック先は /auth/callback（Route Handler）。成功時は /auth/success を経由してダッシュボードへ
+- 通常ブラウザでログインできない場合は localhost の sb-auth-token 系クッキーを削除してから再試行
+
+#### 次回予定
+
+- （未定）
+
+---
+
+
 ### 260201-日
 
 #### 実施内容

@@ -8,6 +8,139 @@
 ---
 
 
+## 260202-月 -------------
+
+### Google クライアント ID を表示させる方法（Supabase OAuth 用）
+
+**1. Google Cloud Console を開く**
+
+- ブラウザで **https://console.cloud.google.com/** を開く
+- Google アカウントでログインする
+
+**2. プロジェクトを選ぶ（または作る）**
+
+- 画面上部の **「プロジェクトを選択」** をクリック
+- すでにプロジェクトがある → そのプロジェクトを選ぶ
+- 何もない → **「新しいプロジェクト」** で名前を付けて作成し、作成したプロジェクトを選ぶ
+- 選んだあと、画面上部にそのプロジェクト名が出ていればOK
+
+**3. 認証情報のページを開く**
+
+- 左側のメニュー（≡ で開く場合あり）から:
+  1. **「APIとサービス」** をクリック
+  2. **「認証情報」** をクリック
+- または直接: **https://console.cloud.google.com/apis/credentials** （プロジェクト選択済みなら同じページ）
+
+**4. OAuth クライアント ID を作成する（まだない場合）**
+
+- **「認証情報」** ページで:
+  - すでに **「OAuth 2.0 クライアント ID」** が一覧にある → その行をクリックすると **クライアント ID** が表示される（5. へ）
+  - 何もない / 新規で作りたい場合:
+    1. 画面上方の **「＋ 認証情報を作成」** をクリック
+    2. **「OAuth クライアント ID」** を選択
+    3. 初回なら **「同意画面を構成」** を求められる → ユーザータイプ（外部 or 内部）・アプリ名などを入力して同意画面を完了
+    4. 再度 **「認証情報」** → **「＋ 認証情報を作成」** → **「OAuth クライアント ID」**
+    5. **アプリケーションの種類** で **「ウェブアプリケーション」** を選択
+    6. **名前** に任意の名前（例: 「Supabase ログイン」）を入力
+    7. **「作成」** をクリック
+- 作成されると、ポップアップで **クライアント ID** と **クライアント シークレット** が表示される
+
+**5. クライアント ID を「表示」する**
+
+- **今つくったばかり** → ポップアップに **「クライアント ID」** と書いてある長い文字列がそれ（例: `123456789012-xxxxxxxxxxxxxxxxxx.apps.googleusercontent.com`）
+- **以前つくった OAuth クライアント**:
+  1. **「認証情報」** ページの一覧で、**「OAuth 2.0 クライアント ID」** の **名前**（例: 「ウェブクライアント 1」）をクリック
+  2. 開いた画面の **「クライアント ID」** の右に表示されている文字列が、表示されているクライアント ID
+
+ここに表示されている文字列を **そのままコピー** して、Supabase の「クライアント ID」欄に貼り付ける。
+
+**まとめ（どこを見ればいいか）**
+
+| 場所 | 見方 |
+|------|------|
+| **認証情報を作成した直後** | ポップアップに「クライアント ID」として表示される |
+| **あとから見る** | 「認証情報」→ 一覧の「OAuth 2.0 クライアント ID」の名前をクリック → 詳細画面の「クライアント ID」 |
+
+表示されている文字列は、必ず **`.apps.googleusercontent.com`** で終わる。
+
+
+### Google OAuth「Error 400: redirect_uri_mismatch」の対処（Supabase 用）
+
+**原因:** ログイン後に戻る URL（リダイレクト URI）が、Google 側の「承認済みのリダイレクト URI」に登録されていない。
+
+**やること: Google に「承認済みリダイレクト URI」を追加する**
+
+1. **Google Cloud Console を開く**  
+   https://console.cloud.google.com/
+
+2. **プロジェクトを選ぶ**  
+   画面上部で使っているプロジェクト（例: GOL-WEB）を選択。
+
+3. **認証情報を開く**  
+   - 左メニュー **≡** → **「APIとサービス」** → **「認証情報」**  
+   - または検索で「認証情報」を開く。
+
+4. **OAuth 2.0 クライアント ID を開く**  
+   一覧の **「OAuth 2.0 クライアント ID」**（ウェブクライアントなど）の **名前** をクリック。
+
+5. **「承認済みのリダイレクト URI」に 1 件追加**  
+   - **「承認済みのリダイレクト URI」** の **「+ URI を追加」** をクリック。  
+   - 次の URL を **1文字も違えず** 入力する（GOL の場合は **先頭が小文字の L**）：
+     ```
+     https://lridxyccbxqglnoejntz.supabase.co/auth/v1/callback
+     ```
+   - Supabase のプロジェクト参照が `lridxyccbxqglnoejntz` 以外の場合は、  
+     **https://〈あなたのプロジェクト参照〉.supabase.co/auth/v1/callback** に置き換える。  
+     （Supabase ダッシュボード → プロジェクト設定 → API で「プロジェクト URL」を確認できる。）
+
+6. **保存**  
+   画面下部の **「保存」** をクリック。
+
+**ポイント**
+
+- **完全一致** である必要がある（`http`/`https`、末尾の `/` の有無、ドメインも含めて一致）。
+- 変更後、反映まで **数分** かかることがあるので、しばらくしてから再度ログインを試す。
+
+
+### Google OAuth コールバック後にログイン画面に戻る / 「PKCE code verifier not found」の対処（Supabase + Next.js）
+
+**症状:** Google でアカウント選択まで行くが、その後ログイン画面に戻ってしまう。または `PKCE code verifier not found in storage` というエラーになる。
+
+**原因:** PKCE の code_verifier がブラウザとサーバーで同じクッキー名・設定で共有されていない。エラーメッセージの「use @supabase/ssr on both the server and client to store the code verifier in cookies」に従い、クッキーを共通化する必要がある。
+
+**やったこと（GOL での対応）**
+
+1. **共通のクッキー設定を用意**
+   - `lib/supabase/cookie-options.ts` を追加し、`name: 'sb-auth-token'`, `path: '/'` などの共通オプションを定義。
+
+2. **ブラウザクライアントで同じ設定を使う**
+   - `lib/supabase/client.ts` の `createBrowserClient` に **`cookieOptions: supabaseCookieOptions`** を渡す。
+   - ログイン開始時（`signInWithOAuth`）に code_verifier がこの名前・path のクッキーに保存される。
+
+3. **サーバークライアントでも同じ設定を使う**
+   - `lib/supabase/server.ts` の `createServerClient` に **`cookieOptions: supabaseCookieOptions`** を渡す。
+   - コールバック時にリクエストに含まれる同じクッキーから code_verifier を読めるようにする。
+
+4. **コールバックはサーバー側の Route Handler で処理**
+   - `app/auth/callback/route.ts` で、サーバーが `cookies()` からリクエストのクッキーを取得し、同じ `cookieOptions` で `createServerClient` を作成して **`exchangeCodeForSession(code)`** を実行。
+   - 成功したらセッション用クッキーをレスポンスに載せて `/dashboard` へリダイレクト。
+   - コード交換はクライアントページではなく **Route Handler（サーバー）** で行う。
+
+5. **リダイレクト先**
+   - ログイン・サインアップの `redirectTo` は **`/auth/callback`** のまま（`/dashboard` に直接飛ばさない）。
+
+**フロー**
+
+1. ログイン画面で「Googleでログイン」 → ブラウザクライアントが `sb-auth-token` 系のクッキーに code_verifier を保存してから Google へリダイレクト。
+2. Google 認証後 → Supabase が `https://localhost:3000/auth/callback?code=...` へリダイレクト。
+3. `/auth/callback` の Route Handler がリクエストのクッキーから code_verifier を読み、`exchangeCodeForSession(code)` でセッション取得 → セッションをクッキーに載せて `/dashboard` へリダイレクト。
+
+**Supabase の「Redirect URLs」**
+
+- Authentication → URL Configuration の **Redirect URLs** に  
+  `http://localhost:3000/auth/callback`（および本番用の URL）を追加しておく。
+
+
 ## 260128-水 -------------
 
 ### 進行中の確認用（To Do 動線の回答・相談メモ）

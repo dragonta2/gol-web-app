@@ -17,9 +17,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   // 認証状態をチェック
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-  // 未ログインの場合はログイン画面にリダイレクト
+  // 未ログインの場合はログイン画面にリダイレクト（遷移元の確認用に from を付与）
   if (authError || !user) {
-    redirect('/login');
+    redirect('/login?from=dashboard');
   }
 
   // profilesテーブルからユーザーデータを取得
