@@ -504,7 +504,7 @@ https://trello.com/
 
 - Supabase環境構築完了
 
-- 認証システム実装（Email/Password、Google/Apple OAuth）
+- 認証システム実装（Email/Password、Google OAuth）
 
 - ログイン/サインアップ画面実装
 
@@ -731,7 +731,7 @@ Step 4: 次のステップへ
 
 **認証:**
 - Email + Password（必須）
-- Google / Apple / Amazon OAuth（Supabase Authで実装）
+- Google OAuth（Supabase Authで実装。Appleは中止）
 - MVP段階から認証実装
 
 **初回サインアップ:**

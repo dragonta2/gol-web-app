@@ -6,7 +6,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getOpenAIClient, createStoryPrompt } from '@/lib/ai/openai';
+import { getOpenAIClient, createStoryPrompt, getStorySystemMessage } from '@/lib/ai/openai';
+import { mergeStoryWorldConfig, type StoryWorldId } from '@/lib/ai/story-worlds';
 import { validateJournalText, validateImpressionText, validateAll } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
@@ -17,7 +18,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
 
-    const { journalText, impressionText, habits, todos } = await request.json();
+    const body = await request.json();
+    const { journalText, impressionText, habits, todos, storyWorldId: rawWorldId } = body;
 
     // サーバー側バリデーション
     const validation = validateAll([
@@ -47,7 +49,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // プロフィールからニックネーム（表示名）を取得
+    const storyWorldId: StoryWorldId =
+      rawWorldId === 'dq' || rawWorldId === 'ghost' ? rawWorldId : 'ghost';
+
+    let override: Record<string, unknown> | null = null;
+    const { data: overrideRows, error: overrideError } = await supabase
+      .from('story_world_configs')
+      .select('config_json')
+      .eq('world_id', storyWorldId)
+      .maybeSingle();
+    if (!overrideError && overrideRows?.config_json && typeof overrideRows.config_json === 'object') {
+      override = overrideRows.config_json as Record<string, unknown>;
+    }
+    const worldConfig = mergeStoryWorldConfig(storyWorldId, override);
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('username')
@@ -68,7 +83,8 @@ export async function POST(request: NextRequest) {
       impressionText || '',
       habits || [],
       todos || [],
-      nickname
+      nickname,
+      worldConfig
     );
 
     const completion = await openai.chat.completions.create({
@@ -76,7 +92,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: 'あなたはRPGゲームのストーリーテラーです。日常の出来事をRPG物語風のあらすじとして生成してください。',
+          content: getStorySystemMessage(worldConfig),
         },
         {
           role: 'user',

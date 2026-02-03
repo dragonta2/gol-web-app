@@ -234,8 +234,13 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
               </button>
 
               {isHabitsExpanded && (
-                <div id="habits-content">
-                  <HabitList habits={habits} habitLogs={habitLogs} dailyLogId={dailyLogId} />
+                <div id="habits-content" className="w-full min-w-0">
+                  <HabitList
+                    habits={habits}
+                    habitLogs={habitLogs}
+                    dailyLogId={dailyLogId}
+                    logDate={selectedDate || dailyLog?.log_date}
+                  />
                 </div>
               )}
             </div>

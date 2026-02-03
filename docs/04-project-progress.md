@@ -130,10 +130,10 @@
   - [x] 習慣追加フォーム（習慣名、種類、ポイント、EXP、入力タイプなど） `251209-火`
   - [x] データベースへの保存機能 `251209-火`
 
-- [ ] 習慣管理画面の実装（Phase 4以降でも可）
-  - [ ] 習慣一覧表示・編集機能
-  - [ ] 習慣の削除機能
-  - [ ] 習慣のカスタマイズ機能（ポイント/EXP/入力タイプなど）
+- [x] 習慣管理画面の実装（Phase 4で完了） `251209-火`
+  - [x] 習慣一覧表示・編集機能 `251209-火`
+  - [x] 習慣の削除機能 `251209-火`
+  - [x] 習慣のカスタマイズ機能（ポイント/EXP/入力タイプなど） `251209-火`
 
 - [x] AI判定機能の基盤実装 `251209-火`
   - [x] OpenAI API統合（GPT-4o mini） `251209-火`
@@ -233,7 +233,7 @@
   - [x] ポイント・EXPの推移グラフ `260116-金`
   - [x] ToDo完了率の可視化 `260116-金`
   - [ ] エクスポート機能（CSV/JSON）
-  
+
   **⚠️ 廃止:** 体調・気分スコアの推移グラフ（MD版で廃止のため、Web版でも廃止。260116）
 
 - [ ] テスト実装
@@ -269,12 +269,36 @@
 
 ## 2602 --------------
 
+### 260203-火
+
+#### 実施内容
+
+**ランク・アバター対応:**
+- ランクシステム（Lv1–10、ヨウテイ/ドラクエモード別ランク名、EXP閾値）の実装
+- RankAvatar コンポーネント追加（モード別・icon/full、png→jpg→svg フォールバック）
+- アバター画像の命名・配置: yo1-i, yo1, dq1-i, dq1 形式、avatars/{ghost|dq}/{icon|full}/ に配置
+- 日誌画面: アバター160px、固形背景・角丸R小さめ、Lv｜ランク名｜ゴルドを名前の下に配置
+- マイページ: アバターをテキスト右側に配置、全身画像600px、レスポンシブ対応
+- syncProfileLevel、rank_change_logs テーブル、avatar.md 仕様書の整備
+
+#### 決定事項
+
+- アバター形式: PNG（透過可）を推奨、容量目安はアイコン50–80KB・全身100–150KB
+- 日誌画面アバター: 固形背景（bg-zinc-800）＋角丸（rounded=4px）
+
+#### 次回予定
+
+- （未定）
+
+---
+
+
 ### 260202-月
 
 #### 実施内容
 
-**Google / Apple OAuth（Supabase Auth）の安定化:**
-- Supabase で Google/Apple プロバイダを有効化し、クライアントID・シークレット・承認済みリダイレクト URI を設定
+**Google OAuth（Supabase Auth）の安定化:**
+- Supabase で Google プロバイダを有効化し、クライアントID・シークレット・承認済みリダイレクト URI を設定
 - PKCE の code_verifier をクッキーで共有するため、共通 cookieOptions（lib/supabase/cookie-options.ts）を用意し、ブラウザ・サーバー両方の Supabase クライアントに適用
 - 認証コールバックを Route Handler（/auth/callback）で実装: exchangeCodeForSession 後、setAll が呼ばれるまで待ってからセッション用クッキーを付与して /auth/success へリダイレクト
 - 中間ページ /auth/success を経由してからダッシュボードへ遷移（セッションクッキーが確実に送られるようにする）
@@ -2173,14 +2197,14 @@ web-app/gol-web/app/dashboardの中
 
 - ログイン画面実装（`/login`）
   - Email/Password認証
-  - Google/Apple OAuth対応
+  - Google OAuth対応
   - エラーハンドリング
   - ローディング状態表示
 
 - サインアップ画面実装（`/signup`）
   - Email/Password登録
   - パスワード確認・バリデーション
-  - Google/Apple OAuth対応
+  - Google OAuth対応
   - エラーハンドリング
 
 - ダッシュボード実装（`/dashboard`）
@@ -2200,7 +2224,7 @@ web-app/gol-web/app/dashboardの中
 
 - 改行ルール: docs内全ファイルで統一
 
-- 認証プロバイダー: Email/Password、Google、Apple（Amazonは非対応のため除外）
+- 認証プロバイダー: Email/Password、Google（Appleは中止）
 
 - 開発方針: UI先行（モックデータ）→ データベース接続（Phase 2）
 

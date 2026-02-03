@@ -1,16 +1,19 @@
 /**
  * AIアドバイス生成API Route
- * 
- * 辛口コーチング アドバイスを生成
+ *
+ * 辛口コーチング アドバイスを生成（世界観に応じて口調を変化）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getOpenAIClient, createAdvicePrompt } from '@/lib/ai/openai';
+import { createClient } from '@/lib/supabase/server';
+import { getOpenAIClient, createAdvicePrompt, getAdviceSystemMessage } from '@/lib/ai/openai';
+import { mergeStoryWorldConfig, type StoryWorldId } from '@/lib/ai/story-worlds';
 import { validateJournalText, validateImpressionText, validateScore, validateAll } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
-    const { journalText, impressionText, conditionBody, conditionMood } = await request.json();
+    const body = await request.json();
+    const { journalText, impressionText, conditionBody, conditionMood, storyWorldId: rawWorldId } = body;
 
     // サーバー側バリデーション
     const validation = validateAll([
@@ -35,9 +38,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const storyWorldId: StoryWorldId =
+      rawWorldId === 'dq' || rawWorldId === 'ghost' ? rawWorldId : 'ghost';
+
+    const supabase = await createClient();
+    let override: Record<string, unknown> | null = null;
+    const { data: overrideRows, error: overrideError } = await supabase
+      .from('story_world_configs')
+      .select('config_json')
+      .eq('world_id', storyWorldId)
+      .maybeSingle();
+    if (!overrideError && overrideRows?.config_json && typeof overrideRows.config_json === 'object') {
+      override = overrideRows.config_json as Record<string, unknown>;
+    }
+    const worldConfig = mergeStoryWorldConfig(storyWorldId, override);
+
     const openai = getOpenAIClient();
     if (!openai) {
-      // APIキーが設定されていない場合はモックレスポンスを返す
       return NextResponse.json(
         {
           advice: 'AIアドバイス機能を使用するには、OpenAI APIキーを設定してください。',
@@ -50,7 +67,8 @@ export async function POST(request: NextRequest) {
       journalText || '',
       impressionText || '',
       conditionBody,
-      conditionMood
+      conditionMood,
+      worldConfig
     );
 
     const completion = await openai.chat.completions.create({
@@ -58,7 +76,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: 'あなたは厳格なコーチ（ゴースト・オブ・ヨウテイ風）です。辛口のコーチングアドバイスを生成してください。',
+          content: getAdviceSystemMessage(worldConfig),
         },
         {
           role: 'user',

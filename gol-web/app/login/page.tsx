@@ -55,7 +55,7 @@ export default function LoginPage() {
   };
 
 
-  const handleOAuthLogin = async (provider: 'google' | 'apple') => {
+  const handleOAuthLogin = async (provider: 'google') => {
     setError('');
     setLoading(true);
 
@@ -201,20 +201,13 @@ export default function LoginPage() {
           </div>
 
           {/* OAuthボタン */}
-          <div className="space-y-3">
+          <div>
             <button
               onClick={() => handleOAuthLogin('google')}
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 text-zinc-300 font-medium py-3 rounded-lg transition-colors"
             >
               Googleでログイン
-            </button>
-            <button
-              onClick={() => handleOAuthLogin('apple')}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 text-zinc-300 font-medium py-3 rounded-lg transition-colors"
-            >
-              Appleでログイン
             </button>
           </div>
         </div>

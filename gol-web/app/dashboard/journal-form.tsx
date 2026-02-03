@@ -547,6 +547,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             impressionText: currentImpressionText,
             conditionBody: aiJudgmentResult.condition_body,
             conditionMood: aiJudgmentResult.condition_mood,
+            storyWorldId:
+              (typeof window !== 'undefined' && localStorage.getItem('gol-story-world')) || 'ghost',
           }),
         },
         {
@@ -637,6 +639,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             impressionText: currentImpressionText,
             habits,
             todos,
+            storyWorldId:
+              (typeof window !== 'undefined' && localStorage.getItem('gol-story-world')) || 'ghost',
           }),
         },
         {
@@ -702,13 +706,13 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             aria-controls="rights-content"
           >
             <h3 className="text-xl sm:text-2xl font-medium text-zinc-200 flex items-center gap-2">
-              <Gift className="w-5 h-5 sm:w-6 sm:h-6" />
+              <Gift className="w-7 h-7 sm:w-8 sm:h-8" />
               <span>本日の利用ゴルド</span>
             </h3>
             {isRightsExpanded ? (
-              <ChevronUp className="w-5 h-5 text-zinc-300 shrink-0" />
+              <ChevronUp className="w-6 h-6 text-zinc-300 shrink-0" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-zinc-300 shrink-0" />
+              <ChevronDown className="w-6 h-6 text-zinc-300 shrink-0" />
             )}
           </button>
           {isRightsExpanded && (
@@ -814,7 +818,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             aria-controls="ai-content"
           >
             <h2 className="text-xl font-semibold text-cyan-400 flex items-center gap-2">
-              <Bot className="w-6 h-6 sm:w-7 sm:h-7" />
+              <Bot className="w-7 h-7 sm:w-8 sm:h-8" />
               <span>AI判定</span>
             </h2>
             {isAiExpanded ? (

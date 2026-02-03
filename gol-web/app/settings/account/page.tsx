@@ -1,17 +1,111 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Key, Bot, BookOpen } from 'lucide-react';
+import { ArrowLeft, User, Mail, Key, Bot, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
+import type { StoryWorldConfig, StoryWorldId } from '@/lib/ai/story-worlds';
+import { STORAGE_STORY_WORLD, notifyStoryWorldChanged } from '@/lib/story-world-storage';
+
+const STORAGE_AI_PERSONALITY = 'gol-ai-personality';
+
+function AdminWorldConfigForm({
+  config,
+  onConfigChange,
+  onSave,
+  saving,
+}: {
+  config: StoryWorldConfig;
+  onConfigChange: (c: StoryWorldConfig) => void;
+  onSave: () => void;
+  saving: boolean;
+}) {
+  const update = (key: keyof StoryWorldConfig, value: string) => {
+    onConfigChange({ ...config, [key]: value });
+  };
+  return (
+    <div className="space-y-4 pl-2 border-l-2 border-zinc-700 py-2">
+      <div>
+        <label className="block text-sm text-zinc-400 mb-1">表示名</label>
+        <input
+          type="text"
+          value={config.displayName}
+          onChange={(e) => update('displayName', e.target.value)}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-zinc-400 mb-1">主人公のデフォルト名</label>
+        <input
+          type="text"
+          value={config.protagonistName}
+          onChange={(e) => update('protagonistName', e.target.value)}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-zinc-400 mb-1">世界観の雰囲気</label>
+        <textarea
+          value={config.worldTone}
+          onChange={(e) => update('worldTone', e.target.value)}
+          rows={2}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm resize-y"
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-zinc-400 mb-1">アドバイスのスタイル</label>
+        <textarea
+          value={config.adviceStyle}
+          onChange={(e) => update('adviceStyle', e.target.value)}
+          rows={2}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm resize-y"
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-zinc-400 mb-1">比喩の出典</label>
+        <input
+          type="text"
+          value={config.metaphorSource}
+          onChange={(e) => update('metaphorSource', e.target.value)}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-zinc-400 mb-1">あらすじ生成のシステムメッセージ</label>
+        <textarea
+          value={config.storySystemMessage}
+          onChange={(e) => update('storySystemMessage', e.target.value)}
+          rows={3}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm resize-y"
+        />
+      </div>
+      <div>
+        <label className="block text-sm text-zinc-400 mb-1">アドバイス生成の口調指示</label>
+        <textarea
+          value={config.adviceToneInstruction}
+          onChange={(e) => update('adviceToneInstruction', e.target.value)}
+          rows={2}
+          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm resize-y"
+        />
+      </div>
+      <Button
+        type="button"
+        onClick={onSave}
+        disabled={saving}
+        className="bg-cyan-600 hover:bg-cyan-700 text-white text-sm"
+      >
+        {saving ? '保存中...' : 'この世界観の設定を保存'}
+      </Button>
+    </div>
+  );
+}
 
 export default function AccountSettingsPage() {
-  const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // ニックネーム
   const [username, setUsername] = useState('');
@@ -27,30 +121,49 @@ export default function AccountSettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
 
-  // AIの性格・物語の世界観（ローカル保存・将来DB連携用）
+  // AIの性格（ローカル保存）
   const [aiPersonality, setAiPersonality] = useState('');
-  const [storyWorld, setStoryWorld] = useState('');
   const [aiStorySaving, setAiStorySaving] = useState(false);
 
-  const STORAGE_AI_PERSONALITY = 'gol-ai-personality';
-  const STORAGE_STORY_WORLD = 'gol-story-world';
+  // 世界観選択（全ユーザー、localStorage）
+  const [storyWorldId, setStoryWorldId] = useState<StoryWorldId>('ghost');
+
+  // 世界観詳細設定（管理者のみ、API連携）
+  const [dqConfig, setDqConfig] = useState<StoryWorldConfig | null>(null);
+  const [ghostConfig, setGhostConfig] = useState<StoryWorldConfig | null>(null);
+  const [worldConfigSaving, setWorldConfigSaving] = useState(false);
+  const [dqExpanded, setDqExpanded] = useState(false);
+  const [ghostExpanded, setGhostExpanded] = useState(false);
 
   useEffect(() => {
     const load = async () => {
       try {
         const res = await fetch('/api/user/profile');
+        let admin = false;
         if (res.ok) {
           const data = await res.json();
           setUsername(data.username ?? '');
+          admin = data.is_admin === true;
+          setIsAdmin(admin);
         }
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.email) setCurrentEmail(user.email);
+
+        if (admin) {
+          const swRes = await fetch('/api/settings/story-worlds');
+          if (swRes.ok) {
+            const sw = await swRes.json();
+            setDqConfig(sw.dq ?? null);
+            setGhostConfig(sw.ghost ?? null);
+          }
+        }
       } catch {
         toast.error('プロファイルの読み込みに失敗しました');
       }
       if (typeof window !== 'undefined') {
         setAiPersonality(localStorage.getItem(STORAGE_AI_PERSONALITY) ?? '');
-        setStoryWorld(localStorage.getItem(STORAGE_STORY_WORLD) ?? '');
+        const stored = localStorage.getItem(STORAGE_STORY_WORLD);
+        if (stored === 'dq' || stored === 'ghost') setStoryWorldId(stored);
       }
       setLoading(false);
     };
@@ -132,13 +245,46 @@ export default function AccountSettingsPage() {
     try {
       if (typeof window !== 'undefined') {
         localStorage.setItem(STORAGE_AI_PERSONALITY, aiPersonality);
-        localStorage.setItem(STORAGE_STORY_WORLD, storyWorld);
+        localStorage.setItem(STORAGE_STORY_WORLD, storyWorldId);
+        notifyStoryWorldChanged();
       }
       toast.success('AIの性格・物語の世界観を保存しました');
     } catch {
       toast.error('保存に失敗しました');
     } finally {
       setAiStorySaving(false);
+    }
+  };
+
+  const handleSaveWorldConfig = async (worldId: StoryWorldId, config: StoryWorldConfig) => {
+    setWorldConfigSaving(true);
+    try {
+      const payload = {
+        worldId,
+        config: {
+          displayName: config.displayName,
+          protagonistName: config.protagonistName,
+          worldTone: config.worldTone,
+          adviceStyle: config.adviceStyle,
+          metaphorSource: config.metaphorSource,
+          storySystemMessage: config.storySystemMessage,
+          adviceToneInstruction: config.adviceToneInstruction,
+        },
+      };
+      const res = await fetch('/api/settings/story-worlds', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? '保存に失敗しました');
+      }
+      toast.success(`${config.displayName}の設定を保存しました`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '保存に失敗しました');
+    } finally {
+      setWorldConfigSaving(false);
     }
   };
 
@@ -156,11 +302,11 @@ export default function AccountSettingsPage() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 lg:p-8">
       <div className="max-w-2xl mx-auto">
         <Link
-          href="/settings"
+          href="/mypage"
           className="inline-flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>設定に戻る</span>
+          <span>マイページに戻る</span>
         </Link>
         <h1 className="text-2xl font-bold text-cyan-400 mb-6">アカウント・AI設定</h1>
 
@@ -295,21 +441,41 @@ export default function AccountSettingsPage() {
               />
             </div>
 
+            {/* 物語の世界観選択（全ユーザー） */}
             <div id="story-world">
               <div className="flex items-center gap-2 mb-2">
                 <BookOpen className="w-5 h-5 text-cyan-400" />
                 <h2 className="text-lg font-semibold text-zinc-100">物語の世界観</h2>
               </div>
               <p className="text-sm text-zinc-400 mb-3">
-                日誌のAIが生成する物語の世界観・設定を記述できます。
+                日誌のAIが生成する物語の世界観を選びます。
               </p>
-              <textarea
-                value={storyWorld}
-                onChange={(e) => setStoryWorld(e.target.value)}
-                placeholder="例: ファンタジーRPG風。主人公は見習い冒険者。"
-                rows={4}
-                className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-y"
-              />
+              <div className="flex flex-col gap-3">
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-zinc-600 transition-colors">
+                  <input
+                    type="radio"
+                    name="storyWorld"
+                    value="dq"
+                    checked={storyWorldId === 'dq'}
+                    onChange={() => setStoryWorldId('dq')}
+                    className="w-4 h-4 text-cyan-500"
+                  />
+                  <span className="text-zinc-100">ドラゴンクエスト風</span>
+                  <span className="text-sm text-zinc-500">勇者と魔王のファンタジーRPG</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-zinc-600 transition-colors">
+                  <input
+                    type="radio"
+                    name="storyWorld"
+                    value="ghost"
+                    checked={storyWorldId === 'ghost'}
+                    onChange={() => setStoryWorldId('ghost')}
+                    className="w-4 h-4 text-cyan-500"
+                  />
+                  <span className="text-zinc-100">ゴースト・オブ・ヨウテイ風</span>
+                  <span className="text-sm text-zinc-500">蝦夷地の和風・武芸者物語</span>
+                </label>
+              </div>
             </div>
 
             <Button
@@ -320,6 +486,58 @@ export default function AccountSettingsPage() {
               {aiStorySaving ? '保存中...' : 'AIの性格・物語の世界観を保存'}
             </Button>
           </form>
+
+          {/* 管理者のみ: 世界観の詳細設定 */}
+          {isAdmin && dqConfig && ghostConfig && (
+            <div className="mt-8 pt-6 border-t border-zinc-700">
+              <h3 className="text-base font-semibold text-cyan-400 mb-2">
+                管理者用：世界観の詳細設定
+              </h3>
+              <p className="text-sm text-zinc-500 mb-4">
+                テスト・管理者アカウントのみ編集可能。全ユーザーに適用されます。
+              </p>
+
+              {/* ドラゴンクエスト風 */}
+              <div className="mb-6">
+                <button
+                  type="button"
+                  onClick={() => setDqExpanded(!dqExpanded)}
+                  className="flex items-center justify-between w-full py-2 text-left text-zinc-200 hover:text-zinc-100"
+                >
+                  <span>{dqConfig.displayName} の設定</span>
+                  {dqExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                {dqExpanded && (
+                  <AdminWorldConfigForm
+                    config={dqConfig}
+                    onConfigChange={setDqConfig}
+                    onSave={() => handleSaveWorldConfig('dq', dqConfig)}
+                    saving={worldConfigSaving}
+                  />
+                )}
+              </div>
+
+              {/* ゴースト・オブ・ヨウテイ風 */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setGhostExpanded(!ghostExpanded)}
+                  className="flex items-center justify-between w-full py-2 text-left text-zinc-200 hover:text-zinc-100"
+                >
+                  <span>{ghostConfig.displayName} の設定</span>
+                  {ghostExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </button>
+                {ghostExpanded && (
+                  <AdminWorldConfigForm
+                    config={ghostConfig}
+                    onConfigChange={setGhostConfig}
+                    onSave={() => handleSaveWorldConfig('ghost', ghostConfig)}
+                    saving={worldConfigSaving}
+                  />
+                )}
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </div>

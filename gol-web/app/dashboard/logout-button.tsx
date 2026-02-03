@@ -19,7 +19,7 @@ export default function LogoutButton() {
       onClick={handleLogout}
       variant="outline"
       size="sm"
-      className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
+      className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700 text-sm"
     >
       👤 ログアウト
     </Button>

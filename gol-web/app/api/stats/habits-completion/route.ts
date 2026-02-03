@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
+import { isWeekday } from '@/lib/date-utils';
 
 export async function GET(request: Request) {
   try {
@@ -49,10 +50,10 @@ export async function GET(request: Request) {
     const dailyLogIds = dailyLogs.map(log => log.id);
     const totalDays = dailyLogs.length;
 
-    // ユーザーの習慣を取得
+    // ユーザーの習慣を取得（exclude_weekends を進捗率計算に使用）
     const { data: habits, error: habitsError } = await supabase
       .from('habits')
-      .select('id, habit_name, habit_type, input_type')
+      .select('id, habit_name, habit_type, input_type, exclude_weekends')
       .eq('user_id', user.id)
       .order('habit_type', { ascending: true })
       .order('display_order', { ascending: true });
@@ -69,10 +70,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ data: [] });
     }
 
-    // 期間内のhabit_logsを取得
+    // 期間内のhabit_logsを取得（daily_log_id は週末除外の進捗計算に必要）
     const { data: habitLogs, error: habitLogsError } = await supabase
       .from('habit_logs')
-      .select('habit_id, is_checked, count')
+      .select('habit_id, daily_log_id, is_checked, count')
       .in('daily_log_id', dailyLogIds);
 
     if (habitLogsError) {
@@ -85,29 +86,35 @@ export async function GET(request: Request) {
 
     // 習慣ごとに達成率を計算
     const completionData = habits.map(habit => {
-      // この習慣のログを取得
-      const logs = habitLogs?.filter(log => log.habit_id === habit.id) || [];
-      
-      // 達成日数を計算
+      const excludeWeekends = habit.exclude_weekends === true;
+
+      // カウント対象の日（exclude_weekends の場合は平日のみ）
+      const countedLogIds = excludeWeekends
+        ? dailyLogs.filter(log => isWeekday(log.log_date)).map(log => log.id)
+        : dailyLogs.map(log => log.id);
+      const effectiveTotalDays = countedLogIds.length;
+
+      // この習慣のログのうち、カウント対象日に該当するもの
+      const logs = habitLogs?.filter(log => log.habit_id === habit.id && countedLogIds.includes(log.daily_log_id)) || [];
+
+      // 達成日数を計算（カウント対象日のみ）
       let completedDays = 0;
       if (habit.input_type === 'checkbox') {
-        // checkboxタイプ: is_checkedがtrueの日数
         completedDays = logs.filter(log => log.is_checked === true).length;
       } else {
-        // numberタイプ: count > 0の日数
         completedDays = logs.filter(log => (log.count || 0) > 0).length;
       }
 
       // 達成率を計算（パーセンテージ）
-      const completionRate = totalDays > 0 ? (completedDays / totalDays) * 100 : 0;
+      const completionRate = effectiveTotalDays > 0 ? (completedDays / effectiveTotalDays) * 100 : 0;
 
       return {
         habitId: habit.id,
         habitName: habit.habit_name,
         habitType: habit.habit_type,
-        completionRate: Math.round(completionRate * 10) / 10, // 小数点第1位まで
+        completionRate: Math.round(completionRate * 10) / 10,
         completedDays,
-        totalDays,
+        totalDays: effectiveTotalDays,
       };
     });
 

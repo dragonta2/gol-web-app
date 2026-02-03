@@ -11,6 +11,7 @@ import { FormInput, FormInputSmall, FormLabel } from '@/components/ui/form-input
 import { FormCard, FormCardContent } from '@/components/ui/form-card';
 import { toast } from 'sonner';
 import { Settings, Edit, ChevronDown, ChevronUp } from 'lucide-react';
+import { isWeekendOrHoliday } from '@/lib/date-utils';
 
 interface Habit {
   id: string;
@@ -45,6 +46,8 @@ interface HabitListProps {
   habits: Habit[];
   habitLogs: HabitLog[];
   dailyLogId: string | null;
+  /** 表示中の日付（YYYY-MM-DD）。週末除外ラベル表示に使用 */
+  logDate?: string | null;
 }
 
 interface HabitWithLog extends Habit {
@@ -65,7 +68,7 @@ interface HabitFormData {
   exclude_from_complete: boolean;
 }
 
-function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
+function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
   const router = useRouter();
   const supabase = createClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -123,6 +126,12 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
 
   // フィルター適用（習慣では難易度フィルターなし）
   const applyFilters = (habits: HabitWithLog[]) => habits;
+
+  // 週末除外ラベル表示
+  // - 常時: exclude_weekends の習慣に薄いラベルを表示（設定が分かるように）
+  // - 土日祝: より目立つ表示（この日は任意であることを強調）
+  const showWeekendExcludedLabel = (habit: HabitWithLog) => habit.exclude_weekends;
+  const isWeekendOrHolidayToday = isWeekendOrHoliday(logDate);
 
   // 良習慣、悪習慣、ボーナスに分類（フィルター適用後）
   const goodHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'good'));
@@ -669,7 +678,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-4 sm:space-y-6 w-full min-w-0">
       {/* 良習慣実行 */}
       <div>
         <button
@@ -688,120 +697,10 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
           )}
         </button>
         {isGoodHabitsExpanded && (
-          <FormCard id="good-habits-content" className="p-3 sm:p-4 space-y-3">
+          <FormCard id="good-habits-content" className="p-3 sm:p-4 overflow-hidden">
+          <div className="space-y-3 w-full min-w-0">
           {goodHabits.map((habit) => (
-            <div key={habit.id} className="flex items-center gap-3 text-base">
-              {/* チェックボックス */}
-              <button
-                id={`habit-${habit.id}`}
-                onClick={() => toggleCheck(habit.id)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    toggleCheck(habit.id);
-                  }
-                }}
-                aria-label={`${habit.habit_name}を${habit.checked ? '未完了' : '完了'}にする`}
-                aria-checked={habit.checked}
-                role="checkbox"
-                tabIndex={0}
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
-                  habit.checked
-                    ? 'bg-cyan-500 border-cyan-500'
-                    : 'bg-transparent border-zinc-600 hover:border-zinc-400'
-                }`}
-              >
-                {habit.checked && (
-                  <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path d="M5 13l4 4L19 7"></path>
-                  </svg>
-                )}
-              </button>
-
-              {/* 習慣名、難易度、タグ */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <label
-                    htmlFor={`habit-${habit.id}`}
-                    className={`flex-1 cursor-pointer ${habit.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
-                  >
-                    {habit.habit_name}
-                  </label>
-                </div>
-              </div>
-
-              {/* 数値入力（input_typeがnumberの場合のみ表示） */}
-              {habit.input_type === 'number' ? (
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={habit.count}
-                  onChange={(e) => updateCount(habit.id, parseFloat(e.target.value) || 0)}
-                  className="w-16 px-2 py-1 bg-zinc-800 border-zinc-600 text-zinc-100 text-center text-base focus:border-cyan-500"
-                />
-              ) : (
-                <div className="w-16"></div>
-              )}
-
-              {/* ポイント表示 */}
-              <span className={`text-base font-medium whitespace-nowrap min-w-[3.5rem] text-right ${
-                habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
-              }`}>
-                {habit.checked && calculatePoints(habit) !== 0 ? (
-                  calculatePoints(habit) > 0 ? `(+${calculatePoints(habit)}G)` : `(${calculatePoints(habit)}G)`
-                ) : ''}
-              </span>
-            </div>
-          ))}
-
-          {/* ボタン */}
-          <div className="flex gap-3 pt-2 mt-3 border-t border-zinc-800">
-            <Button
-              onClick={() => handleOpenModal('good')}
-              variant="ghost"
-              size="sm"
-              aria-label="新しい良習慣を追加する"
-              className="text-base text-cyan-400 hover:text-cyan-300 h-auto p-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
-            >
-              [+ 良習慣を追加]
-            </Button>
-            <Button
-              onClick={handleOpenManagementModal}
-              variant="ghost"
-              size="sm"
-              aria-label="習慣を管理する"
-              className="text-base text-zinc-500 hover:text-zinc-400 h-auto p-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
-            >
-              <Settings className="w-4 h-4 mr-1" />
-              習慣を管理
-            </Button>
-          </div>
-          </FormCard>
-        )}
-      </div>
-
-      {/* 悪習慣 */}
-      <div>
-        <button
-          onClick={() => setIsBadHabitsExpanded(!isBadHabitsExpanded)}
-          className="w-full text-left mb-2 sm:mb-3 flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
-          aria-expanded={isBadHabitsExpanded}
-          aria-controls="bad-habits-content"
-        >
-          <h3 className="text-base sm:text-lg font-medium text-zinc-300">
-            悪習慣（やってしまった場合にチェック）
-          </h3>
-          {isBadHabitsExpanded ? (
-            <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-zinc-400 flex-shrink-0" />
-          )}
-        </button>
-        {isBadHabitsExpanded && (
-          <FormCard id="bad-habits-content" className="p-3 sm:p-4 space-y-3">
-          {badHabits.map((habit) => (
-            <div key={habit.id} className="flex items-center gap-3 text-base">
+            <div key={habit.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
               {/* チェックボックス */}
               <button
                 id={`habit-${habit.id}`}
@@ -830,28 +729,157 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
               </button>
 
               {/* 習慣名 */}
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <label
-                    htmlFor={`habit-${habit.id}`}
-                    className={`flex-1 cursor-pointer ${habit.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
+              <label
+                htmlFor={`habit-${habit.id}`}
+                className={`block cursor-pointer truncate min-w-0 ${habit.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
+              >
+                {habit.habit_name}
+              </label>
+
+              {/* 右側グループ（週末除外・数値入力・ポイント） */}
+              <div className="flex items-center justify-end gap-3 shrink-0">
+                {showWeekendExcludedLabel(habit) && (
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded ${
+                      isWeekendOrHolidayToday
+                        ? 'text-cyan-300/90 bg-cyan-900/30'
+                        : 'text-zinc-500 bg-zinc-800'
+                    }`}
+                    title="土日祝は任意（進捗に影響しません）"
                   >
-                    {habit.habit_name}
-                  </label>
-                </div>
+                    週末除外
+                  </span>
+                )}
+                {habit.input_type === 'number' ? (
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={habit.count}
+                    onChange={(e) => updateCount(habit.id, parseFloat(e.target.value) || 0)}
+                    className="w-16 px-2 py-1 bg-zinc-800 border-zinc-600 text-zinc-100 text-center text-base focus:border-cyan-500"
+                  />
+                ) : (
+                  <div className="w-16" />
+                )}
+                <span className={`text-base font-medium whitespace-nowrap min-w-[3.5rem] text-right ${
+                  habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
+                }`}>
+                  {habit.checked && calculatePoints(habit) !== 0 ? (
+                    calculatePoints(habit) > 0 ? `(+${calculatePoints(habit)}G)` : `(${calculatePoints(habit)}G)`
+                  ) : ''}
+                </span>
               </div>
+            </div>
+          ))}
 
-              {/* スペーサー（良習慣の数値入力と揃える） */}
-              <div className="w-16"></div>
+          {/* ボタン */}
+          <div className="flex gap-3 pt-2 mt-3 border-t border-zinc-800">
+            <Button
+              onClick={() => handleOpenModal('good')}
+              variant="ghost"
+              size="sm"
+              aria-label="新しい良習慣を追加する"
+              className="text-base text-cyan-400 hover:text-cyan-300 h-auto p-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
+            >
+              [+ 良習慣を追加]
+            </Button>
+            <Button
+              onClick={handleOpenManagementModal}
+              variant="ghost"
+              size="sm"
+              aria-label="習慣を管理する"
+              className="text-base text-zinc-500 hover:text-zinc-400 h-auto p-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
+            >
+              <Settings className="w-4 h-4 mr-1" />
+              習慣を管理
+            </Button>
+          </div>
+          </div>
+          </FormCard>
+        )}
+      </div>
 
-              {/* ポイント表示 */}
-              <span className={`text-base font-medium whitespace-nowrap min-w-[3.5rem] text-right ${
-                habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
-              }`}>
-                {habit.checked && calculatePoints(habit) !== 0 ? (
-                  calculatePoints(habit) > 0 ? `(+${calculatePoints(habit)}G)` : `(${calculatePoints(habit)}G)`
-                ) : ''}
-              </span>
+      {/* 悪習慣 */}
+      <div>
+        <button
+          onClick={() => setIsBadHabitsExpanded(!isBadHabitsExpanded)}
+          className="w-full text-left mb-2 sm:mb-3 flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
+          aria-expanded={isBadHabitsExpanded}
+          aria-controls="bad-habits-content"
+        >
+          <h3 className="text-base sm:text-lg font-medium text-zinc-300">
+            悪習慣（やってしまった場合にチェック）
+          </h3>
+          {isBadHabitsExpanded ? (
+            <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+          )}
+        </button>
+        {isBadHabitsExpanded && (
+          <FormCard id="bad-habits-content" className="p-3 sm:p-4 overflow-hidden">
+          <div className="space-y-3 w-full min-w-0">
+          {badHabits.map((habit) => (
+            <div key={habit.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
+              {/* チェックボックス */}
+              <button
+                id={`habit-${habit.id}`}
+                onClick={() => toggleCheck(habit.id)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleCheck(habit.id);
+                  }
+                }}
+                aria-label={`${habit.habit_name}を${habit.checked ? '未完了' : '完了'}にする`}
+                aria-checked={habit.checked}
+                role="checkbox"
+                tabIndex={0}
+                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
+                  habit.checked
+                    ? 'bg-cyan-500 border-cyan-500'
+                    : 'bg-transparent border-zinc-600 hover:border-zinc-400'
+                }`}
+              >
+                {habit.checked && (
+                  <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path d="M5 13l4 4L19 7"></path>
+                  </svg>
+                )}
+              </button>
+
+              {/* 習慣名 */}
+              <label
+                htmlFor={`habit-${habit.id}`}
+                className={`block cursor-pointer truncate min-w-0 ${habit.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
+              >
+                {habit.habit_name}
+              </label>
+
+              {/* 右側グループ（週末除外・スペーサー・ポイント） */}
+              <div className="flex items-center justify-end gap-3 shrink-0">
+                {showWeekendExcludedLabel(habit) && (
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded ${
+                      isWeekendOrHolidayToday
+                        ? 'text-cyan-300/90 bg-cyan-900/30'
+                        : 'text-zinc-500 bg-zinc-800'
+                    }`}
+                    title="土日祝は任意（進捗に影響しません）"
+                  >
+                    週末除外
+                  </span>
+                )}
+                <div className="w-16" />
+                <span className={`text-base font-medium whitespace-nowrap min-w-[3.5rem] text-right ${
+                  habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
+                }`}>
+                  {habit.checked && calculatePoints(habit) !== 0 ? (
+                    calculatePoints(habit) > 0 ? `(+${calculatePoints(habit)}G)` : `(${calculatePoints(habit)}G)`
+                  ) : ''}
+                </span>
+              </div>
             </div>
           ))}
 
@@ -876,6 +904,7 @@ function HabitList({ habits, habitLogs, dailyLogId }: HabitListProps) {
               <Settings className="w-4 h-4 mr-1" />
               習慣を管理
             </Button>
+          </div>
           </div>
           </FormCard>
         )}

@@ -16,7 +16,7 @@ export async function GET() {
 
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('username')
+      .select('username, is_admin')
       .eq('id', user.id)
       .single();
 
@@ -27,6 +27,7 @@ export async function GET() {
 
     return NextResponse.json({
       username: profile?.username ?? '',
+      is_admin: profile?.is_admin === true,
     });
   } catch (err) {
     console.error('profile GET error:', err);

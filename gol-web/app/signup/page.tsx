@@ -61,7 +61,7 @@ export default function SignupPage() {
     }
   };
 
-  const handleOAuthSignup = async (provider: 'google' | 'apple') => {
+  const handleOAuthSignup = async (provider: 'google') => {
     setError('');
     setLoading(true);
 
@@ -202,20 +202,13 @@ export default function SignupPage() {
           </div>
 
           {/* OAuthボタン */}
-          <div className="space-y-3">
+          <div>
             <button
               onClick={() => handleOAuthSignup('google')}
               disabled={loading}
               className="w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 text-zinc-300 font-medium py-3 rounded-lg transition-colors"
             >
               Googleで登録
-            </button>
-            <button
-              onClick={() => handleOAuthSignup('apple')}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 text-zinc-300 font-medium py-3 rounded-lg transition-colors"
-            >
-              Appleで登録
             </button>
           </div>
         </div>

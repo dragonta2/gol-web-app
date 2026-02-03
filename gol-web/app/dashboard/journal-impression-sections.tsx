@@ -199,13 +199,13 @@ function JournalImpressionSections({
               aria-controls="journal-content"
             >
               <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2">
-                <Edit className="w-5 h-5 sm:w-6 sm:h-6" />
+                <Edit className="w-7 h-7 sm:w-8 sm:h-8" />
                 <span>日誌</span>
               </h3>
               {isJournalExpanded ? (
-                <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+                <ChevronUp className="w-6 h-6 text-zinc-400 shrink-0" />
               ) : (
-                <ChevronDown className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+                <ChevronDown className="w-6 h-6 text-zinc-400 shrink-0" />
               )}
             </button>
             {isJournalExpanded && (
@@ -222,8 +222,8 @@ function JournalImpressionSections({
                   disabled={!isEditable}
                   className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[600px] overflow-y-auto text-[17px] md:text-[15px]"
                 />
-                <div id="journal-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 flex-shrink-0" aria-live="polite">
-                  <Edit className="w-4 h-4" />
+                <div id="journal-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 shrink-0" aria-live="polite">
+                  <Edit className="w-5 h-5" />
                   <span>{journalText.length} / {journalMaxLength}文字</span>
                 </div>
               </div>
@@ -239,13 +239,13 @@ function JournalImpressionSections({
               aria-controls="impression-content"
             >
               <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
+                <MessageSquare className="w-7 h-7 sm:w-8 sm:h-8" />
                 <span>感想</span>
               </h3>
               {isImpressionExpanded ? (
-                <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+                <ChevronUp className="w-6 h-6 text-zinc-400 shrink-0" />
               ) : (
-                <ChevronDown className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+                <ChevronDown className="w-6 h-6 text-zinc-400 shrink-0" />
               )}
             </button>
             {isImpressionExpanded && (
@@ -262,8 +262,8 @@ function JournalImpressionSections({
                   disabled={!isEditable}
                   className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[600px] overflow-y-auto text-[17px] md:text-[15px]"
                 />
-                <div id="impression-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 flex-shrink-0" aria-live="polite">
-                  <Edit className="w-4 h-4" />
+                <div id="impression-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 shrink-0" aria-live="polite">
+                  <Edit className="w-5 h-5" />
                   <span>{impressionText.length} / {impressionMaxLength}文字</span>
                 </div>
               </div>

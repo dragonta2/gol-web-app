@@ -263,11 +263,11 @@ export default function HabitsSettingsPage() {
         {/* ヘッダー */}
         <div className="mb-6">
           <Link
-            href="/settings"
+            href="/mypage"
             className="inline-flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>設定に戻る</span>
+            <span>マイページに戻る</span>
           </Link>
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-cyan-400">習慣管理</h1>

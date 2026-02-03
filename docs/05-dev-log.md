@@ -50,6 +50,27 @@
 
 ## 2602 --------------
 
+### 260203-火
+
+#### ランク・アバター画像の実装
+
+**実施内容:**
+- rank-utils.ts: レベル閾値・ランク名（ghost/dq）、getLevelFromExp, getExpToNextLevel
+- sync-profile-level.ts: profiles の level/class_name を EXP から再計算し、rank_change_logs に記録
+- rank-avatar.tsx: RankAvatar（variant: icon/full）、パス avatars/{mode}/{variant}/{prefix}{lv}[-i].{png|jpg|svg}
+- rank-name-display.tsx: ストーリー世界モードに応じたランク名表示
+- ダッシュボード: アバターを3行にまたがるレイアウト、Lv｜ランク名｜G を名前の下へ移動、固形背景（bg-zinc-800 rounded）
+- マイページ: アバターを右側配置、全身 size=600、max-w でレスポンシブ
+- avatar.md: 命名 yo1-i/yo1/dq1-i/dq1、配置先・推奨サイズ・PNG 仕様を記載
+- create-rank-change-logs.sql: テーブル・RLS・INSERT ポリシー追加
+
+**変更・追加ファイル:**
+- gol-web: components/rank-avatar.tsx, rank-name-display.tsx, mypage-settings-section.tsx / lib/rank-utils.ts, sync-profile-level.ts, story-world-storage.ts, date-utils.ts / app/mypage/, dashboard/page.tsx, settings/* / public/avatars/
+- docs: for-request-md-file/avatar.md, sql-snippet/create-rank-change-logs.sql
+
+---
+
+
 ### 260202-月
 
 #### Google / Apple OAuth（Supabase Auth）の安定化・他アカウント対応
