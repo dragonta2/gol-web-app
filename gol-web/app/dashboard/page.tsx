@@ -1,13 +1,8 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import Link from "next/link"
-import LogoutButton from "./logout-button"
 import DashboardTabs from "./dashboard-tabs"
-import FontSizeControl from "@/components/font-size-control"
-import { Trophy, Coins, Dumbbell, Brain, Sparkles, User } from "lucide-react"
+import CollapsibleDashboardHeader from "./collapsible-dashboard-header"
 import { syncProfileLevel } from "@/lib/sync-profile-level"
-import { RankNameDisplay } from "@/components/rank-name-display"
-import { RankAvatar } from "@/components/rank-avatar"
 
 interface DashboardPageProps {
   searchParams: Promise<{ date?: string }>
@@ -164,100 +159,10 @@ export default async function DashboardPage({
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      {/* ステータスバー（固定ヘッダー） */}
-      <header className="sticky top-0 z-50 bg-zinc-900 border-b border-zinc-800 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="grid grid-cols-[auto_1fr] gap-x-4 items-center">
-            {/* アバター: 固形背景・角丸（R小さめ） */}
-            <div className="row-span-3 flex items-center justify-center">
-              <div className="rounded overflow-hidden shrink-0 size-[160px] bg-zinc-800">
-                <RankAvatar
-                  level={userProfile.level}
-                  variant="icon"
-                  size={160}
-                  className="shrink-0"
-                />
-              </div>
-            </div>
-
-            {/* 1行目: 名前 + アクションボタン */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-cyan-400 flex items-center gap-2">
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span>{userProfile.name}</span>
-              </h1>
-              <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                <FontSizeControl />
-                <Link
-                  href="/mypage"
-                  className="flex-1 sm:flex-none px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded transition-colors text-center flex items-center justify-center gap-1.5"
-                  title="マイページ"
-                >
-                  <User className="w-4 h-4" />
-                  <span>マイページ</span>
-                </Link>
-                <LogoutButton />
-              </div>
-            </div>
-
-            {/* 2行目: Lv.｜ランク名｜ゴルド（名前の下） */}
-            <div className="flex items-center gap-2 text-base sm:text-lg text-zinc-300">
-              <span>Lv.{userProfile.level}</span>
-              <span className="text-zinc-500">|</span>
-              <span className="hidden sm:inline">
-                <RankNameDisplay level={userProfile.level} />
-              </span>
-              <span className="sm:hidden inline-block max-w-20 truncate">
-                <RankNameDisplay level={userProfile.level} />
-              </span>
-              <span className="text-zinc-500">|</span>
-              <span className="flex items-center gap-1 font-semibold text-yellow-400">
-                <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
-                {userProfile.points}G
-              </span>
-            </div>
-
-            {/* 3行目: 左＝日付（YYYY年MM月DD日）、右＝EXP表示 */}
-            <div className="flex items-center justify-between gap-4">
-              {selectedDate && (
-                <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-                  {(() => {
-                    const [y, m, d] = selectedDate.split("-")
-                    const dayNames = ["日", "月", "火", "水", "木", "金", "土"]
-                    const dayIndex = new Date(
-                      selectedDate + "T12:00:00"
-                    ).getDay()
-                    return `${y}年${m}月${d}日(${dayNames[dayIndex]})`
-                  })()}
-                </p>
-              )}
-              <div className="flex items-center gap-3 sm:gap-6 text-lg sm:text-xl ml-auto">
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>身体:</span>
-                  <span className="font-semibold text-cyan-400">
-                    {userProfile.exp.body}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>頭脳:</span>
-                  <span className="font-semibold text-cyan-400">
-                    {userProfile.exp.intellect}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 sm:gap-2">
-                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span>精神:</span>
-                  <span className="font-semibold text-cyan-400">
-                    {userProfile.exp.mind}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <CollapsibleDashboardHeader
+        userProfile={userProfile}
+        selectedDate={selectedDate}
+      />
 
       {/* メインコンテンツ */}
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">

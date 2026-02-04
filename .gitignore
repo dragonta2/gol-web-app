@@ -12,6 +12,7 @@ setup-result.txt
 fix-gol-web-as-normal-dir.sh
 
 # gol-web 配下は gol-web/.gitignore が適用される
+
 # （node_modules, .next, .env*, など）
 
 # 自動コミット用の日付記録ファイル
