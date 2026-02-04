@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
-import Link from 'next/link';
+import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
+import Link from "next/link"
 import {
   Trophy,
   Coins,
@@ -10,35 +10,42 @@ import {
   Sparkles,
   TrendingUp,
   History,
-} from 'lucide-react';
-import { syncProfileLevel } from '@/lib/sync-profile-level';
-import { getExpToNextLevel } from '@/lib/rank-utils';
-import { RankNameDisplay, RankHistoryItem } from '@/components/rank-name-display';
-import { RankAvatar } from '@/components/rank-avatar';
-import { MypageSettingsSection } from '@/components/mypage-settings-section';
+} from "lucide-react"
+import { syncProfileLevel } from "@/lib/sync-profile-level"
+import { getExpToNextLevel } from "@/lib/rank-utils"
+import {
+  RankNameDisplay,
+  RankHistoryItem,
+} from "@/components/rank-name-display"
+import { RankAvatar } from "@/components/rank-avatar"
+import { MypageSettingsSection } from "@/components/mypage-settings-section"
+import FontSizeControl from "@/components/font-size-control"
 
 export default async function MypagePage() {
-  const supabase = await createClient();
+  const supabase = await createClient()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
 
   if (authError || !user) {
-    redirect('/login?from=mypage');
+    redirect("/login?from=mypage")
   }
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single()
 
   // レベル同期
-  let levelInfo = { level: 1, class_name: '無名の凡人', levelChanged: false };
+  let levelInfo = { level: 1, class_name: "無名の凡人", levelChanged: false }
   if (profile) {
     try {
-      levelInfo = await syncProfileLevel(supabase, user.id, 'ghost');
+      levelInfo = await syncProfileLevel(supabase, user.id, "ghost")
     } catch (e) {
-      console.warn('syncProfileLevel:', e);
+      console.warn("syncProfileLevel:", e)
     }
   }
 
@@ -55,38 +62,41 @@ export default async function MypagePage() {
         },
       }
     : {
-        name: user.email?.split('@')[0] || 'ユーザー',
+        name: user.email?.split("@")[0] || "ユーザー",
         level: 1,
-        class: '無名の凡人',
+        class: "無名の凡人",
         points: 10,
         exp: { body: 0, intellect: 0, mind: 0 },
-      };
+      }
 
   const expToNext = getExpToNextLevel(
     userProfile.exp.body,
     userProfile.exp.intellect,
     userProfile.exp.mind
-  );
+  )
 
   // ランク変更履歴を取得（テーブルが存在しない場合は空配列）
   const { data: rankLogsData } = await supabase
-    .from('rank_change_logs')
-    .select('from_level, to_level, changed_at')
-    .eq('user_id', user.id)
-    .order('changed_at', { ascending: false })
-    .limit(20);
-  const rankLogs = rankLogsData ?? [];
+    .from("rank_change_logs")
+    .select("from_level, to_level, changed_at")
+    .eq("user_id", user.id)
+    .order("changed_at", { ascending: false })
+    .limit(20)
+  const rankLogs = rankLogsData ?? []
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        <Link
-          href="/dashboard"
-          className="inline-flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>ダッシュボードに戻る</span>
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>ダッシュボードに戻る</span>
+          </Link>
+          <FontSizeControl />
+        </div>
 
         <h1 className="text-xl sm:text-2xl font-bold text-cyan-400 mb-6">
           マイページ
@@ -102,11 +112,15 @@ export default async function MypagePage() {
             <div className="space-y-3 flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span className="text-zinc-400">名前</span>
-                <span className="text-zinc-100 font-medium">{userProfile.name}</span>
+                <span className="text-zinc-100 font-medium">
+                  {userProfile.name}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-zinc-400">レベル</span>
-                <span className="text-cyan-400 font-bold">Lv.{userProfile.level}</span>
+                <span className="text-cyan-400 font-bold">
+                  Lv.{userProfile.level}
+                </span>
                 <span className="text-zinc-500">|</span>
                 <span className="text-zinc-300">
                   <RankNameDisplay level={userProfile.level} />
@@ -115,29 +129,43 @@ export default async function MypagePage() {
               <div className="flex items-center gap-2">
                 <Coins className="w-4 h-4 text-yellow-400" />
                 <span className="text-zinc-400">ゴルド</span>
-                <span className="text-yellow-400 font-semibold">{userProfile.points}G</span>
+                <span className="text-yellow-400 font-semibold">
+                  {userProfile.points}G
+                </span>
               </div>
             </div>
-            <div className="shrink-0 max-w-[min(100%,600px)]">
-              <RankAvatar level={userProfile.level} variant="full" size={600} className="max-w-full h-auto" />
+            {/* 中サイズで 450px 相当。rem で指定し文字サイズ（小・中・大）に連動 */}
+            <div className="shrink-0 w-[28.125rem] max-w-full">
+              <RankAvatar
+                level={userProfile.level}
+                variant="full"
+                size={600}
+                className="w-full h-auto"
+              />
             </div>
           </div>
           <div className="space-y-3 pt-2 border-t border-zinc-800">
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center gap-1">
-                <Dumbbell className="w-4 h-4 text-cyan-400" />
-                <span className="text-zinc-400 text-sm">身体</span>
-                <span className="text-cyan-400 font-semibold">{userProfile.exp.body}</span>
+            <div className="flex flex-wrap gap-4 text-lg">
+              <div className="flex items-center gap-1.5">
+                <Dumbbell className="w-5 h-5 text-cyan-400 shrink-0" />
+                <span className="text-zinc-400">身体</span>
+                <span className="text-cyan-400 font-semibold">
+                  {userProfile.exp.body}
+                </span>
               </div>
-              <div className="flex items-center gap-1">
-                <Brain className="w-4 h-4 text-cyan-400" />
-                <span className="text-zinc-400 text-sm">頭脳</span>
-                <span className="text-cyan-400 font-semibold">{userProfile.exp.intellect}</span>
+              <div className="flex items-center gap-1.5">
+                <Brain className="w-5 h-5 text-cyan-400 shrink-0" />
+                <span className="text-zinc-400">頭脳</span>
+                <span className="text-cyan-400 font-semibold">
+                  {userProfile.exp.intellect}
+                </span>
               </div>
-              <div className="flex items-center gap-1">
-                <Sparkles className="w-4 h-4 text-cyan-400" />
-                <span className="text-zinc-400 text-sm">精神</span>
-                <span className="text-cyan-400 font-semibold">{userProfile.exp.mind}</span>
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-5 h-5 text-cyan-400 shrink-0" />
+                <span className="text-zinc-400">精神</span>
+                <span className="text-cyan-400 font-semibold">
+                  {userProfile.exp.mind}
+                </span>
               </div>
             </div>
           </div>
@@ -150,22 +178,28 @@ export default async function MypagePage() {
             次のレベルアップまで
           </h2>
           {expToNext ? (
-            <div className="space-y-2 text-sm">
+            <div className="space-y-3 text-lg">
               <p className="text-zinc-400 mb-3">
                 身体・頭脳・精神のそれぞれが次の閾値を超えるとレベルアップします。
               </p>
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-zinc-800 rounded-lg p-3">
-                  <div className="text-zinc-500 text-xs mb-1">身体</div>
-                  <div className="text-cyan-400 font-semibold">あと {expToNext.body}</div>
+                  <div className="text-zinc-500 text-lg mb-1">身体</div>
+                  <div className="text-cyan-400 font-semibold text-lg">
+                    あと {expToNext.body}
+                  </div>
                 </div>
                 <div className="bg-zinc-800 rounded-lg p-3">
-                  <div className="text-zinc-500 text-xs mb-1">頭脳</div>
-                  <div className="text-cyan-400 font-semibold">あと {expToNext.intellect}</div>
+                  <div className="text-zinc-500 text-lg mb-1">頭脳</div>
+                  <div className="text-cyan-400 font-semibold text-lg">
+                    あと {expToNext.intellect}
+                  </div>
                 </div>
                 <div className="bg-zinc-800 rounded-lg p-3">
-                  <div className="text-zinc-500 text-xs mb-1">精神</div>
-                  <div className="text-cyan-400 font-semibold">あと {expToNext.spirit}</div>
+                  <div className="text-zinc-500 text-lg mb-1">精神</div>
+                  <div className="text-cyan-400 font-semibold text-lg">
+                    あと {expToNext.spirit}
+                  </div>
                 </div>
               </div>
             </div>
@@ -204,5 +238,5 @@ export default async function MypagePage() {
         <MypageSettingsSection />
       </div>
     </div>
-  );
+  )
 }

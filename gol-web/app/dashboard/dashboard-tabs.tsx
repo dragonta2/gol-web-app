@@ -1,44 +1,68 @@
-'use client';
+"use client"
 
-import { useState, lazy, Suspense } from 'react';
-import KanbanBoard from './kanban-board';
-import HabitList from './habit-list';
-import JournalForm from './journal-form';
-import JournalImpressionSections from './journal-impression-sections';
-import TodoSummaryTab from './todo-summary-tab';
-import JournalList from '@/components/journal-list';
-import type { DashboardTabsProps } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import { Home, ClipboardList, BarChart3, Sparkles, ChevronDown, ChevronUp, Maximize2, Minimize2, Lock, Unlock } from 'lucide-react';
+import { useState, lazy, Suspense } from "react"
+import KanbanBoard from "./kanban-board"
+import HabitList from "./habit-list"
+import JournalForm from "./journal-form"
+import JournalImpressionSections from "./journal-impression-sections"
+import TodoSummaryTab from "./todo-summary-tab"
+import JournalList from "@/components/journal-list"
+import type { DashboardTabsProps } from "@/lib/types"
+import { Button } from "@/components/ui/button"
+import DateSelector from "@/components/date-selector"
+import {
+  Home,
+  ClipboardList,
+  BarChart3,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Maximize2,
+  Minimize2,
+  Lock,
+  Unlock,
+} from "lucide-react"
 
 // 統計タブを動的インポート（コード分割・パフォーマンス最適化）
-const StatsTab = lazy(() => import('./stats-tab'));
+const StatsTab = lazy(() => import("./stats-tab"))
 
-type TabType = 'journal' | 'todo-summary' | 'stats';
+type TabType = "journal" | "todo-summary" | "stats"
 
-export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog, todos, todoLogs, todoSubtasks, selectedDate, userName }: DashboardTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('journal');
+export default function DashboardTabs({
+  habits,
+  habitLogs,
+  dailyLogId,
+  dailyLog,
+  todos,
+  todoLogs,
+  todoSubtasks,
+  selectedDate,
+  userName,
+}: DashboardTabsProps) {
+  const [activeTab, setActiveTab] = useState<TabType>("journal")
   /** 日誌カンバンから「編集」で飛んできたとき、このタスクの編集モーダルを開く */
-  const [editTodoId, setEditTodoId] = useState<string | null>(null);
+  const [editTodoId, setEditTodoId] = useState<string | null>(null)
 
   // アコーディオンの開閉状態を管理（全てのアコーディオンを一括制御）
-  const [isKanbanExpanded, setIsKanbanExpanded] = useState(true);
-  const [isHabitsExpanded, setIsHabitsExpanded] = useState(true);
-  const [isJournalListExpanded, setIsJournalListExpanded] = useState(true);
+  const [isKanbanExpanded, setIsKanbanExpanded] = useState(true)
+  const [isHabitsExpanded, setIsHabitsExpanded] = useState(true)
+  const [isJournalListExpanded, setIsJournalListExpanded] = useState(true)
   const [journalFormStates, setJournalFormStates] = useState({
     journal: true,
     impression: true,
     rights: true,
     ai: true,
-  });
+  })
 
   // 日付判定
   const getTodayJST = () =>
-    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' }).format(new Date());
-  const todayStr = getTodayJST();
-  const isToday = selectedDate === todayStr;
-  const isPastDate = selectedDate ? selectedDate < todayStr : false;
-  const isConfirmed = dailyLog?.is_confirmed ?? false;
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
+      new Date()
+    )
+  const todayStr = getTodayJST()
+  const isToday = selectedDate === todayStr
+  const isPastDate = selectedDate ? selectedDate < todayStr : false
+  const isConfirmed = dailyLog?.is_confirmed ?? false
 
   return (
     <div>
@@ -61,9 +85,7 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
       )}
       {isPastDate && !dailyLog && (
         <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4 mb-4 text-center">
-          <p className="text-zinc-400">
-            この日付には日誌が記録されていません
-          </p>
+          <p className="text-zinc-400">この日付には日誌が記録されていません</p>
         </div>
       )}
 
@@ -71,70 +93,82 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
       <div
         role="tablist"
         aria-label="ダッシュボードタブ"
-        className="flex gap-2 sm:gap-4 mb-4 sm:mb-6 border-b border-zinc-800 overflow-x-auto"
+        className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-6 border-b border-zinc-800 overflow-x-auto"
       >
         <Button
-          onClick={() => setActiveTab('journal')}
+          onClick={() => setActiveTab("journal")}
           variant="ghost"
           role="tab"
-          aria-selected={activeTab === 'journal'}
+          aria-selected={activeTab === "journal"}
           aria-controls="tabpanel-journal"
           id="tab-journal"
           className={`pb-3 px-3 sm:px-4 text-base sm:text-lg font-medium transition-colors relative h-auto rounded-none whitespace-nowrap focus:outline-none focus:ring-0 focus-visible:ring-0 border-0 hover:border-0 ${
-            activeTab === 'journal'
-              ? 'text-cyan-400'
-              : 'text-zinc-500 hover:text-zinc-300'
+            activeTab === "journal"
+              ? "text-cyan-400"
+              : "text-zinc-500 hover:text-zinc-300"
           }`}
         >
           <Home className="w-4 h-4 mr-1" />
           日誌
-          {activeTab === 'journal' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" aria-hidden="true"></div>
+          {activeTab === "journal" && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"
+              aria-hidden="true"
+            ></div>
           )}
         </Button>
         <Button
-          onClick={() => setActiveTab('todo-summary')}
+          onClick={() => setActiveTab("todo-summary")}
           variant="ghost"
           role="tab"
-          aria-selected={activeTab === 'todo-summary'}
+          aria-selected={activeTab === "todo-summary"}
           aria-controls="tabpanel-todo-summary"
           id="tab-todo-summary"
           className={`pb-3 px-3 sm:px-4 text-base sm:text-lg font-medium transition-colors relative h-auto rounded-none whitespace-nowrap focus:outline-none focus:ring-0 focus-visible:ring-0 border-0 hover:border-0 ${
-            activeTab === 'todo-summary'
-              ? 'text-cyan-400'
-              : 'text-zinc-500 hover:text-zinc-300'
+            activeTab === "todo-summary"
+              ? "text-cyan-400"
+              : "text-zinc-500 hover:text-zinc-300"
           }`}
         >
           <ClipboardList className="w-4 h-4 mr-1" />
           ToDoサマリー
-          {activeTab === 'todo-summary' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" aria-hidden="true"></div>
+          {activeTab === "todo-summary" && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"
+              aria-hidden="true"
+            ></div>
           )}
         </Button>
         <Button
-          onClick={() => setActiveTab('stats')}
+          onClick={() => setActiveTab("stats")}
           variant="ghost"
           role="tab"
-          aria-selected={activeTab === 'stats'}
+          aria-selected={activeTab === "stats"}
           aria-controls="tabpanel-stats"
           id="tab-stats"
           className={`pb-3 px-3 sm:px-4 text-base sm:text-lg font-medium transition-colors relative h-auto rounded-none whitespace-nowrap focus:outline-none focus:ring-0 focus-visible:ring-0 border-0 hover:border-0 ${
-            activeTab === 'stats'
-              ? 'text-cyan-400'
-              : 'text-zinc-500 hover:text-zinc-300'
+            activeTab === "stats"
+              ? "text-cyan-400"
+              : "text-zinc-500 hover:text-zinc-300"
           }`}
         >
           <BarChart3 className="w-4 h-4 mr-1" />
           統計
-          {activeTab === 'stats' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400" aria-hidden="true"></div>
+          {activeTab === "stats" && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"
+              aria-hidden="true"
+            ></div>
           )}
         </Button>
+        <div className="ml-auto shrink-0 pb-3 flex items-center">
+          <DateSelector />
+        </div>
       </div>
 
       {/* タブコンテンツ */}
       <div>
-        {activeTab === 'journal' && (
+        {activeTab === "journal" && (
           <div
             id="tabpanel-journal"
             role="tabpanel"
@@ -145,15 +179,15 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
             <div className="flex justify-end gap-2 mb-2">
               <Button
                 onClick={() => {
-                  setIsKanbanExpanded(true);
-                  setIsHabitsExpanded(true);
-                  setIsJournalListExpanded(true);
+                  setIsKanbanExpanded(true)
+                  setIsHabitsExpanded(true)
+                  setIsJournalListExpanded(true)
                   setJournalFormStates({
                     journal: true,
                     impression: true,
                     rights: true,
                     ai: true,
-                  });
+                  })
                 }}
                 variant="ghost"
                 size="sm"
@@ -164,15 +198,15 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
               </Button>
               <Button
                 onClick={() => {
-                  setIsKanbanExpanded(false);
-                  setIsHabitsExpanded(false);
-                  setIsJournalListExpanded(false);
+                  setIsKanbanExpanded(false)
+                  setIsHabitsExpanded(false)
+                  setIsJournalListExpanded(false)
                   setJournalFormStates({
                     journal: false,
                     impression: false,
                     rights: false,
                     ai: false,
-                  });
+                  })
                 }}
                 variant="ghost"
                 size="sm"
@@ -184,16 +218,16 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
             </div>
 
             {/* ToDoリスト */}
-            <KanbanBoard 
-              todos={todos} 
+            <KanbanBoard
+              todos={todos}
               todoLogs={todoLogs}
               todoSubtasks={todoSubtasks}
               dailyLogId={dailyLogId}
               isExpanded={isKanbanExpanded}
               onExpandedChange={setIsKanbanExpanded}
               onEditTodo={(id) => {
-                setActiveTab('todo-summary');
-                setEditTodoId(id);
+                setActiveTab("todo-summary")
+                setEditTodoId(id)
               }}
             />
 
@@ -210,7 +244,7 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
                 setJournalFormStates({
                   ...journalFormStates,
                   ...states,
-                });
+                })
               }}
             />
 
@@ -246,22 +280,24 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
             </div>
 
             {/* 日誌入力フォーム */}
-            <JournalForm 
-              key={dailyLogId} 
-              dailyLogId={dailyLogId} 
-              dailyLog={dailyLog} 
+            <JournalForm
+              key={dailyLogId}
+              dailyLogId={dailyLogId}
+              dailyLog={dailyLog}
               logDate={selectedDate || dailyLog?.log_date}
               expandedStates={journalFormStates}
-              onExpandedStateChange={(state) => setJournalFormStates((prev) => ({ ...prev, ...state }))}
+              onExpandedStateChange={(state) =>
+                setJournalFormStates((prev) => ({ ...prev, ...state }))
+              }
               userName={userName}
             />
 
             {/* 過去の日誌一覧 */}
             <div>
-              <JournalList 
+              <JournalList
                 onDateSelect={(date) => {
                   // 日付選択時の処理（親コンポーネントでURL更新）
-                  window.location.href = `/dashboard?date=${date}`;
+                  window.location.href = `/dashboard?date=${date}`
                 }}
                 isExpanded={isJournalListExpanded}
                 onExpandedChange={setIsJournalListExpanded}
@@ -270,7 +306,7 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
           </div>
         )}
 
-        {activeTab === 'todo-summary' && (
+        {activeTab === "todo-summary" && (
           <div
             id="tabpanel-todo-summary"
             role="tabpanel"
@@ -288,24 +324,25 @@ export default function DashboardTabs({ habits, habitLogs, dailyLogId, dailyLog,
           </div>
         )}
 
-        {activeTab === 'stats' && (
+        {activeTab === "stats" && (
           <div
             id="tabpanel-stats"
             role="tabpanel"
             aria-labelledby="tab-stats"
             className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg"
           >
-            <Suspense fallback={
-              <div className="p-6 text-center text-zinc-400">
-                データを読み込み中...
-              </div>
-            }>
+            <Suspense
+              fallback={
+                <div className="p-6 text-center text-zinc-400">
+                  データを読み込み中...
+                </div>
+              }
+            >
               <StatsTab />
             </Suspense>
           </div>
         )}
       </div>
     </div>
-  );
+  )
 }
-

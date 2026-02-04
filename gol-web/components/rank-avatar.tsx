@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import type { RankMode } from "@/lib/rank-utils"
 import {
   STORAGE_STORY_WORLD,
@@ -90,12 +91,17 @@ export function RankAvatar({
   }
 
   const isFull = variant === "full"
+  const height = isFull ? Math.round(size * 1.5) : size
   return (
-    <img
+    <Image
+      key={src}
       src={src}
       alt={`ランク Lv.${level}`}
       width={size}
-      height={isFull ? Math.round(size * 1.5) : size}
+      height={height}
+      sizes={`(max-width: 768px) ${size}px, ${size}px`}
+      loading="lazy"
+      decoding="async"
       className={`${
         isFull
           ? "rounded-lg object-contain"

@@ -1,7 +1,7 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   Trash2,
   AlertTriangle,
@@ -13,46 +13,117 @@ import {
   Sparkles,
   ClipboardList,
   Settings as SettingsIcon,
-} from 'lucide-react';
-import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+  Download,
+  FileJson,
+  FileSpreadsheet,
+} from "lucide-react"
+import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { arrayToCsv, downloadCsv } from "@/lib/export-csv"
 
 export function MypageSettingsSection() {
-  const router = useRouter();
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [confirmText, setConfirmText] = useState('');
+  const router = useRouter()
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [confirmText, setConfirmText] = useState("")
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleExportJson = async () => {
+    setIsExporting(true)
+    try {
+      const res = await fetch("/api/user/export")
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "エクスポートに失敗しました")
+      }
+      const data = await res.json()
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json;charset=utf-8",
+      })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `gol_export_${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      console.error(e)
+      alert(e instanceof Error ? e.message : "エクスポートに失敗しました")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleExportCsv = async () => {
+    setIsExporting(true)
+    try {
+      const res = await fetch("/api/user/export")
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || "エクスポートに失敗しました")
+      }
+      const data = await res.json()
+      const dateStr = new Date().toISOString().slice(0, 10)
+
+      if (data.dailyLogs?.length) {
+        downloadCsv(
+          `gol_export_daily_logs_${dateStr}.csv`,
+          arrayToCsv(data.dailyLogs)
+        )
+      }
+      setTimeout(() => {
+        if (data.habits?.length) {
+          downloadCsv(
+            `gol_export_habits_${dateStr}.csv`,
+            arrayToCsv(data.habits)
+          )
+        }
+      }, 300)
+      setTimeout(() => {
+        if (data.todos?.length) {
+          downloadCsv(`gol_export_todos_${dateStr}.csv`, arrayToCsv(data.todos))
+        }
+      }, 600)
+    } catch (e) {
+      console.error(e)
+      alert(e instanceof Error ? e.message : "エクスポートに失敗しました")
+    } finally {
+      setIsExporting(false)
+    }
+  }
 
   const handleDeleteData = async () => {
-    if (confirmText !== '削除') {
-      alert('「削除」と入力してください');
-      return;
+    if (confirmText !== "削除") {
+      alert("「削除」と入力してください")
+      return
     }
 
-    setIsDeleting(true);
+    setIsDeleting(true)
 
     try {
-      const response = await fetch('/api/user/delete-data', {
-        method: 'DELETE',
-      });
+      const response = await fetch("/api/user/delete-data", {
+        method: "DELETE",
+      })
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'データの削除に失敗しました');
+        const error = await response.json()
+        throw new Error(error.error || "データの削除に失敗しました")
       }
 
-      alert('データの削除が完了しました。ログアウトします。');
+      alert("データの削除が完了しました。ログアウトします。")
 
-      router.push('/login');
+      router.push("/login")
     } catch (error) {
-      console.error('データ削除エラー:', error);
-      alert(error instanceof Error ? error.message : 'データの削除に失敗しました');
+      console.error("データ削除エラー:", error)
+      alert(
+        error instanceof Error ? error.message : "データの削除に失敗しました"
+      )
     } finally {
-      setIsDeleting(false);
-      setShowConfirm(false);
-      setConfirmText('');
+      setIsDeleting(false)
+      setShowConfirm(false)
+      setConfirmText("")
     }
-  };
+  }
 
   return (
     <>
@@ -64,7 +135,9 @@ export function MypageSettingsSection() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
                 <User className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">ニックネーム</h3>
+                <h3 className="text-base font-semibold text-zinc-100">
+                  ニックネーム
+                </h3>
               </div>
               <p className="text-sm text-zinc-400">表示名の変更</p>
             </div>
@@ -73,7 +146,9 @@ export function MypageSettingsSection() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
                 <Mail className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">メールアドレス</h3>
+                <h3 className="text-base font-semibold text-zinc-100">
+                  メールアドレス
+                </h3>
               </div>
               <p className="text-sm text-zinc-400">ログイン用メールの変更</p>
             </div>
@@ -82,7 +157,9 @@ export function MypageSettingsSection() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
                 <Key className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">パスワード変更</h3>
+                <h3 className="text-base font-semibold text-zinc-100">
+                  パスワード変更
+                </h3>
               </div>
               <p className="text-sm text-zinc-400">ログインパスワードの変更</p>
             </div>
@@ -91,7 +168,9 @@ export function MypageSettingsSection() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
                 <Bot className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">AIの性格</h3>
+                <h3 className="text-base font-semibold text-zinc-100">
+                  AIの性格
+                </h3>
               </div>
               <p className="text-sm text-zinc-400">AIの話し方・性格の設定</p>
             </div>
@@ -100,7 +179,9 @@ export function MypageSettingsSection() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
                 <BookOpen className="w-5 h-5 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">物語の世界観</h3>
+                <h3 className="text-base font-semibold text-zinc-100">
+                  物語の世界観
+                </h3>
               </div>
               <p className="text-sm text-zinc-400">物語の世界観・設定</p>
             </div>
@@ -111,7 +192,9 @@ export function MypageSettingsSection() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
                 <Sparkles className="w-6 h-6 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">習慣管理</h3>
+                <h3 className="text-base font-semibold text-zinc-100">
+                  習慣管理
+                </h3>
               </div>
               <p className="text-sm text-zinc-400">
                 良習慣・悪習慣・ボーナス習慣の追加・編集・削除
@@ -122,7 +205,9 @@ export function MypageSettingsSection() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
                 <ClipboardList className="w-6 h-6 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">ToDo管理</h3>
+                <h3 className="text-base font-semibold text-zinc-100">
+                  ToDo管理
+                </h3>
               </div>
               <p className="text-sm text-zinc-400">
                 ToDoタスクの追加・編集・削除・SP設定
@@ -133,13 +218,49 @@ export function MypageSettingsSection() {
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
                 <SettingsIcon className="w-6 h-6 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">権利設定</h3>
+                <h3 className="text-base font-semibold text-zinc-100">
+                  権利設定
+                </h3>
               </div>
-              <p className="text-sm text-zinc-400">
-                権利のゴルド消費量の設定
-              </p>
+              <p className="text-sm text-zinc-400">権利のゴルド消費量の設定</p>
             </div>
           </Link>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Download className="w-6 h-6 text-cyan-400" />
+              <h3 className="text-base font-semibold text-zinc-100">
+                データのエクスポート
+              </h3>
+            </div>
+            <p className="text-sm text-zinc-400 mb-4">
+              プロフィール・日誌・習慣・ToDoをJSON/CSVでダウンロード
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={handleExportJson}
+                disabled={isExporting}
+                variant="outline"
+                size="sm"
+                className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-200"
+              >
+                <FileJson className="w-3.5 h-3.5 mr-1.5" />
+                JSON
+              </Button>
+              <Button
+                onClick={handleExportCsv}
+                disabled={isExporting}
+                variant="outline"
+                size="sm"
+                className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-200"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5" />
+                CSV
+              </Button>
+            </div>
+            {isExporting && (
+              <p className="text-xs text-zinc-500 mt-2">準備中...</p>
+            )}
+          </div>
         </div>
       </section>
 
@@ -148,7 +269,9 @@ export function MypageSettingsSection() {
         <div className="flex items-start gap-3 mb-4">
           <Trash2 className="w-6 h-6 text-red-400 shrink-0 mt-1" />
           <div className="flex-1">
-            <h2 className="text-base font-semibold text-red-400 mb-2">データの削除</h2>
+            <h2 className="text-base font-semibold text-red-400 mb-2">
+              データの削除
+            </h2>
             <p className="text-zinc-400 mb-4">
               アカウントに関連するすべてのデータを削除します。この操作は取り消せません。
             </p>
@@ -187,7 +310,9 @@ export function MypageSettingsSection() {
 
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-2">
-                    確認のため、「<span className="text-red-400 font-bold">削除</span>」と入力してください
+                    確認のため、「
+                    <span className="text-red-400 font-bold">削除</span>
+                    」と入力してください
                   </label>
                   <input
                     type="text"
@@ -201,16 +326,16 @@ export function MypageSettingsSection() {
                 <div className="flex gap-3">
                   <Button
                     onClick={handleDeleteData}
-                    disabled={isDeleting || confirmText !== '削除'}
+                    disabled={isDeleting || confirmText !== "削除"}
                     variant="destructive"
                     className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isDeleting ? '削除中...' : '削除を実行'}
+                    {isDeleting ? "削除中..." : "削除を実行"}
                   </Button>
                   <Button
                     onClick={() => {
-                      setShowConfirm(false);
-                      setConfirmText('');
+                      setShowConfirm(false)
+                      setConfirmText("")
                     }}
                     variant="outline"
                     className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
@@ -224,5 +349,5 @@ export function MypageSettingsSection() {
         </div>
       </section>
     </>
-  );
+  )
 }

@@ -4,7 +4,6 @@ import Link from "next/link"
 import LogoutButton from "./logout-button"
 import DashboardTabs from "./dashboard-tabs"
 import FontSizeControl from "@/components/font-size-control"
-import DateSelector from "@/components/date-selector"
 import { Trophy, Coins, Dumbbell, Brain, Sparkles, User } from "lucide-react"
 import { syncProfileLevel } from "@/lib/sync-profile-level"
 import { RankNameDisplay } from "@/components/rank-name-display"
@@ -188,7 +187,6 @@ export default async function DashboardPage({
                 <span>{userProfile.name}</span>
               </h1>
               <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-                <DateSelector />
                 <FontSizeControl />
                 <Link
                   href="/mypage"
