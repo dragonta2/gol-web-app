@@ -50,6 +50,30 @@
 
 ## 2602 --------------
 
+### 260204-水
+
+#### エクスポート機能・マイページ調整・日付選択の移動
+
+**実施内容:**
+- **エクスポート（CSV/JSON）**
+  - `app/api/user/export/route.ts`: GET で認証ユーザーの profile, dailyLogs, habits, habitLogs, todos, todoLogs, todoSubtasks, rankChangeLogs を取得して JSON 返却。RLS で自ユーザーのみ取得。
+  - `lib/export-csv.ts`: arrayToCsv（オブジェクト配列→CSV、BOM付きUTF-8）、downloadCsv でファイルダウンロード。
+  - マイページ `mypage-settings-section.tsx`: 各種設定グリッドに「データのエクスポート」カードを追加。JSONでダウンロード（gol_export_YYYY-MM-DD.json）、CSVでダウンロード（daily_logs / habits / todos の3ファイルを順次ダウンロード）。
+- **マイページ**
+  - アバター: 幅を固定pxや max-w から `w-[28.125rem]` に変更（中フォントで450px相当、小・大で連動）。
+  - フォント: globals.css で中サイズを 16px→17px。
+  - 「次のレベルアップまで」: 説明・ラベル・あとXX を text-sm/text-xs から text-base/text-lg に拡大。プロフィール内の身体・頭脳・精神も text-lg、アイコン w-5 h-5。
+- **ダッシュボード**
+  - ヘッダーから DateSelector を削除。`dashboard-tabs.tsx` のタブナビ右端に `ml-auto` で DateSelector を配置。
+- **進捗**
+  - 04: エクスポート機能を完了、インポート機能をサブタスク追加。パフォーマンス最適化の親を完了に。
+
+**変更・追加ファイル:**
+- gol-web: app/api/user/export/route.ts（新規）, lib/export-csv.ts（新規）, components/mypage-settings-section.tsx, app/mypage/page.tsx, app/dashboard/page.tsx, app/dashboard/dashboard-tabs.tsx, app/globals.css
+- docs: 04-project-progress.md
+
+---
+
 ### 260203-火
 
 #### ランク・アバター画像の実装
