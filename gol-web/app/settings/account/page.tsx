@@ -4,12 +4,20 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, User, Mail, Key, Bot, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import type { StoryWorldConfig, StoryWorldId } from '@/lib/ai/story-worlds';
+import {
+  type PersonalityTypeId,
+  PERSONALITY_TYPES,
+  DEFAULT_PERSONALITY_TYPE_ID,
+  DEFAULT_STRICT_COACH_ENABLED,
+  isValidPersonalityTypeId,
+  STORAGE_AI_PERSONALITY_TYPE,
+  STORAGE_AI_STRICT_COACH_ENABLED,
+} from '@/lib/ai/personality-types';
 import { STORAGE_STORY_WORLD, notifyStoryWorldChanged } from '@/lib/story-world-storage';
-
-const STORAGE_AI_PERSONALITY = 'gol-ai-personality';
 
 function AdminWorldConfigForm({
   config,
@@ -109,6 +117,7 @@ export default function AccountSettingsPage() {
 
   // ニックネーム
   const [username, setUsername] = useState('');
+  const [useUsernameAsDisplayName, setUseUsernameAsDisplayName] = useState(true);
   const [usernameSaving, setUsernameSaving] = useState(false);
 
   // メールアドレス（ログイン用）
@@ -121,8 +130,11 @@ export default function AccountSettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
 
-  // AIの性格（ローカル保存）
-  const [aiPersonality, setAiPersonality] = useState('');
+  // AIの性格（ローカル保存: タイプ＋辛口コーチON/OFF）
+  const [aiPersonalityType, setAiPersonalityType] = useState<PersonalityTypeId>(
+    DEFAULT_PERSONALITY_TYPE_ID
+  );
+  const [strictCoachEnabled, setStrictCoachEnabled] = useState(DEFAULT_STRICT_COACH_ENABLED);
   const [aiStorySaving, setAiStorySaving] = useState(false);
 
   // 世界観選択（全ユーザー、localStorage）
@@ -143,6 +155,7 @@ export default function AccountSettingsPage() {
         if (res.ok) {
           const data = await res.json();
           setUsername(data.username ?? '');
+          setUseUsernameAsDisplayName(data.use_username_as_display_name !== false);
           admin = data.is_admin === true;
           setIsAdmin(admin);
         }
@@ -161,7 +174,14 @@ export default function AccountSettingsPage() {
         toast.error('プロファイルの読み込みに失敗しました');
       }
       if (typeof window !== 'undefined') {
-        setAiPersonality(localStorage.getItem(STORAGE_AI_PERSONALITY) ?? '');
+        const storedType = localStorage.getItem(STORAGE_AI_PERSONALITY_TYPE);
+        if (isValidPersonalityTypeId(storedType)) {
+          setAiPersonalityType(storedType);
+        } else if (storedType === 'strict') {
+          setAiPersonalityType(DEFAULT_PERSONALITY_TYPE_ID);
+        }
+        const storedStrict = localStorage.getItem(STORAGE_AI_STRICT_COACH_ENABLED);
+        setStrictCoachEnabled(storedStrict !== 'false');
         const stored = localStorage.getItem(STORAGE_STORY_WORLD);
         if (stored === 'dq' || stored === 'ghost') setStoryWorldId(stored);
       }
@@ -203,7 +223,10 @@ export default function AccountSettingsPage() {
       const res = await fetch('/api/user/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username }),
+        body: JSON.stringify({
+          username,
+          use_username_as_display_name: useUsernameAsDisplayName,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? '保存に失敗しました');
@@ -244,7 +267,8 @@ export default function AccountSettingsPage() {
     setAiStorySaving(true);
     try {
       if (typeof window !== 'undefined') {
-        localStorage.setItem(STORAGE_AI_PERSONALITY, aiPersonality);
+        localStorage.setItem(STORAGE_AI_PERSONALITY_TYPE, aiPersonalityType);
+        localStorage.setItem(STORAGE_AI_STRICT_COACH_ENABLED, String(strictCoachEnabled));
         localStorage.setItem(STORAGE_STORY_WORLD, storyWorldId);
         notifyStoryWorldChanged();
       }
@@ -328,6 +352,20 @@ export default function AccountSettingsPage() {
               placeholder="ニックネームを入力"
               className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
             />
+            <label className="flex items-center gap-2 cursor-pointer mt-2">
+              <input
+                type="checkbox"
+                checked={useUsernameAsDisplayName}
+                onChange={(e) => setUseUsernameAsDisplayName(e.target.checked)}
+                className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-600 rounded focus:ring-cyan-500"
+              />
+              <span className="text-sm text-zinc-300">
+                この名前をGOL世界の表示名として利用する
+              </span>
+            </label>
+            <p className="text-xs text-zinc-500">
+              オフのときは、各世界観のデフォルト名（例：辰彦・勇者）がアドバイスやあらすじに使われます。
+            </p>
             <Button
               type="submit"
               disabled={usernameSaving}
@@ -430,15 +468,42 @@ export default function AccountSettingsPage() {
                 <h2 className="text-lg font-semibold text-zinc-100">AIの性格</h2>
               </div>
               <p className="text-sm text-zinc-400 mb-3">
-                AIの話し方・性格を自由に記述できます。日誌のAIアドバイスなどに反映されます。
+                アドバイスの方針を選びます。世界観を主とし、性格でトーンを調整します。
               </p>
-              <textarea
-                value={aiPersonality}
-                onChange={(e) => setAiPersonality(e.target.value)}
-                placeholder="例: 優しく励ましてくれる。少しユーモアを交える。"
-                rows={4}
-                className="w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-y"
-              />
+              <div className="flex flex-col gap-2 mb-6">
+                {PERSONALITY_TYPES.map((p) => (
+                  <label
+                    key={p.id}
+                    className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-zinc-600 transition-colors"
+                  >
+                    <input
+                      type="radio"
+                      name="aiPersonalityType"
+                      value={p.id}
+                      checked={aiPersonalityType === p.id}
+                      onChange={() => setAiPersonalityType(p.id)}
+                      className="w-4 h-4 text-cyan-500"
+                    />
+                    <span className="text-zinc-100">{p.label}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div id="strict-coach" className="pt-4 border-t border-zinc-700">
+                <h3 className="text-base font-semibold text-zinc-100 mb-2">辛口コーチ</h3>
+                <p className="text-sm text-zinc-400 mb-3">
+                  AIアドバイスに辛口コーチのコメントを出すかどうか。
+                </p>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <Switch
+                    checked={strictCoachEnabled}
+                    onCheckedChange={setStrictCoachEnabled}
+                  />
+                  <span className="text-zinc-100 text-sm">
+                    {strictCoachEnabled ? 'コメントを出す' : 'コメントを出さない'}
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* 物語の世界観選択（全ユーザー） */}

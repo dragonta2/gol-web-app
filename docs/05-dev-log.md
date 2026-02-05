@@ -50,6 +50,33 @@
 
 ## 2602 --------------
 
+### 260205-木
+
+#### 手動テスト対応（日誌・ToDoサマリー・アドバイス・設定）
+
+**実施内容:**
+- **日誌**
+  - 新規タスクボタン: KanbanBoard に `onOpenCreateModal` を渡し、ToDoリストのフィルター FormCard 内右上に「新規タスク」を配置。押下で ToDoサマリーに切り替え＋新規作成モーダルを開く。dashboard-tabs の上部ボタンは削除。
+  - サブタスク: 日誌カンバンは追加・テキスト編集UIを持たないことを KanbanBoardProps とカード内コメントで明文化。
+- **ToDoサマリー**
+  - 表示期間: 月フィルターの option から「のToDo」を削除（getMonthLabel のみ表示）。
+  - 新規モーダル・属性（やさしい）: 他属性を disabled にしない。onChange で「1つのみ」のとき `next = [attr]` に。map 内で `isEasy` を定義し直して参照漏れを修正。
+  - 期限: `formatDueDateWithWeekday`（YYYY年MM月DD日-曜日）を一覧に使用。DatePickerField の displayText を `yyyy年MM月dd日'-'EEE`（locale: ja）に変更。
+  - サブタスク入力: 展開エリアの ml-4 をやめ、入力ラッパーと Input に w-full / min-w-0 を付与。
+- **アドバイス**
+  - アドバイスAPI: 認証後 profiles から username 取得、`use_username_as_display_name` が false のときは nickname を空に。createAdvicePrompt に nickname を追加し、プロンプトで「アドバイス冒頭で『〇〇よ。』のように表記」する指示を追加。openai.ts で displayName = nickname.trim() || worldConfig?.protagonistName。
+- **設定**
+  - profiles に `use_username_as_display_name` を追加（add-use-username-as-display-name.sql）。設定画面ニックネーム欄にチェックボックスと説明文を追加。API GET/PATCH で取得・保存。アドバイス・ストーリーAPIでチェックOFF時はニックネームを使わず世界観デフォルト名を使用。
+- **ドキュメント**
+  - 07: 手動テスト対応依頼箇所の各項目に「→ **対応:**」を追記。手動テスト対応の実施内容まとめ（実施した対応・未実装）を追加。
+
+**変更・追加ファイル:**
+- gol-web: app/dashboard/dashboard-tabs.tsx, kanban-board.tsx, todo-summary-tab.tsx, app/api/ai/advice/route.ts, story/route.ts, app/api/user/profile/route.ts, app/settings/account/page.tsx, components/date-picker-field.tsx, lib/ai/openai.ts, lib/types.ts
+- docs: 07-progress-support.md, 04-project-progress.md, 05-dev-log.md
+- docs/sql-snippet: add-use-username-as-display-name.sql（新規）
+
+---
+
 ### 260204-水
 
 #### エクスポート機能・マイページ調整・日付選択の移動

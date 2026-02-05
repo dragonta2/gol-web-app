@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
       status,
       due_date,
       difficulty,
+      is_on_hold,
     } = body;
 
     // バリデーション
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     const displayOrder = maxOrderTodo ? maxOrderTodo.display_order + 1 : 0;
 
-    // ToDoを作成（報酬は sp_* をそのまま保存。難易度は easy/medium/hard、裁量値は後から追加可能）
+    // ToDoを作成（報酬は sp_* をそのまま保存。難易度は easy/medium/hard。保留はデフォルト false）
     const { data: newTodo, error: insertError } = await supabase
       .from('todos')
       .insert({
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
         due_date: due_date || null,
         display_order: displayOrder,
         difficulty: difficulty && ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium',
+        is_on_hold: is_on_hold === true,
       })
       .select()
       .single();
@@ -140,6 +142,7 @@ export async function PUT(request: NextRequest) {
       status,
       due_date,
       difficulty,
+      is_on_hold,
     } = body;
 
     // バリデーション
@@ -192,19 +195,24 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // ToDoを更新（報酬は sp_* をそのまま保存。難易度も更新）
+    // ToDoを更新（報酬・難易度・保留を更新。保留を外したときは status を active に）
+    const updatePayload: Record<string, unknown> = {
+      task_name: task_name.trim(),
+      sp_points: sp_points ?? 0,
+      sp_exp_body: sp_exp_body ?? 0,
+      sp_exp_mind: sp_exp_mind ?? 0,
+      sp_exp_spirit: sp_exp_spirit ?? 0,
+      status: status || 'active',
+      due_date: due_date || null,
+      difficulty: difficulty && ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium',
+      is_on_hold: is_on_hold === true,
+    };
+    if (is_on_hold === false) {
+      updatePayload.status = 'active';
+    }
     const { error: updateError } = await supabase
       .from('todos')
-      .update({
-        task_name: task_name.trim(),
-        sp_points: sp_points ?? 0,
-        sp_exp_body: sp_exp_body ?? 0,
-        sp_exp_mind: sp_exp_mind ?? 0,
-        sp_exp_spirit: sp_exp_spirit ?? 0,
-        status: status || 'active',
-        due_date: due_date || null,
-        difficulty: difficulty && ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium',
-      })
+      .update(updatePayload)
       .eq('id', todoId);
 
     if (updateError) {

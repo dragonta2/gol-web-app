@@ -65,10 +65,11 @@ export async function POST(request: NextRequest) {
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('username')
+      .select('username, use_username_as_display_name')
       .eq('id', user.id)
       .single();
-    const nickname = (profile?.username ?? '').trim();
+    const useAsDisplayName = profile?.use_username_as_display_name !== false;
+    const nickname = useAsDisplayName ? (profile?.username ?? '').trim() : '';
 
     const openai = getOpenAIClient();
     if (!openai) {

@@ -43,6 +43,10 @@ interface TodoSummaryTabProps {
   initialEditTodoId?: string | null;
   /** 編集モーダルを開いたあと、親の editTodoId をクリアするために呼ぶ */
   onInitialEditConsumed?: () => void;
+  /** 日誌タブから「新規タスク」で切り替えたとき、新規作成モーダルを開く */
+  initialOpenCreateModal?: boolean;
+  /** 新規作成モーダルを開いたあと、親のフラグをクリアするために呼ぶ */
+  onInitialOpenCreateConsumed?: () => void;
 }
 
 interface TodoFormData {
@@ -54,9 +58,10 @@ interface TodoFormData {
   due_date: string;
   status: 'active' | 'in_progress' | 'completed';
   difficulty: Difficulty;
+  is_on_hold: boolean;
 }
 
-export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLogId, initialEditTodoId, onInitialEditConsumed }: TodoSummaryTabProps) {
+export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLogId, initialEditTodoId, onInitialEditConsumed, initialOpenCreateModal, onInitialOpenCreateConsumed }: TodoSummaryTabProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -111,6 +116,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     due_date: '',
     status: 'active',
     difficulty: 'medium',
+    is_on_hold: false,
   });
 
   // フィルター適用関数
@@ -200,13 +206,17 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     });
   };
 
-  // ステータス別にtodosを分類（フィルター適用後、並び替え）。useMemoで参照を安定させ、useEffectの無限ループを防ぐ
+  // ステータス別にtodosを分類（保留中は除外してアクティブ・進行中に表示。保留中は別セクションへ）
   const filteredActiveTodos = useMemo(
-    () => sortTodos(applyFilters(todos.filter((todo) => todo.status === 'active'))),
+    () => sortTodos(applyFilters(todos.filter((todo) => todo.status === 'active' && !(todo.is_on_hold === true)))),
     [todos, filterDifficulties, searchQuery]
   );
   const filteredInProgressTodos = useMemo(
-    () => sortTodos(applyFilters(todos.filter((todo) => todo.status === 'in_progress'))),
+    () => sortTodos(applyFilters(todos.filter((todo) => todo.status === 'in_progress' && !(todo.is_on_hold === true)))),
+    [todos, filterDifficulties, searchQuery]
+  );
+  const filteredOnHoldTodos = useMemo(
+    () => sortTodos(applyFilters(todos.filter((todo) => todo.is_on_hold === true))),
     [todos, filterDifficulties, searchQuery]
   );
 
@@ -341,8 +351,19 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
     return `${year}/${month}/${day}`;
   };
 
-  // 完了日時フォーマット（26/01/28-水 HH:mm 形式、括弧付きで表示用）
+  // 期限表示用（YYYY年MM月DD日-曜日）
   const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'];
+  const formatDueDateWithWeekday = (dateString: string | null): string => {
+    if (!dateString) return '─';
+    const date = new Date(dateString);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const weekday = WEEKDAY_JA[date.getDay()];
+    return `${year}年${month}月${day}日-${weekday}`;
+  };
+
+  // 完了日時フォーマット（26/01/28-水 HH:mm 形式、括弧付きで表示用）
   const formatCompletedDateTime = (dateString: string | null): string => {
     if (!dateString) return '─';
     const date = new Date(dateString);
@@ -386,6 +407,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
       due_date: '',
       status: 'active',
       difficulty: 'medium',
+      is_on_hold: false,
     });
     setIsModalOpen(true);
   };
@@ -413,6 +435,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
       due_date: todo.due_date || '',
       status: todo.status,
       difficulty: todo.difficulty || 'medium',
+      is_on_hold: todo.is_on_hold === true,
     });
     setIsModalOpen(true);
   };
@@ -439,10 +462,18 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
       due_date: todo.due_date || '',
       status: todo.status,
       difficulty: todo.difficulty || 'medium',
+      is_on_hold: todo.is_on_hold === true,
     });
     setIsModalOpen(true);
     onInitialEditConsumed?.();
   }, [initialEditTodoId, todos, onInitialEditConsumed]);
+
+  // 日誌タブから「新規タスク」で切り替えたとき、新規作成モーダルを開く
+  useEffect(() => {
+    if (!initialOpenCreateModal) return;
+    handleOpenCreateModal();
+    onInitialOpenCreateConsumed?.();
+  }, [initialOpenCreateModal]);
 
   // 報酬計算関数（難易度倍率を適用、sp_* をそのまま倍率掛け）
   const calculateReward = (todo: Todo) => {
@@ -668,6 +699,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
             completed_at: formData.status === 'completed' ? new Date().toISOString() : null,
             display_order: displayOrder,
             difficulty: formData.difficulty,
+            is_on_hold: formData.is_on_hold,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
@@ -681,8 +713,9 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
           sp_exp_mind: formData.sp_exp_mind,
           sp_exp_spirit: formData.sp_exp_spirit,
           due_date: formData.due_date || null,
-          status: formData.status,
+          status: formData.is_on_hold ? formData.status : 'active',
           difficulty: formData.difficulty,
+          is_on_hold: formData.is_on_hold,
         };
 
         if (formData.status === 'completed') {
@@ -728,6 +761,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
             difficulty: formData.difficulty,
             display_order: displayOrder,
             completed_at: formData.status === 'completed' ? new Date().toISOString() : null,
+            is_on_hold: formData.is_on_hold,
           })
           .select()
           .single();
@@ -1024,7 +1058,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
               )}
               <div className={!isCompleted && isOverdue ? 'text-red-400' : ''}>
                 {!isCompleted && isOverdue && <span className="mr-1.5" aria-label="超過">⚠️</span>}
-                期限: {todo.due_date ? formatDate(todo.due_date) : '─'}
+                期限: {todo.due_date ? formatDueDateWithWeekday(todo.due_date) : '─'}
                 {isCompleted && todo.completed_at && (
                   <> ／ 完了: {formatCompletedDateTime(todo.completed_at)}</>
                 )}
@@ -1068,7 +1102,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                   </div>
 
                   {isExpanded && (
-                    <div className="space-y-2 ml-4">
+                    <div className="space-y-2 w-full min-w-0">
                       {subtasks.length === 0 && !isEditing && (
                         <p className="text-zinc-500">サブタスクがありません</p>
                       )}
@@ -1087,12 +1121,12 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                             className="w-4 h-4 text-cyan-600 bg-zinc-700 border-zinc-600 rounded focus:ring-cyan-500"
                           />
                           {!isCompleted && editingSubtask?.todoId === todo.id && editingSubtask?.subtask?.id === subtask.id ? (
-                            <div className="flex-1 flex items-center gap-2">
+                            <div className="flex-1 min-w-0 flex items-center gap-2">
                               <Input
                                 type="text"
                                 value={subtaskFormData.subtask_name}
                                 onChange={(e) => setSubtaskFormData({ subtask_name: e.target.value })}
-                                className="flex-1 px-2 py-1 bg-zinc-900 border-zinc-700 text-zinc-100 focus:ring-cyan-500"
+                                className="w-full min-w-0 px-2 py-1 bg-zinc-900 border-zinc-700 text-zinc-100 focus:ring-cyan-500"
                                 placeholder="サブタスク名"
                                 autoFocus
                               />
@@ -1165,7 +1199,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                         </div>
                       ))}
                       {!isCompleted && isEditing && editingSubtask?.subtask === null && (
-                        <div className="flex items-center gap-2 p-2 bg-zinc-800 rounded">
+                        <div className="flex items-center gap-2 p-2 bg-zinc-800 rounded w-full min-w-0">
                           <Input
                             type="text"
                             value={subtaskFormData.subtask_name}
@@ -1178,7 +1212,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                                 setSubtaskFormData({ subtask_name: '' });
                               }
                             }}
-                            className="flex-1 px-2 py-1 bg-zinc-900 border-zinc-700 text-zinc-100 focus:ring-cyan-500"
+                            className="flex-1 min-w-0 w-full px-2 py-1 bg-zinc-900 border-zinc-700 text-zinc-100 focus:ring-cyan-500"
                             placeholder="サブタスク名を入力"
                             autoFocus
                           />
@@ -1274,14 +1308,6 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
           <span>全ToDoリスト一覧</span>
         </h2>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
-          <Button
-            onClick={handleOpenCreateModal}
-            aria-label="新しいToDoタスクを作成する"
-            className="bg-cyan-600 hover:bg-cyan-700 text-white w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
-            size="sm"
-          >
-            + 新規タスク
-          </Button>
           <div className="relative w-full sm:w-auto sm:min-w-[280px]">
             <label htmlFor="todo-search" className="sr-only">
               ToDoタスクを検索する
@@ -1297,6 +1323,14 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
               className="pl-10 pr-4 bg-zinc-800 border-zinc-700 text-zinc-100 placeholder-zinc-500 focus:ring-cyan-500 text-base w-full sm:min-w-[280px]"
             />
           </div>
+          <Button
+            onClick={handleOpenCreateModal}
+            aria-label="新しいToDoタスクを作成する"
+            className="bg-cyan-600 hover:bg-cyan-700 text-white w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
+            size="sm"
+          >
+            + 新規タスク
+          </Button>
         </div>
       </div>
 
@@ -1323,7 +1357,7 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
               <option value="all">すべてのToDo</option>
               {getMonthOptions().map((monthKey) => (
                 <option key={monthKey} value={monthKey}>
-                  {getMonthLabel(monthKey)}のToDo
+                  {getMonthLabel(monthKey)}
                 </option>
               ))}
             </select>
@@ -1414,7 +1448,28 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
             </div>
           </div>
         </div>
-        
+
+        {/* 保留中（3列の下の段） */}
+        <div className="mt-6">
+          <div className="bg-zinc-800 rounded-lg p-3 mb-3">
+            <h3 className="font-medium text-zinc-300 text-base flex items-center justify-between">
+              <span>保留中</span>
+              <span className="text-base text-zinc-500" aria-label={`${filteredOnHoldTodos.length}件のタスク`}>
+                ({filteredOnHoldTodos.length})
+              </span>
+            </h3>
+          </div>
+          <div className="space-y-3 min-h-[120px]">
+            {filteredOnHoldTodos.length === 0 ? (
+              <div className="text-center py-6 text-zinc-500 text-base">
+                保留中のタスクはありません
+              </div>
+            ) : (
+              filteredOnHoldTodos.map((todo) => renderTodoCard(todo, false))
+            )}
+          </div>
+        </div>
+
         {/* ドラッグ中のオーバーレイ */}
         <DragOverlay>
           {activeId && (() => {
@@ -1532,9 +1587,8 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                   const checked = selectedAttributes.includes(attr);
                   const isEasy = formData.difficulty === 'easy';
                   const isMedium = formData.difficulty === 'medium';
-                  const disabled =
-                    (isEasy && !checked && selectedAttributes.length >= 1) ||
-                    (isMedium && !checked && selectedAttributes.length >= 2);
+                  // やさしいは1つのみだが切り替え可能（onChange で next = [attr] にして切り替え）
+                  const disabled = isMedium && !checked && selectedAttributes.length >= 2;
                   return (
                     <label
                       key={attr}
@@ -1593,6 +1647,19 @@ export default function TodoSummaryTab({ todos, todoLogs, todoSubtasks, dailyLog
                   <option value="completed">完了済み</option>
                 </select>
               </div>
+            )}
+
+            {/* 保留にする（編集時のみ） */}
+            {editingTodo && (
+              <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                <input
+                  type="checkbox"
+                  checked={formData.is_on_hold}
+                  onChange={(e) => setFormData({ ...formData, is_on_hold: e.target.checked })}
+                  className="w-4 h-4 rounded border-zinc-600 text-cyan-500"
+                />
+                <span className="text-zinc-100 text-sm">保留にする</span>
+              </label>
             )}
 
             {/* 期限（ヘッダーと同じダークカレンダーで選択） */}

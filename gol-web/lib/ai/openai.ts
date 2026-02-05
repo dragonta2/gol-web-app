@@ -54,11 +54,15 @@ ${impressionText || '（未記入）'}
 /**
  * AIアドバイス生成用のプロンプト生成
  *
+ * 世界観の口調を主とし、personalityAddition は従として追加する（世界観 > 性格）。
+ *
  * @param journalText 日誌本文
  * @param impressionText 一言感想
  * @param conditionBody 体調スコア
  * @param conditionMood 気分スコア
  * @param worldConfig 世界観設定（未指定時はゴースト・オブ・ヨウテイ風のデフォルト）
+ * @param personalityAddition 性格タイプによる追加指示（省略可）。世界観の口調の後に「加えて」で結合
+ * @param nickname ユーザーのニックネーム（アドバイス冒頭の「〇〇よ。」に使用。未設定時は世界観のデフォルト名）
  * @returns プロンプト文字列
  */
 export function createAdvicePrompt(
@@ -66,13 +70,23 @@ export function createAdvicePrompt(
   impressionText: string,
   conditionBody: number,
   conditionMood: number,
-  worldConfig?: StoryWorldConfig | null
+  worldConfig?: StoryWorldConfig | null,
+  personalityAddition?: string | null,
+  nickname: string = ''
 ): string {
   const toneInstruction =
     worldConfig?.adviceToneInstruction ??
     'ゴースト・オブ・ヨウテイ風で、厳しめの師匠口調。辛口だが本質を突くコーチングアドバイスをしてください。';
+  const toneBlock =
+    personalityAddition?.trim()
+      ? `${toneInstruction} 加えて、${personalityAddition.trim()}`
+      : toneInstruction;
+  const displayName = nickname.trim() || (worldConfig?.protagonistName ?? '勇者');
+  const nameInstruction = `【重要】アドバイスの冒頭で、読者に呼びかける形で「${displayName}よ。」のように必ず表記してください。`;
 
-  return `${toneInstruction}
+  return `${toneBlock}
+
+${nameInstruction}
 
 以下の情報を基に、コーチングアドバイスを生成してください。
 

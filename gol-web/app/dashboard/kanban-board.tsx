@@ -19,7 +19,7 @@ import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, DIFFICULTY_MULTIPLIERS } from '@/
 import { Button } from '@/components/ui/button';
 import { FormLabel } from '@/components/ui/form-input';
 import { FormCard } from '@/components/ui/form-card';
-import { ClipboardList, ChevronDown, ChevronUp, Edit } from 'lucide-react';
+import { ClipboardList, ChevronDown, ChevronUp, Edit, Plus } from 'lucide-react';
 
 // ドラッグ可能なカードコンポーネント
 type Reward = { points: number; exp_body: number; exp_mind: number; exp_spirit: number };
@@ -109,7 +109,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
         )}
       </div>
 
-      {/* サブタスク（日誌カード・表示＋完了切替のみ） */}
+      {/* サブタスク（日誌カード：表示＋完了切替のみ。追加・テキスト編集はToDoサマリーで） */}
       <div className="mt-3 pt-3 border-t border-zinc-700 text-sm shrink-0" role="region" aria-label="サブタスク" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
@@ -276,7 +276,7 @@ function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, o
       className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 hover:border-cyan-600 transition-colors opacity-75 cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-950"
     >
       <CompletedTodoCardInner todo={todo} icon={icon} reward={reward} formatCompletedDate={formatCompletedDate} />
-      {/* サブタスク（日誌カード・表示＋完了切替のみ） */}
+      {/* サブタスク（日誌カード：表示＋完了切替のみ。追加・テキスト編集はToDoサマリーで） */}
       <div className="mt-3 pt-3 border-t border-zinc-700 text-sm shrink-0" role="region" aria-label="サブタスク" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
@@ -504,7 +504,7 @@ function DroppableColumn({
   );
 }
 
-function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, dailyLogId, isExpanded: externalIsExpanded, onExpandedChange, onEditTodo }: KanbanBoardProps) {
+function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, dailyLogId, isExpanded: externalIsExpanded, onExpandedChange, onEditTodo, onOpenCreateModal }: KanbanBoardProps) {
 
   // ローカル状態でtodosを管理（ドラッグ&ドロップで即座に反映）
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
@@ -662,9 +662,9 @@ function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, daily
     return [...overdueSorted, ...restSorted];
   };
 
-  // ステータス別にtodosを分類（フィルター適用後・日付ソート適用）
-  const activeFiltered = applyFilters(todos.filter((todo) => todo.status === 'active'));
-  const inProgressFiltered = applyFilters(todos.filter((todo) => todo.status === 'in_progress'));
+  // ステータス別にtodosを分類（保留中は日誌カンバンに表示しない）
+  const activeFiltered = applyFilters(todos.filter((todo) => todo.status === 'active' && !(todo.is_on_hold === true)));
+  const inProgressFiltered = applyFilters(todos.filter((todo) => todo.status === 'in_progress' && !(todo.is_on_hold === true)));
   const activeTodos =
     sortDateActive === 'asc'
       ? sortTodosByDeadline(activeFiltered)
@@ -1188,13 +1188,26 @@ function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, daily
           {/* フィルターUI */}
           <FormCard className="p-3 sm:p-4 mb-4">
             <div className="space-y-3">
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between gap-2 mb-3">
                 <h3 className="text-base sm:text-lg font-medium text-zinc-300">フィルター</h3>
-                {filterDifficulties.length > 0 && (
-                  <span className="text-xs text-cyan-400 bg-cyan-900/30 px-2 py-1 rounded">
-                    フィルター適用中: アクティブタスク {activeTodos.length}件 / 進行中 {inProgressTodos.length}件 / 完了 {completedTodos.length}件
-                  </span>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {filterDifficulties.length > 0 && (
+                    <span className="text-xs text-cyan-400 bg-cyan-900/30 px-2 py-1 rounded">
+                      フィルター適用中: アクティブタスク {activeTodos.length}件 / 進行中 {inProgressTodos.length}件 / 完了 {completedTodos.length}件
+                    </span>
+                  )}
+                  {onOpenCreateModal && (
+                    <Button
+                      onClick={(e) => { e.stopPropagation(); onOpenCreateModal(); }}
+                      variant="default"
+                      size="sm"
+                      className="text-cyan-400 bg-cyan-950/50 border border-cyan-700/50 hover:bg-cyan-900/50"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      新規タスク
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {/* 難易度フィルター */}

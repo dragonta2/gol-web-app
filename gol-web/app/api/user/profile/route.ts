@@ -16,7 +16,7 @@ export async function GET() {
 
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('username, is_admin')
+      .select('username, is_admin, use_username_as_display_name')
       .eq('id', user.id)
       .single();
 
@@ -28,6 +28,7 @@ export async function GET() {
     return NextResponse.json({
       username: profile?.username ?? '',
       is_admin: profile?.is_admin === true,
+      use_username_as_display_name: profile?.use_username_as_display_name !== false,
     });
   } catch (err) {
     console.error('profile GET error:', err);
@@ -48,14 +49,25 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json();
     const username = typeof body.username === 'string' ? body.username.trim() : '';
+    const useUsernameAsDisplayName =
+      typeof body.use_username_as_display_name === 'boolean'
+        ? body.use_username_as_display_name
+        : undefined;
 
     if (!username) {
       return NextResponse.json({ error: 'ニックネームを入力してください' }, { status: 400 });
     }
 
+    const updatePayload: { username: string; use_username_as_display_name?: boolean } = {
+      username,
+    };
+    if (useUsernameAsDisplayName !== undefined) {
+      updatePayload.use_username_as_display_name = useUsernameAsDisplayName;
+    }
+
     const { error } = await supabase
       .from('profiles')
-      .update({ username })
+      .update(updatePayload)
       .eq('id', user.id);
 
     if (error) {
@@ -63,7 +75,10 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'プロファイルの更新に失敗しました' }, { status: 500 });
     }
 
-    return NextResponse.json({ username });
+    return NextResponse.json({
+      username,
+      use_username_as_display_name: updatePayload.use_username_as_display_name ?? true,
+    });
   } catch (err) {
     console.error('profile PATCH error:', err);
     return NextResponse.json(

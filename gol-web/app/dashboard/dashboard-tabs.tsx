@@ -42,6 +42,8 @@ export default function DashboardTabs({
   const [activeTab, setActiveTab] = useState<TabType>("journal")
   /** 日誌カンバンから「編集」で飛んできたとき、このタスクの編集モーダルを開く */
   const [editTodoId, setEditTodoId] = useState<string | null>(null)
+  /** 日誌タブから「新規タスク」でToDoサマリーに切り替えたとき、新規作成モーダルを開く */
+  const [openCreateModalOnSwitch, setOpenCreateModalOnSwitch] = useState(false)
 
   // アコーディオンの開閉状態を管理（全てのアコーディオンを一括制御）
   const [isKanbanExpanded, setIsKanbanExpanded] = useState(true)
@@ -175,7 +177,7 @@ export default function DashboardTabs({
             aria-labelledby="tab-journal"
             className="space-y-4 sm:space-y-6 lg:space-y-8"
           >
-            {/* アコーディオン一括制御ボタン */}
+            {/* アコーディオン一括制御 */}
             <div className="flex justify-end gap-2 mb-2">
               <Button
                 onClick={() => {
@@ -217,7 +219,7 @@ export default function DashboardTabs({
               </Button>
             </div>
 
-            {/* ToDoリスト */}
+            {/* ToDoリスト（フィルター枠内右上に新規タスクボタン） */}
             <KanbanBoard
               todos={todos}
               todoLogs={todoLogs}
@@ -228,6 +230,10 @@ export default function DashboardTabs({
               onEditTodo={(id) => {
                 setActiveTab("todo-summary")
                 setEditTodoId(id)
+              }}
+              onOpenCreateModal={() => {
+                setActiveTab("todo-summary")
+                setOpenCreateModalOnSwitch(true)
               }}
             />
 
@@ -320,6 +326,8 @@ export default function DashboardTabs({
               dailyLogId={dailyLogId}
               initialEditTodoId={editTodoId}
               onInitialEditConsumed={() => setEditTodoId(null)}
+              initialOpenCreateModal={openCreateModalOnSwitch}
+              onInitialOpenCreateConsumed={() => setOpenCreateModalOnSwitch(false)}
             />
           </div>
         )}

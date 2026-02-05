@@ -14,6 +14,13 @@ import { fetchWithRetry } from '@/lib/api-retry';
 import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 import type { DailyLog } from '@/lib/types';
 import { applyAiTextLineBreaks } from '@/lib/utils';
+import {
+  STORAGE_AI_PERSONALITY_TYPE,
+  STORAGE_AI_STRICT_COACH_ENABLED,
+  DEFAULT_PERSONALITY_TYPE_ID,
+  DEFAULT_STRICT_COACH_ENABLED,
+  isValidPersonalityTypeId,
+} from '@/lib/ai/personality-types';
 import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp, Settings, Check, Unlock } from 'lucide-react';
 
 interface Right {
@@ -549,6 +556,15 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             conditionMood: aiJudgmentResult.condition_mood,
             storyWorldId:
               (typeof window !== 'undefined' && localStorage.getItem('gol-story-world')) || 'ghost',
+            personalityTypeId: (() => {
+              if (typeof window === 'undefined') return DEFAULT_PERSONALITY_TYPE_ID;
+              const raw = localStorage.getItem(STORAGE_AI_PERSONALITY_TYPE);
+              return isValidPersonalityTypeId(raw) ? raw : DEFAULT_PERSONALITY_TYPE_ID;
+            })(),
+            strictCoachEnabled:
+              typeof window !== 'undefined'
+                ? localStorage.getItem(STORAGE_AI_STRICT_COACH_ENABLED) !== 'false'
+                : DEFAULT_STRICT_COACH_ENABLED,
           }),
         },
         {

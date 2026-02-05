@@ -8,12 +8,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getOpenAIClient, createAdvicePrompt, getAdviceSystemMessage } from '@/lib/ai/openai';
 import { mergeStoryWorldConfig, type StoryWorldId } from '@/lib/ai/story-worlds';
+import {
+  getPersonalityPromptAddition,
+  isValidPersonalityTypeId,
+  STRICT_COACH_SNIPPET,
+  DEFAULT_PERSONALITY_TYPE_ID,
+  DEFAULT_STRICT_COACH_ENABLED,
+} from '@/lib/ai/personality-types';
 import { validateJournalText, validateImpressionText, validateScore, validateAll } from '@/lib/validation';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { journalText, impressionText, conditionBody, conditionMood, storyWorldId: rawWorldId } = body;
+    const {
+      journalText,
+      impressionText,
+      conditionBody,
+      conditionMood,
+      storyWorldId: rawWorldId,
+      personalityTypeId: rawPersonalityTypeId,
+      strictCoachEnabled: rawStrictCoachEnabled,
+    } = body;
 
     // サーバー側バリデーション
     const validation = validateAll([
@@ -42,6 +57,19 @@ export async function POST(request: NextRequest) {
       rawWorldId === 'dq' || rawWorldId === 'ghost' ? rawWorldId : 'ghost';
 
     const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, use_username_as_display_name')
+      .eq('id', user.id)
+      .single();
+    const useAsDisplayName = profile?.use_username_as_display_name !== false;
+    const nickname = useAsDisplayName ? (profile?.username ?? '').trim() : '';
+
     let override: Record<string, unknown> | null = null;
     const { data: overrideRows, error: overrideError } = await supabase
       .from('story_world_configs')
@@ -52,6 +80,16 @@ export async function POST(request: NextRequest) {
       override = overrideRows.config_json as Record<string, unknown>;
     }
     const worldConfig = mergeStoryWorldConfig(storyWorldId, override);
+
+    const personalityTypeId = isValidPersonalityTypeId(rawPersonalityTypeId)
+      ? rawPersonalityTypeId
+      : DEFAULT_PERSONALITY_TYPE_ID;
+    const strictCoachEnabled =
+      typeof rawStrictCoachEnabled === 'boolean' ? rawStrictCoachEnabled : DEFAULT_STRICT_COACH_ENABLED;
+    const personalityBase = getPersonalityPromptAddition(personalityTypeId);
+    const personalityAddition = strictCoachEnabled
+      ? `${personalityBase} 加えて、${STRICT_COACH_SNIPPET}`
+      : personalityBase;
 
     const openai = getOpenAIClient();
     if (!openai) {
@@ -68,7 +106,9 @@ export async function POST(request: NextRequest) {
       impressionText || '',
       conditionBody,
       conditionMood,
-      worldConfig
+      worldConfig,
+      personalityAddition,
+      nickname
     );
 
     const completion = await openai.chat.completions.create({

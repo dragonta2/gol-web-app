@@ -176,6 +176,8 @@ export interface Todo {
   sp_exp_spirit: number;
   /** ステータス: 'active'=アクティブ, 'in_progress'=進行中, 'completed'=完了済み */
   status: 'active' | 'in_progress' | 'completed';
+  /** 保留中か（true のときToDoサマリーの「保留中」に表示、日誌カンバンには表示しない）。未マイグレーション時は undefined → false 扱い */
+  is_on_hold?: boolean;
   /** 期限（YYYY-MM-DD形式、null可） */
   due_date: string | null;
   /** 完了日時（完了済みの場合のみ） */
@@ -437,8 +439,10 @@ export interface JournalFormProps {
 
 /**
  * KanbanBoardコンポーネントのProps
- * 
- * 親コンポーネント（dashboard-tabs.tsx）から受け取るデータ
+ *
+ * 親コンポーネント（dashboard-tabs.tsx）から受け取るデータ。
+ * 日誌画面のカンバンは「状態変更のみ」を司る（サブタスクの完了チェック・ドラッグ・編集リンク）。
+ * サブタスクの追加・テキスト編集はToDoサマリー画面で行い、日誌からは編集リンクで遷移する。
  */
 export interface KanbanBoardProps {
   /** ToDoタスクリスト（配列） */
@@ -453,8 +457,10 @@ export interface KanbanBoardProps {
   isExpanded?: boolean;
   /** アコーディオンの開閉状態を更新する関数（外部制御用） */
   onExpandedChange?: (expanded: boolean) => void;
-  /** カードの「編集」クリック時：ToDoサマリーへ切り替え＋編集モーダルを開く */
+  /** カードの「編集」クリック時：ToDoサマリーへ切り替え＋編集モーダルを開く（CRUDはリンク先で） */
   onEditTodo?: (todoId: string) => void;
+  /** 日誌タブ用：フィルター枠内右上に表示する「新規タスク」クリック時（ToDoサマリーへ切り替え＋新規作成モーダルを開く） */
+  onOpenCreateModal?: () => void;
 }
 
 // ============================================================================

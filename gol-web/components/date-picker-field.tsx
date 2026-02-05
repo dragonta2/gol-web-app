@@ -50,8 +50,8 @@ export function DatePickerField({
     setOpen(false);
   };
 
-  const displayText = value
-    ? format(parse(value, 'yyyy-MM-dd', new Date()), 'yyyy年M月d日', { locale: ja })
+  const   displayText = value
+    ? format(parse(value, 'yyyy-MM-dd', new Date()), "yyyy年MM月dd日'-'EEE", { locale: ja })
     : '';
 
   return (
