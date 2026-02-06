@@ -74,7 +74,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
             </span>
             {todo.difficulty && (
               <span
-                className={`px-2 py-0.5 text-xs rounded shrink-0 ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
+                className={`px-2 py-0.5 text-xs rounded shrink-0 font-bold ${todo.difficulty === 'easy' ? 'pt-1' : ''} ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
                 title={`難易度: ${DIFFICULTY_LABELS[todo.difficulty]}`}
               >
                 {DIFFICULTY_LABELS[todo.difficulty]}
@@ -211,7 +211,7 @@ function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
             </span>
             {todo.difficulty && (
               <span
-                className={`px-2 py-0.5 text-xs rounded shrink-0 ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
+                className={`px-2 py-0.5 text-xs rounded shrink-0 font-bold ${todo.difficulty === 'easy' ? 'pt-1' : ''} ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
                 title={`難易度: ${DIFFICULTY_LABELS[todo.difficulty]}`}
               >
                 {DIFFICULTY_LABELS[todo.difficulty]}
@@ -1216,9 +1216,9 @@ function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, daily
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       onClick={() => setFilterDifficulties([])}
-                      className={`px-3 py-1 text-sm rounded ${
+                      className={`px-3 py-1 text-sm rounded font-bold ${
                         filterDifficulties.length === 0
-                          ? 'bg-cyan-600 text-white'
+                          ? 'bg-cyan-700 text-white'
                           : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
                       }`}
                     >
@@ -1234,7 +1234,7 @@ function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, daily
                             setFilterDifficulties([...filterDifficulties, difficulty]);
                           }
                         }}
-                        className={`px-3 py-1 text-sm rounded ${
+                        className={`px-3 py-1 text-sm rounded font-bold ${difficulty === 'easy' ? 'pt-1' : ''} ${
                           filterDifficulties.includes(difficulty)
                             ? `${DIFFICULTY_COLORS[difficulty]} text-white`
                             : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'

@@ -258,12 +258,12 @@ export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
 };
 
 /**
- * 難易度の色（Tailwind CSSクラス）
+ * 難易度の色（Tailwind CSSクラス・明度控えめで文字視認性を優先）
  */
 export const DIFFICULTY_COLORS: Record<Difficulty, string> = {
-  easy: 'bg-green-500',
-  medium: 'bg-yellow-500',
-  hard: 'bg-red-500',
+  easy: 'bg-green-600',
+  medium: 'bg-amber-600',
+  hard: 'bg-red-600',
 };
 
 /**

@@ -28,6 +28,13 @@ const StatsTab = lazy(() => import("./stats-tab"))
 
 type TabType = "journal" | "todo-summary" | "stats"
 
+export interface DashboardTabsOwnProps extends DashboardTabsProps {
+  /** 親で制御する場合の現在タブ */
+  activeTab?: TabType
+  /** タブ変更時のコールバック（親で画面名表示などに利用） */
+  onActiveTabChange?: (tab: TabType) => void
+}
+
 export default function DashboardTabs({
   habits,
   habitLogs,
@@ -38,8 +45,16 @@ export default function DashboardTabs({
   todoSubtasks,
   selectedDate,
   userName,
-}: DashboardTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabType>("journal")
+  activeTab: controlledActiveTab,
+  onActiveTabChange,
+}: DashboardTabsOwnProps) {
+  const [internalTab, setInternalTab] = useState<TabType>("journal")
+  const isControlled = controlledActiveTab !== undefined
+  const activeTab = isControlled ? controlledActiveTab : internalTab
+  const setActiveTab = (tab: TabType) => {
+    if (!isControlled) setInternalTab(tab)
+    onActiveTabChange?.(tab)
+  }
   /** 日誌カンバンから「編集」で飛んできたとき、このタスクの編集モーダルを開く */
   const [editTodoId, setEditTodoId] = useState<string | null>(null)
   /** 日誌タブから「新規タスク」でToDoサマリーに切り替えたとき、新規作成モーダルを開く */

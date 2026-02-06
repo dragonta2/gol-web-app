@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
-import DashboardTabs from "./dashboard-tabs"
-import CollapsibleDashboardHeader from "./collapsible-dashboard-header"
+import DashboardClientLayout from "./dashboard-client-layout"
 import { syncProfileLevel } from "@/lib/sync-profile-level"
 
 interface DashboardPageProps {
@@ -159,25 +158,19 @@ export default async function DashboardPage({
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <CollapsibleDashboardHeader
+      <DashboardClientLayout
         userProfile={userProfile}
         selectedDate={selectedDate}
+        habits={habits || []}
+        habitLogs={habitLogs || []}
+        dailyLogId={dailyLogId}
+        dailyLog={dailyLogData}
+        todos={todos || []}
+        todoLogs={todoLogs || []}
+        todoSubtasks={todoSubtasks || []}
+        selectedDate={selectedDate}
+        userName={userProfile.name}
       />
-
-      {/* メインコンテンツ */}
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <DashboardTabs
-          habits={habits || []}
-          habitLogs={habitLogs || []}
-          dailyLogId={dailyLogId}
-          dailyLog={dailyLogData}
-          todos={todos || []}
-          todoLogs={todoLogs || []}
-          todoSubtasks={todoSubtasks || []}
-          selectedDate={selectedDate}
-          userName={userProfile.name}
-        />
-      </div>
     </div>
   )
 }

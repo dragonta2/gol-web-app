@@ -30,11 +30,14 @@ export interface DashboardHeaderProfile {
 interface CollapsibleDashboardHeaderProps {
   userProfile: DashboardHeaderProfile;
   selectedDate: string;
+  /** 現在開いている画面名（日誌 / ToDoサマリー / 統計） */
+  screenName?: string;
 }
 
 export default function CollapsibleDashboardHeader({
   userProfile,
   selectedDate,
+  screenName,
 }: CollapsibleDashboardHeaderProps) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -79,7 +82,19 @@ export default function CollapsibleDashboardHeader({
         aria-label={collapsed ? 'ヘッダーを展開' : 'ヘッダーを折り畳む'}
       >
         <span className="text-lg sm:text-xl font-bold text-white truncate min-w-0">
-          {dateLabel}
+          {screenName ? (
+            <>
+              <span className="text-white">{screenName}</span>
+              {collapsed && (
+                <>
+                  <span className="text-zinc-500 mx-2">｜</span>
+                  <span>{dateLabel}</span>
+                </>
+              )}
+            </>
+          ) : (
+            dateLabel
+          )}
         </span>
         <span className="shrink-0 flex items-center gap-1 text-white">
           {collapsed ? (
