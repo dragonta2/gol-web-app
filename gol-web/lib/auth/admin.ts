@@ -27,12 +27,20 @@ export async function isAdmin(): Promise<boolean> {
       .eq('id', user.id)
       .single();
 
-    if (profileError || !profile) {
-      console.error('プロファイル取得エラー:', profileError);
-      return false;
+    if (!profileError && profile?.is_admin === true) {
+      return true;
     }
 
-    return profile.is_admin === true;
+    // 環境変数で指定したメールも管理者扱い（テスト・管理アカウント用）
+    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS
+      ? process.env.NEXT_PUBLIC_ADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+      : [];
+    const email = (user.email ?? '').toLowerCase();
+    if (email && adminEmails.includes(email)) {
+      return true;
+    }
+
+    return false;
   } catch (error) {
     console.error('管理者チェックエラー:', error);
     return false;

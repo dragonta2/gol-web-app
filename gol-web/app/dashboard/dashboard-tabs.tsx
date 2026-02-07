@@ -45,6 +45,7 @@ export default function DashboardTabs({
   todoSubtasks,
   selectedDate,
   userName,
+  isAdmin,
   activeTab: controlledActiveTab,
   onActiveTabChange,
 }: DashboardTabsOwnProps) {
@@ -311,6 +312,7 @@ export default function DashboardTabs({
                 setJournalFormStates((prev) => ({ ...prev, ...state }))
               }
               userName={userName}
+              isAdmin={isAdmin}
             />
 
             {/* 過去の日誌一覧 */}

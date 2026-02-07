@@ -58,7 +58,7 @@ ToDoタグ機能の完全実装、難易度設定の3段階化、重複ToDo削�
 ---
 
 ### 5. 月ごとのToDo管理機能の実装
-- **要件**: `00-AI-prompt-memo.md`の7-32行目に記載
+- **要件**: `0-AI-prompt-memo.md`の7-32行目に記載
 - **対応**:
   - **ToDoサマリー画面** (`todo-summary-tab.tsx`):
     - 月ごとのフィルター機能を追加（セレクトBOXで「すべてのToDo」または「YYYY年MM月のToDo」を選択）

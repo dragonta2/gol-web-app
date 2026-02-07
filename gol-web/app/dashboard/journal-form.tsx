@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, memo, useEffect, Fragment } from 'react';
+import { useState, useMemo, memo, useEffect, useRef, Fragment } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -47,6 +47,8 @@ interface JournalFormProps {
   onExpandedStateChange?: (state: Partial<JournalFormExpandedStates>) => void;
   /** ユーザー表示名（あらすじ・アドバイス内の名前をボールド表示するために使用） */
   userName?: string;
+  /** 管理者またはテストアカウント（再生成回数リセットボタン表示用） */
+  isAdmin?: boolean;
 }
 
 interface AIJudgmentResult {
@@ -55,15 +57,7 @@ interface AIJudgmentResult {
   reasoning: string;
 }
 
-interface AIAdviceResult {
-  advice: string;
-}
-
-interface AIStoryResult {
-  story: string;
-}
-
-function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpandedStateChange, userName = '' }: JournalFormProps) {
+function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpandedStateChange, userName = '', isAdmin = false }: JournalFormProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -163,6 +157,18 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   // 日誌が確定済みかどうか
   const isConfirmed = dailyLog?.is_confirmed ?? false;
 
+  /** 「これからの冒険」本文から、AIが付けた見出し行（あらすじ：これからの冒険）を除く */
+  const stripFutureAdventureHeading = (text: string) => {
+    return text
+      .split('\n')
+      .filter((line) => {
+        const t = line.replace(/\*\*/g, '').trim();
+        return !/^あらすじ[：:]\s*これからの冒険\s*$/.test(t) && t !== 'これからの冒険';
+      })
+      .join('\n')
+      .trim();
+  };
+
   /** AI作成文章の表示（改行ルール＋ユーザー名をボールド） */
   const renderAiText = (text: string) => {
     const formatted = applyAiTextLineBreaks(text);
@@ -238,18 +244,23 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       : null
   );
   const [isJudging, setIsJudging] = useState(false);
+  const [isResettingBatchCount, setIsResettingBatchCount] = useState(false);
 
   // AIアドバイス
   const [aiAdvice, setAIAdvice] = useState<string | null>(dailyLog?.ai_advice || null);
-  const [isGeneratingAdvice, setIsGeneratingAdvice] = useState(false);
 
   // AIあらすじ（これまでの冒険 / これからの冒険）
   const [aiStoryPast, setAIStoryPast] = useState<string | null>(dailyLog?.ai_story_past || null);
   const [aiStoryFuture, setAIStoryFuture] = useState<string | null>(dailyLog?.ai_story_future ?? null);
-  const [isGeneratingStory, setIsGeneratingStory] = useState(false);
+  // 一括生成直後は router.refresh で渡る dailyLog がまだ古いことがあるため、その1回は上書きしない
+  const skipNextAiStorySyncRef = useRef(false);
 
-  // 日誌が変わったらあらすじを同期
+  // 日誌が変わったらあらすじを同期（一括生成直後はスキップ）
   useEffect(() => {
+    if (skipNextAiStorySyncRef.current) {
+      skipNextAiStorySyncRef.current = false;
+      return;
+    }
     setAIStoryPast(dailyLog?.ai_story_past ?? null);
     setAIStoryFuture(dailyLog?.ai_story_future ?? null);
   }, [dailyLog?.id, dailyLog?.ai_story_past, dailyLog?.ai_story_future]);
@@ -353,29 +364,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     }
   };
 
-  // ポイント/EXP自動計算ロジック
-  const calculatePointsAndExp = (conditionBody: number, conditionMood: number) => {
-    // 体調スコアと気分スコアの平均からポイントとEXPを計算
-    const averageScore = (conditionBody + conditionMood) / 2;
-
-    // ポイント計算（0-100点 → 0-50ポイント）
-    const points = Math.round(averageScore / 2);
-
-    // EXP計算（体調スコア → 身体EXP、気分スコア → 精神EXP、平均 → 頭脳EXP）
-    const expBody = Math.round(conditionBody / 10);
-    const expMind = Math.round(averageScore / 10);
-    const expSpirit = Math.round(conditionMood / 10);
-
-    return {
-      points,
-      exp_body: expBody,
-      exp_mind: expMind,
-      exp_spirit: expSpirit,
-    };
-  };
-
-  // AI判定実行ハンドラー（dailyLogから最新の値を取得）
-  const handleAIJudgment = async () => {
+  // AI一括生成（判定＋あらすじ＋アドバイス）。1日2回まで。
+  const handleBatchRun = async () => {
     if (!dailyLogId) {
       toast.error('日誌IDが取得できませんでした', {
         description: 'ページをリロードしてください',
@@ -383,7 +373,6 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       return;
     }
 
-    // dailyLogから最新の値を取得（新しいコンポーネントで保存された値）
     const currentJournalText = dailyLog?.journal_text || '';
     const currentImpressionText = dailyLog?.one_line_comment || '';
 
@@ -400,310 +389,112 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       return;
     }
 
+    const runCount = dailyLog?.ai_batch_run_count ?? 0;
+    if (runCount >= 2) {
+      toast.error('本日の再生成は2回までです。明日またお試しください。');
+      return;
+    }
+
     setIsJudging(true);
     try {
-      // AI判定APIを呼び出し（リトライ機能付き）
       const response = await fetchWithRetry(
-        '/api/ai/judgment',
+        '/api/ai/batch',
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
+            dailyLogId,
             journalText: currentJournalText,
             impressionText: currentImpressionText,
-          }),
-        },
-        {
-          maxRetries: 3,
-          initialDelay: 1000,
-          maxDelay: 10000,
-        }
-      );
-
-      const result: AIJudgmentResult = await response.json();
-      setAIJudgmentResult(result);
-
-      // ポイント/EXPを計算
-      const { points, exp_body, exp_mind, exp_spirit } = calculatePointsAndExp(
-        result.condition_body,
-        result.condition_mood
-      );
-
-      // daily_logsにAI判定結果を保存
-      const { error } = await supabase
-        .from('daily_logs')
-        .update({
-          ai_condition_body: result.condition_body,
-          ai_condition_mood: result.condition_mood,
-          ai_points_earned: points,
-          ai_exp_body: exp_body,
-          ai_exp_mind: exp_mind,
-          ai_exp_spirit: exp_spirit,
-        })
-        .eq('id', dailyLogId);
-
-      if (error) {
-        console.error('AI判定結果の保存エラー:', error);
-        toast.error('AI判定結果の保存に失敗しました', {
-          description: error.message || 'データベースエラーが発生しました',
-        });
-        return;
-      }
-
-      toast.success('AI判定が完了しました', {
-        description: `体調: ${result.condition_body}点 / 気分: ${result.condition_mood}点`,
-      });
-
-      // profilesテーブルのポイント/EXPを更新
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (!authError && user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('points, exp_body, exp_mind, exp_spirit')
-          .eq('id', user.id)
-          .single();
-
-        if (!profileError && profile) {
-          await supabase
-            .from('profiles')
-            .update({
-              points: profile.points + points,
-              exp_body: profile.exp_body + exp_body,
-              exp_mind: profile.exp_mind + exp_mind,
-              exp_spirit: profile.exp_spirit + exp_spirit,
-            })
-            .eq('id', user.id);
-        }
-      }
-
-      // ページをリフレッシュして最新データを取得
-      router.refresh();
-    } catch (error) {
-      console.error('AI判定エラー:', error);
-      // エラーレスポンスから詳細を取得
-      let errorMessage = '予期しないエラーが発生しました';
-      let errorDetails = '';
-      
-      if (error instanceof Response) {
-        try {
-          const errorData = await error.json();
-          errorMessage = errorData.error || `HTTP ${error.status}: ${error.statusText}`;
-          errorDetails = errorData.details || errorData.message || '';
-          
-          // 環境変数エラーの場合、より詳細なメッセージを表示
-          if (errorData.code === 'MISSING_API_KEY') {
-            errorMessage = 'OpenAI APIキーが設定されていません';
-            errorDetails = '.env.localファイルにOPENAI_API_KEYを設定してください。';
-          }
-        } catch (parseError) {
-          errorMessage = `HTTP ${error.status}: ${error.statusText}`;
-        }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      
-      toast.error('AI判定に失敗しました', {
-        description: errorDetails || errorMessage,
-        duration: 10000, // エラーメッセージを10秒間表示
-      });
-    } finally {
-      setIsJudging(false);
-    }
-  };
-
-  // AIアドバイス生成ハンドラー
-  const handleGenerateAdvice = async () => {
-    if (!dailyLogId) {
-      toast.error('日誌IDが取得できませんでした', {
-        description: 'ページをリロードしてください',
-      });
-      return;
-    }
-
-    if (!aiJudgmentResult) {
-      toast.error('先にAI判定を実行してください');
-      return;
-    }
-    // dailyLogから最新の値を取得
-    const currentJournalText = dailyLog?.journal_text || '';
-    const currentImpressionText = dailyLog?.one_line_comment || '';
-
-    if (currentJournalText.length > journalMaxLength) {
-      toast.error(`日誌本文は${journalMaxLength}文字以内で入力してください`);
-      return;
-    }
-    if (currentImpressionText.length > impressionMaxLength) {
-      toast.error(`一言感想は${impressionMaxLength}文字以内で入力してください`);
-      return;
-    }
-
-    setIsGeneratingAdvice(true);
-    try {
-      // AIアドバイス生成APIを呼び出し（リトライ機能付き）
-      const response = await fetchWithRetry(
-        '/api/ai/advice',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            journalText: currentJournalText,
-            impressionText: currentImpressionText,
-            conditionBody: aiJudgmentResult.condition_body,
-            conditionMood: aiJudgmentResult.condition_mood,
-            storyWorldId:
-              (typeof window !== 'undefined' && localStorage.getItem('gol-story-world')) || 'ghost',
-            personalityTypeId: (() => {
-              if (typeof window === 'undefined') return DEFAULT_PERSONALITY_TYPE_ID;
-              const raw = localStorage.getItem(STORAGE_AI_PERSONALITY_TYPE);
-              return isValidPersonalityTypeId(raw) ? raw : DEFAULT_PERSONALITY_TYPE_ID;
-            })(),
+            displayName: userName?.trim() || undefined,
+            storyWorldId: (typeof window !== 'undefined' && localStorage.getItem('gol-story-world')) || 'ghost',
+            personalityTypeId:
+              typeof window === 'undefined'
+                ? DEFAULT_PERSONALITY_TYPE_ID
+                : isValidPersonalityTypeId(localStorage.getItem(STORAGE_AI_PERSONALITY_TYPE))
+                  ? localStorage.getItem(STORAGE_AI_PERSONALITY_TYPE)
+                  : DEFAULT_PERSONALITY_TYPE_ID,
             strictCoachEnabled:
               typeof window !== 'undefined'
                 ? localStorage.getItem(STORAGE_AI_STRICT_COACH_ENABLED) !== 'false'
                 : DEFAULT_STRICT_COACH_ENABLED,
           }),
         },
-        {
-          maxRetries: 3,
-          initialDelay: 1000,
-          maxDelay: 10000,
-        }
+        { maxRetries: 2, initialDelay: 2000, maxDelay: 15000 }
       );
 
-      const result: AIAdviceResult = await response.json();
-      setAIAdvice(result.advice);
-
-      // daily_logsにAIアドバイスを保存
-      const { error } = await supabase
-        .from('daily_logs')
-        .update({
-          ai_advice: result.advice,
-        })
-        .eq('id', dailyLogId);
-
-      if (error) {
-        console.error('AIアドバイスの保存エラー:', error);
-        toast.warning('アドバイスの保存に失敗しました', {
-          description: '生成は完了しましたが、保存できませんでした',
-        });
-      } else {
-        toast.success('AIアドバイスを生成しました');
-      }
-    } catch (error) {
-      console.error('AIアドバイス生成エラー:', error);
-      // エラーレスポンスから詳細を取得
-      let errorMessage = '予期しないエラーが発生しました';
-      if (error instanceof Response) {
-        try {
-          const errorData = await error.json();
-          errorMessage = errorData.error || errorData.message || `HTTP ${error.status}: ${error.statusText}`;
-        } catch {
-          errorMessage = `HTTP ${error.status}: ${error.statusText}`;
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 429 && data.code === 'BATCH_LIMIT_EXCEEDED') {
+          toast.error(data.error || '本日の再生成は2回までです。');
+          return;
         }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
+        throw new Error(data.error || data.details || `HTTP ${response.status}`);
       }
-      toast.error('AIアドバイス生成に失敗しました', {
-        description: errorMessage,
+
+      const data = await response.json();
+      setAIJudgmentResult({
+        condition_body: data.condition_body,
+        condition_mood: data.condition_mood,
+        reasoning: data.reasoning ?? '',
+      });
+      skipNextAiStorySyncRef.current = true;
+      setAIStoryPast(data.storyPast ?? null);
+      setAIStoryFuture(data.storyFuture ?? null);
+      setAIAdvice(data.advice ?? null);
+
+      toast.success('AI判定・あらすじ・アドバイスを生成しました', {
+        description: data._debug_nickname_used != null
+          ? `体調: ${data.condition_body}点 / 気分: ${data.condition_mood}点　表示名: ${data._debug_nickname_used}`
+          : `体調: ${data.condition_body}点 / 気分: ${data.condition_mood}点`,
+      });
+      router.refresh();
+    } catch (error) {
+      console.error('AI一括生成エラー:', error);
+      let message = '予期しないエラーが発生しました';
+      if (error instanceof Error) {
+        message = error.message;
+      } else if (error && typeof (error as Response).json === 'function') {
+        // fetchWithRetry が 4xx/5xx のときに Response を throw している場合
+        try {
+          const data = await (error as Response).json().catch(() => ({}));
+          const body = data as { error?: string; details?: string };
+          message = body.error || body.details || `HTTP ${(error as Response).status}`;
+        } catch {
+          message = `HTTP ${(error as Response).status}`;
+        }
+      }
+      toast.error('AI一括生成に失敗しました', {
+        description: message,
+        duration: 10000,
       });
     } finally {
-      setIsGeneratingAdvice(false);
+      setIsJudging(false);
     }
   };
 
-  // AIあらすじ生成ハンドラー
-  const handleGenerateStory = async () => {
-    if (!dailyLogId) {
-      toast.error('日誌IDが取得できませんでした', {
-        description: 'ページをリロードしてください',
-      });
-      return;
-    }
-    // dailyLogから最新の値を取得
-    const currentJournalText = dailyLog?.journal_text || '';
-    const currentImpressionText = dailyLog?.one_line_comment || '';
-
-    if (currentJournalText.length > journalMaxLength) {
-      toast.error(`日誌本文は${journalMaxLength}文字以内で入力してください`);
-      return;
-    }
-    if (currentImpressionText.length > impressionMaxLength) {
-      toast.error(`一言感想は${impressionMaxLength}文字以内で入力してください`);
-      return;
-    }
-
-    setIsGeneratingStory(true);
+  // 再生成回数リセット（管理者・テストアカウントのみ）
+  const handleResetBatchCount = async () => {
+    if (!dailyLogId || !isAdmin) return;
+    setIsResettingBatchCount(true);
     try {
-      // 習慣とToDoの情報を取得（簡易版：空配列で実装）
-      const habits: string[] = [];
-      const todos: string[] = [];
-
-      // AIあらすじ生成APIを呼び出し（リトライ機能付き）
-      const response = await fetchWithRetry(
-        '/api/ai/story',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            journalText: currentJournalText,
-            impressionText: currentImpressionText,
-            habits,
-            todos,
-            storyWorldId:
-              (typeof window !== 'undefined' && localStorage.getItem('gol-story-world')) || 'ghost',
-          }),
-        },
-        {
-          maxRetries: 3,
-          initialDelay: 1000,
-          maxDelay: 10000,
-        }
-      );
-
-      const result: AIStoryResult = await response.json();
-      setAIStoryPast(result.story);
-
-      // daily_logsにAIあらすじ（これまでの冒険）を保存
-      const { error } = await supabase
-        .from('daily_logs')
-        .update({
-          ai_story_past: result.story,
-        })
-        .eq('id', dailyLogId);
-
-      if (error) {
-        console.error('AIあらすじの保存エラー:', error);
-        toast.warning('あらすじの保存に失敗しました', {
-          description: '生成は完了しましたが、保存できませんでした',
-        });
-      } else {
-        toast.success('AIあらすじを生成しました');
-      }
-    } catch (error) {
-      console.error('AIあらすじ生成エラー:', error);
-      // エラーレスポンスから詳細を取得
-      let errorMessage = '予期しないエラーが発生しました';
-      if (error instanceof Response) {
-        try {
-          const errorData = await error.json();
-          errorMessage = errorData.error || errorData.message || `HTTP ${error.status}: ${error.statusText}`;
-        } catch {
-          errorMessage = `HTTP ${error.status}: ${error.statusText}`;
-        }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-      }
-      toast.error('AIあらすじ生成に失敗しました', {
-        description: errorMessage,
+      const res = await fetch('/api/ai/batch-reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ dailyLogId }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast.error(data.error || 'リセットに失敗しました');
+        return;
+      }
+      toast.success('再生成回数をリセットしました');
+      router.refresh();
+    } catch {
+      toast.error('リセットに失敗しました');
     } finally {
-      setIsGeneratingStory(false);
+      setIsResettingBatchCount(false);
     }
   };
 
@@ -736,25 +527,28 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               {rights.map((right) => (
                 <div key={right.id} className="flex items-center gap-3 text-base">
                   {/* 権利名・使用単位 */}
-                  <span className={`flex-1 ${right.count > 0 ? 'text-zinc-50' : 'text-zinc-300'}`}>
+                  <span className={`flex-1 min-w-0 ${right.count > 0 ? 'text-zinc-50' : 'text-zinc-300'}`}>
                     権利{right.code}｜{right.name}
                     {right.unit && <span className="text-zinc-400 text-sm ml-1">（{right.unit}）</span>}
                   </span>
 
-                  {/* 数値入力（上限なし） */}
+                  {/* 1回あたりの利用ポイント（スピナーのすぐ左） */}
+                  <span className="text-zinc-500 text-sm whitespace-nowrap">1回あたり -{right.points}G</span>
+
+                  {/* ポイント表示（スピナーの左） */}
+                  <span className="text-base text-red-400 font-medium whitespace-nowrap min-w-14 text-right">
+                    {right.count > 0 ? `-${right.points * right.count}G` : ''}
+                  </span>
+
+                  {/* 数値入力（一番右端） */}
                   <Input
                     type="number"
                     min="0"
                     value={right.count}
                     onChange={(e) => updateRightCount(right.id, parseInt(e.target.value) || 0)}
                     disabled={!isEditable}
-                    className="w-16 px-2 py-1 bg-zinc-800 border-zinc-600 text-zinc-50 text-center text-base focus:border-red-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="w-16 px-2 py-1 bg-zinc-800 border-zinc-600 text-zinc-50 text-center text-base focus:border-red-500 disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
                   />
-
-                  {/* ポイント表示（常に領域確保） */}
-                  <span className="text-base text-red-400 font-medium whitespace-nowrap min-w-14 text-right">
-                    {right.count > 0 ? `(-${right.points * right.count}G)` : ''}
-                  </span>
                 </div>
               ))}
 
@@ -845,20 +639,33 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           </button>
           {isAiExpanded && (
             <div id="ai-content" className="space-y-6">
-              {/* AI判定実行ボタン */}
+              {/* AI一括生成（判定＋あらすじ＋アドバイス）。1日2回まで。 */}
         {isEditable && (
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <Button
-              onClick={handleAIJudgment}
-              disabled={isJudging}
-              aria-label="AI判定を実行する"
+              onClick={handleBatchRun}
+              disabled={isJudging || (dailyLog?.ai_batch_run_count ?? 0) >= 2}
+              aria-label={aiJudgmentResult || aiStoryPast || aiAdvice ? 'AIを再生成する' : 'AI判定を実行する'}
               aria-busy={isJudging}
               className="bg-purple-600 hover:bg-purple-700 text-white"
               size="lg"
             >
               <Bot className="w-4 h-4 mr-1.5" />
-              {isJudging ? 'AI判定中...' : 'AI判定を実行'}
+              {isJudging ? '生成中...' : (aiJudgmentResult || aiStoryPast || aiAdvice ? '再生成' : 'AI判定を実行')}
             </Button>
+            <p className="text-zinc-500 text-xs">再生成は1日2回までです</p>
+            {isAdmin && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleResetBatchCount}
+                disabled={isResettingBatchCount || !dailyLogId}
+                className="mt-2 border-zinc-600 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300 text-xs"
+              >
+                {isResettingBatchCount ? 'リセット中...' : '再生成回数をリセット（管理者用）'}
+              </Button>
+            )}
           </div>
         )}
         {!isEditable && (
@@ -867,7 +674,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           </div>
         )}
 
-        {/* AI判定結果表示 */}
+        {/* AI判定結果表示（一括生成のローディング時も同じスケルトン） */}
         {isJudging ? (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-4">
             <h3 className="text-lg font-medium text-cyan-400">判定結果</h3>
@@ -917,30 +724,13 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           </div>
         ) : null}
 
-        {/* AIあらすじ（これまでの冒険 / これからの冒険） */}
+        {/* AIあらすじ（一括生成で判定・あらすじ・アドバイスをまとめて生成） */}
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-medium text-cyan-400">あらすじ</h3>
-            {isEditable && !isGeneratingStory && (
-              <Button
-                onClick={handleGenerateStory}
-                disabled={isGeneratingStory}
-                aria-label={aiStoryPast ? 'あらすじを再生成する' : 'あらすじを生成する'}
-                aria-busy={isGeneratingStory}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
-                size="sm"
-              >
-                {aiStoryPast ? '再生成' : '生成'}
-              </Button>
-            )}
-            {isGeneratingStory && (
-              <span className="text-sm text-zinc-400">生成中...</span>
-            )}
-          </div>
+          <h3 className="text-lg font-medium text-cyan-400">あらすじ</h3>
           <div className="space-y-3">
             <div>
               <p className="text-sm font-medium text-white mb-1">これまでの冒険</p>
-              {isGeneratingStory ? (
+              {isJudging ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
                   <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
                   <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
@@ -961,7 +751,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               <p className="text-sm font-medium text-white mb-1">これからの冒険</p>
               {aiStoryFuture ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryFuture)}</p>
+                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(stripFutureAdventureHeading(aiStoryFuture))}</p>
                 </div>
               ) : (
                 <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
@@ -972,40 +762,25 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           </div>
         </div>
 
-        {/* AIアドバイス生成 */}
-        {aiJudgmentResult && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-cyan-400">辛口コーチング アドバイス</h3>
-              {!aiAdvice && !isGeneratingAdvice && isEditable && (
-                <Button
-                  onClick={handleGenerateAdvice}
-                  disabled={isGeneratingAdvice}
-                  aria-label="辛口コーチング アドバイスを生成する"
-                  aria-busy={isGeneratingAdvice}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                  size="sm"
-                >
-                  生成
-                </Button>
-              )}
-              {isGeneratingAdvice && (
-                <span className="text-sm text-zinc-400">生成中...</span>
-              )}
+        {/* 辛口コーチング アドバイス（一括生成で生成） */}
+        <div className="space-y-3">
+          <h3 className="text-lg font-medium text-cyan-400">辛口コーチング アドバイス</h3>
+          {isJudging ? (
+            <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+              <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+              <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+              <Skeleton className="h-4 w-3/4 bg-zinc-700" />
             </div>
-            {isGeneratingAdvice ? (
-              <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-                <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-                <Skeleton className="h-4 w-3/4 bg-zinc-700" />
-              </div>
-            ) : aiAdvice ? (
-              <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice)}</p>
-              </div>
-            ) : null}
-          </div>
-        )}
+          ) : aiAdvice ? (
+            <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+              <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice)}</p>
+            </div>
+          ) : (
+            <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+              <p className="text-zinc-500 text-sm">未生成（上の「AI判定を実行」で一括生成）</p>
+            </div>
+          )}
+        </div>
             </div>
           )}
         </div>

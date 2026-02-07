@@ -123,7 +123,7 @@ export function createStoryPrompt(
 ): string {
   const protagonist = worldConfig?.protagonistName ?? '勇者';
   const heroInstruction = nickname.trim()
-    ? `【重要】主人公の名前は、ユーザーのニックネーム「${nickname.trim()}」をそのまま使って「${protagonist}${nickname.trim()}」のように表記してください。`
+    ? `【重要】主人公の名前は、ユーザーが設定したニックネーム「${nickname.trim()}」を省略・短縮・置き換えせず、そのまま全文で使ってください。表記例: 「${protagonist}${nickname.trim()}」。デフォルト名（${protagonist}）だけでは表記しないでください。`
     : `【重要】主人公の名前は「${protagonist}」と表記してください。`;
 
   return `以下の情報を基に、今日の出来事を物語風のあらすじとして生成してください。
@@ -142,15 +142,62 @@ ${habits.length > 0 ? habits.join('、') : 'なし'}
 【完了したToDo】
 ${todos.length > 0 ? todos.join('、') : 'なし'}
 
-300-400文字で物語風のあらすじを生成してください。`;
+300-400文字で物語風のあらすじを生成してください。
+【禁止】「彼」「彼女」など性別を特定する代名詞は使わないでください。主人公を指すときは名前や「主人公」など中性な表現を使ってください。`;
+}
+
+/**
+ * AIあらすじ「これからの冒険」用のプロンプト生成
+ * 明日への展望・今後への意気込みを物語風に
+ */
+export function createStoryFuturePrompt(
+  journalText: string,
+  impressionText: string,
+  habits: string[],
+  todos: string[],
+  nickname: string = '',
+  worldConfig?: StoryWorldConfig | null
+): string {
+  const protagonist = worldConfig?.protagonistName ?? '勇者';
+  const heroInstruction = nickname.trim()
+    ? `【重要】主人公の名前は、ユーザーが設定したニックネーム「${nickname.trim()}」を省略・短縮・置き換えせず、そのまま全文で使ってください。表記例: 「${protagonist}${nickname.trim()}」。デフォルト名（${protagonist}）だけでは表記しないでください。`
+    : `【重要】主人公の名前は「${protagonist}」と表記してください。`;
+
+  return `以下の情報を基に、「これからの冒険」として、明日への展望や今後への意気込みをRPG物語風のあらすじで生成してください。
+
+${heroInstruction}
+
+【日誌本文】
+${journalText || '（未記入）'}
+
+【一言感想】
+${impressionText || '（未記入）'}
+
+【実行した習慣】
+${habits.length > 0 ? habits.join('、') : 'なし'}
+
+【完了したToDo】
+${todos.length > 0 ? todos.join('、') : 'なし'}
+
+300-400文字で、前向きな展望・これからへの物語を生成してください。
+【禁止】出力に「あらすじ」「これからの冒険」などの見出し・タイトル行を含めないでください。物語本文のみを出力してください。
+【禁止】「彼」「彼女」など性別を特定する代名詞は使わないでください。主人公を指すときは名前や「主人公」など中性な表現を使ってください。`;
 }
 
 /** あらすじ生成用のシステムメッセージを返す */
-export function getStorySystemMessage(worldConfig?: StoryWorldConfig | null): string {
-  return (
+export function getStorySystemMessage(
+  worldConfig?: StoryWorldConfig | null,
+  nickname?: string
+): string {
+  const base =
     worldConfig?.storySystemMessage ??
-    'あなたはRPGゲームのストーリーテラーです。日常の出来事をRPG物語風のあらすじとして生成してください。'
-  );
+    'あなたはRPGゲームのストーリーテラーです。日常の出来事をRPG物語風のあらすじとして生成してください。';
+  const noGender =
+    '【禁止】「彼」「彼女」など性別を特定する代名詞は使わないこと。主人公を指すときは名前や「主人公」など中性な表現を使うこと。';
+  if (nickname?.trim()) {
+    return `${base}\n【必須】主人公の名前は、ユーザーが設定したニックネーム「${nickname.trim()}」を省略・短縮せずそのまま全文で使うこと。デフォルト名だけでは表記しないこと。\n${noGender}`;
+  }
+  return `${base}\n${noGender}`;
 }
 
 /** アドバイス生成用のシステムメッセージを返す */

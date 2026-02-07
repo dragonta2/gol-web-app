@@ -145,6 +145,8 @@ export interface DailyLog {
   ai_story_past: string | null;
   /** AI生成: これからの冒険（あらすじ・未来） */
   ai_story_future: string | null;
+  /** AI一括生成の実行回数（1日2回まで。未適用時は0） */
+  ai_batch_run_count?: number;
   /** 日誌確定フラグ（確定済みの過去日誌は編集不可） */
   is_confirmed: boolean;
   /** 作成日時 */
@@ -407,6 +409,8 @@ export interface DashboardTabsProps {
   selectedDate?: string;
   /** ユーザー表示名（あらすじ・アドバイス内の名前をボールド表示するために使用） */
   userName?: string;
+  /** 管理者またはテストアカウント（再生成回数リセットボタン表示用） */
+  isAdmin?: boolean;
 }
 
 /**

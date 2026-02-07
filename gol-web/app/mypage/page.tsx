@@ -72,7 +72,7 @@ export default async function MypagePage() {
   const expToNext = getExpToNextLevel(
     userProfile.exp.body,
     userProfile.exp.intellect,
-    userProfile.exp.mind
+    userProfile.exp.mind,
   )
 
   // ランク変更履歴を取得（テーブルが存在しない場合は空配列）

@@ -1,7 +1,7 @@
-'use client';
+"use client"
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useState, useEffect } from "react"
+import Link from "next/link"
 import {
   Trophy,
   Coins,
@@ -11,27 +11,27 @@ import {
   User,
   ChevronDown,
   ChevronUp,
-} from 'lucide-react';
-import LogoutButton from './logout-button';
-import FontSizeControl from '@/components/font-size-control';
-import { RankNameDisplay } from '@/components/rank-name-display';
-import { RankAvatar } from '@/components/rank-avatar';
+} from "lucide-react"
+import LogoutButton from "./logout-button"
+import FontSizeControl from "@/components/font-size-control"
+import { RankNameDisplay } from "@/components/rank-name-display"
+import { RankAvatar } from "@/components/rank-avatar"
 
-const STORAGE_KEY = 'dashboard-header-collapsed';
+const STORAGE_KEY = "dashboard-header-collapsed"
 
 export interface DashboardHeaderProfile {
-  name: string;
-  level: number;
-  class: string;
-  points: number;
-  exp: { body: number; intellect: number; mind: number };
+  name: string
+  level: number
+  class: string
+  points: number
+  exp: { body: number; intellect: number; mind: number }
 }
 
 interface CollapsibleDashboardHeaderProps {
-  userProfile: DashboardHeaderProfile;
-  selectedDate: string;
+  userProfile: DashboardHeaderProfile
+  selectedDate: string
   /** 現在開いている画面名（日誌 / ToDoサマリー / 統計） */
-  screenName?: string;
+  screenName?: string
 }
 
 export default function CollapsibleDashboardHeader({
@@ -39,73 +39,75 @@ export default function CollapsibleDashboardHeader({
   selectedDate,
   screenName,
 }: CollapsibleDashboardHeaderProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(false)
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored !== null) setCollapsed(JSON.parse(stored));
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored !== null) setCollapsed(JSON.parse(stored))
     } catch {
       // ignore
     }
-  }, []);
+  }, [])
 
   const toggle = () => {
     setCollapsed((prev) => {
-      const next = !prev;
+      const next = !prev
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
       } catch {
         // ignore
       }
-      return next;
-    });
-  };
+      return next
+    })
+  }
 
   const dateLabel = selectedDate
     ? (() => {
-        const [y, m, d] = selectedDate.split('-');
-        const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-        const dayIndex = new Date(selectedDate + 'T12:00:00').getDay();
-        return `${y}年${m}月${d}日(${dayNames[dayIndex]})`;
+        const [y, m, d] = selectedDate.split("-")
+        const dayNames = ["日", "月", "火", "水", "木", "金", "土"]
+        const dayIndex = new Date(selectedDate + "T12:00:00").getDay()
+        return `${y}年${m}月${d}日(${dayNames[dayIndex]})`
       })()
-    : '';
+    : ""
 
   return (
     <header className="sticky top-0 z-50 bg-zinc-900 border-b border-zinc-800 shadow-lg">
-      {/* 折り畳みトグル（常に表示する1行） */}
+      {/* 折り畳みトグル（常に表示する1行）。テキストは展開時コンテンツの左端（緑線位置）から開始 */}
       <button
         type="button"
         onClick={toggle}
-        className="w-full flex items-center justify-between gap-2 px-4 py-2 sm:py-2.5 text-left hover:bg-zinc-800/50 transition-colors rounded-t"
+        className="w-full py-2 sm:py-2.5 text-left hover:bg-zinc-800/50 transition-colors rounded-t"
         aria-expanded={!collapsed}
-        aria-label={collapsed ? 'ヘッダーを展開' : 'ヘッダーを折り畳む'}
+        aria-label={collapsed ? "ヘッダーを展開" : "ヘッダーを折り畳む"}
       >
-        <span className="text-lg sm:text-xl font-bold text-white truncate min-w-0">
-          {screenName ? (
-            <>
-              <span className="text-white">{screenName}</span>
-              {collapsed && (
-                <>
-                  <span className="text-zinc-500 mx-2">｜</span>
-                  <span>{dateLabel}</span>
-                </>
-              )}
-            </>
-          ) : (
-            dateLabel
-          )}
-        </span>
-        <span className="shrink-0 flex items-center gap-1 text-white">
-          {collapsed ? (
-            <ChevronDown className="w-5 h-5" />
-          ) : (
-            <ChevronUp className="w-5 h-5" />
-          )}
-          <span className="text-xs hidden sm:inline">
-            {collapsed ? '展開' : '折り畳む'}
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-2">
+          <span className="text-lg sm:text-xl font-bold text-white truncate min-w-0">
+            {screenName ? (
+              <>
+                <span className="text-white">{screenName}</span>
+                {collapsed && (
+                  <>
+                    <span className="text-zinc-500 mx-2">｜</span>
+                    <span>{dateLabel}</span>
+                  </>
+                )}
+              </>
+            ) : (
+              dateLabel
+            )}
           </span>
-        </span>
+          <span className="shrink-0 flex items-center gap-1 text-white">
+            {collapsed ? (
+              <ChevronDown className="w-5 h-5" />
+            ) : (
+              <ChevronUp className="w-5 h-5" />
+            )}
+            <span className="text-xs hidden sm:inline">
+              {collapsed ? "展開" : "折り畳む"}
+            </span>
+          </span>
+        </div>
       </button>
 
       {/* 展開時の詳細エリア */}
@@ -113,7 +115,7 @@ export default function CollapsibleDashboardHeader({
         <div className="max-w-7xl mx-auto px-4 pb-3">
           <div className="grid grid-cols-[auto_1fr] gap-x-4 items-center">
             <div className="row-span-3 flex items-center justify-center">
-              <div className="rounded overflow-hidden shrink-0 size-[160px] bg-zinc-800">
+              <div className="rounded overflow-hidden shrink-0 size-[160px]">
                 <RankAvatar
                   level={userProfile.level}
                   variant="icon"
@@ -192,5 +194,5 @@ export default function CollapsibleDashboardHeader({
         </div>
       )}
     </header>
-  );
+  )
 }

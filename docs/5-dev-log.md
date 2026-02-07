@@ -41,7 +41,7 @@
 - 記載内容: 実施内容の箇条書き（要点のみ）、決定事項、成果物リスト、学んだこと（簡潔に）
 - 記述レベル: クリーンで読みやすい。「何を作ったか」を記録
 
-**このファイル（05-dev-log.md）:**
+**このファイル（5-dev-log.md）:**
 
 - 役割: 詳細にやったことを全て記録
 - 記載内容: 使用したコマンド（全て）、コードの詳細、実装手順（ステップバイステップ）、エラーと解決方法、学習メモ（詳細な技術解説）
@@ -49,6 +49,50 @@
 
 
 ## 2602 --------------
+
+### 260207-土
+
+#### 習慣・日誌・AI一括・世界観・表示名・管理者用リセット・表示名調査
+
+**実施内容（詳細）:**
+
+- **習慣・日誌の過去日付対応**
+  - page.tsx: 選択日付に daily_log が無い場合は今日に限らず作成（isToday 条件を削除）。過去日でも習慣チェック・日誌入力が可能に。
+  - habit-list.tsx: dailyLogId が null のとき「この日付の日誌がまだありません」をトースト表示（従来は console.error のみ）。
+
+- **AI一括生成のエラー表示**
+  - journal-form.tsx: catch で throw されたのが Response のとき、response.json() で body を読んで error/details をトーストに表示。
+  - batch/route.ts: ai_batch_run_count カラム未追加時は「AI一括生成用のDB更新が必要です」と details を返す（503）。
+
+- **世界観・表示名**
+  - story-worlds.ts: 蝦夷地→北の大地・北国、storySystemMessage に「蝦夷」「蝦夷地」を使わない旨を追加。account-settings-client のラベルも「北の大地の和風・武芸者物語」に変更。
+  - batch/route.ts: 表示名はクライアント送信をやめ、サーバー側 profiles（username, use_username_as_display_name）のみで nickname を決定。
+
+- **設定画面の世界観詳細**
+  - account-settings-client.tsx: 世界観詳細ブロックの表示条件を「isAdmin && dqConfig && ghostConfig」から「isAdmin」のみに変更。取得中は「読み込み中」、失敗時は「再読み込み」ボタン。loadWorldConfigs を useCallback 化。
+  - page.tsx（設定）: isAdmin = profile?.is_admin === true || adminEmails.includes(email)。NEXT_PUBLIC_ADMIN_EMAILS のカンマ区切りメールを管理者扱い。
+  - lib/auth/admin.ts: isAdmin() 内で上記環境変数チェックを追加し、PATCH 保存時も管理者と判定。
+
+- **日誌まわり**
+  - journal-form.tsx: 利用ポイント表示の括弧を削除（`(-${n}G)` → `-${n}G`）。「これからの冒険」用に stripFutureAdventureHeading を追加（あらすじ：これからの冒険の行を除去）。openai.ts の createStoryFuturePrompt に見出し禁止・彼/彼女禁止を追加。createStoryPrompt にも彼/彼女禁止を追加。getStorySystemMessage に nickname 引数と「彼/彼女禁止」を追加。batch で getStorySystemMessage(worldConfig, nickname) を渡す。
+  - 一括生成成功直後、router.refresh で渡る dailyLog が古いと state が上書きされるため、skipNextAiStorySyncRef で 1 回だけ useEffect の同期をスキップ。
+
+- **管理者用・再生成回数リセット**
+  - app/api/ai/batch-reset/route.ts: POST で dailyLogId を受け取り、isAdmin() で 403 でなければ当該 daily_log の ai_batch_run_count を 0 に更新。
+  - dashboard page: isAdmin を計算（profile.is_admin または NEXT_PUBLIC_ADMIN_EMAILS）。DashboardTabsProps に isAdmin 追加し、JournalForm に渡す。
+  - journal-form: isAdmin 時のみ「再生成回数をリセット（管理者用）」ボタンを表示。handleResetBatchCount で /api/ai/batch-reset を呼び成功時に router.refresh。
+
+- **表示名がデフォルトになる原因調査**
+  - batch/route.ts: 開発時のみ console.log で use_username_as_display_name / username_from_db / nickname_used を出力。レスポンスに _debug_nickname_used を付与（開発時のみ）。
+  - journal-form: 成功トーストの description に _debug_nickname_used があれば「表示名: 〇〇」を追加。
+  - docs/appendix/表示名がデフォルトになる原因調査.md を新規作成（流れ・切り分け・確認方法）。
+  - 7-progress-support.md に「【メモ】表示名がデフォルトになる原因調査」を追記。
+
+**変更・追加ファイル:**
+- gol-web: app/dashboard/page.tsx, dashboard-tabs.tsx, habit-list.tsx, journal-form.tsx, app/api/ai/batch/route.ts, app/api/ai/batch-reset/route.ts（新規）, app/settings/account/page.tsx, account-settings-client.tsx, lib/ai/openai.ts, lib/ai/story-worlds.ts, lib/auth/admin.ts, lib/types.ts
+- docs: 7-progress-support.md, 4-project-progress.md, 5-dev-log.md, appendix/表示名がデフォルトになる原因調査.md（新規）
+
+---
 
 ### 260206-金
 
@@ -59,10 +103,10 @@
   - 見出し「全ToDoリスト一覧」直下に1行説明を配置（直列、白文字、上マージン15px）。文言は「この画面ではタスクのドラッグ操作や状態変更はできません。状態の変更は、日誌タブのカンバンで行います。ここでは編集・削除のみできます。」
   - ドラッグ無効: `DraggableTodoCard` の `useDraggable` を常に `disabled: true` にし、listeners/attributes を渡さない。
   - サブタスク: 一覧・名前・編集・削除は表示のまま、チェックボックスのみ非表示（チェック操作不可のため）。
-- **07-progress-support.md**
+- **7-progress-support.md**
   - 「→ **対応:**」がある各項目の見出しに【対応済み】と（対応日: 要記入）を追加。
 
-**変更ファイル:** todo-summary-tab.tsx, 07-progress-support.md, 04-project-progress.md, 05-dev-log.md
+**変更ファイル:** todo-summary-tab.tsx, 7-progress-support.md, 4-project-progress.md, 5-dev-log.md
 
 ---
 
@@ -88,7 +132,7 @@
 
 **変更・追加ファイル:**
 - gol-web: app/dashboard/dashboard-tabs.tsx, kanban-board.tsx, todo-summary-tab.tsx, app/api/ai/advice/route.ts, story/route.ts, app/api/user/profile/route.ts, app/settings/account/page.tsx, components/date-picker-field.tsx, lib/ai/openai.ts, lib/types.ts
-- docs: 07-progress-support.md, 04-project-progress.md, 05-dev-log.md
+- docs: 7-progress-support.md, 4-project-progress.md, 5-dev-log.md
 - docs/sql-snippet: add-use-username-as-display-name.sql（新規）
 
 ---
@@ -113,7 +157,7 @@
 
 **変更・追加ファイル:**
 - gol-web: app/api/user/export/route.ts（新規）, lib/export-csv.ts（新規）, components/mypage-settings-section.tsx, app/mypage/page.tsx, app/dashboard/page.tsx, app/dashboard/dashboard-tabs.tsx, app/globals.css
-- docs: 04-project-progress.md
+- docs: 4-project-progress.md
 
 ---
 
@@ -175,11 +219,11 @@
    - `gol-web/app/login/page.tsx`: `useSearchParams` で `error` と `from` を取得し、`?error=...` なら decodeURIComponent して表示、`?from=dashboard` なら「ダッシュボードから戻されました（セッションがありません）…」を表示
 
 6. **07 へのメモ追記**
-   - `docs/07-progress-support.md` の 260202-月 に以下を記載: Google クライアント ID の表示手順、redirect_uri_mismatch の対処（承認済みリダイレクト URI に Supabase コールバック URL を追加）、PKCE code verifier not found / コールバック後にログインに戻る問題の対処（共通 cookieOptions、コールバックを Route Handler で setAll 待ち、redirectTo /auth/callback、Supabase Redirect URLs に /auth/callback 追加）
+   - `docs/7-progress-support.md` の 260202-月 に以下を記載: Google クライアント ID の表示手順、redirect_uri_mismatch の対処（承認済みリダイレクト URI に Supabase コールバック URL を追加）、PKCE code verifier not found / コールバック後にログインに戻る問題の対処（共通 cookieOptions、コールバックを Route Handler で setAll 待ち、redirectTo /auth/callback、Supabase Redirect URLs に /auth/callback 追加）
 
 **変更・追加したファイル:**
 - gol-web: lib/supabase/cookie-options.ts（新規）, client.ts, server.ts / app/auth/callback/route.ts, app/auth/success/page.tsx（新規）/ app/login/page.tsx, app/signup/page.tsx, app/dashboard/page.tsx
-- docs: 07-progress-support.md
+- docs: 7-progress-support.md
 
 **学んだこと・メモ:**
 - Supabase OAuth で PKCE を使う場合、code_verifier はブラウザに保存され、コールバック時は同じブラウザ（同一タブ）で受け取る必要がある。Next.js など SSR では @supabase/ssr でブラウザ・サーバー両方に同じ cookieOptions を渡し、クッキーで code_verifier を共有する
@@ -200,7 +244,7 @@
    - `gol-web/app/dashboard/journal-impression-sections.tsx`: 日誌用 Textarea と感想用 Textarea の className に `text-[17px] md:text-[15px]` を追加（元は text-base / md:text-sm 相当のため 1px 上げた）
 
 2. **AI作成文章の改行ルール（。?の後は必ず改行）**
-   - `docs/02-gol-design-doc.md`: 改行ルールに「句点（。）・疑問符（？（全角）・?（半角））の後は必ず改行する」を追記。適用対象は AI が生成する文章（アドバイス、あらすじ）
+   - `docs/2-gol-design-doc.md`: 改行ルールに「句点（。）・疑問符（？（全角）・?（半角））の後は必ず改行する」を追記。適用対象は AI が生成する文章（アドバイス、あらすじ）
    - `gol-web/lib/utils.ts`: `applyAiTextLineBreaks(text)` を新規追加。`。` → `。\n`、`？` → `？\n`、`?` → `?\n` の置換と、連続改行を最大2つに正規化
    - `gol-web/app/dashboard/journal-form.tsx`: あらすじ（これまでの冒険・これからの冒険）と辛口コーチングアドバイスの表示で `applyAiTextLineBreaks(...)` を適用してから表示
 
@@ -213,14 +257,14 @@
 4. **メールアドレス（ログイン用）変更**
    - `gol-web/app/settings/account/page.tsx`: 「メールアドレス（ログイン用）」セクションを追加。現在のメール（readonly）・新しいメール入力・「確認メールを送信」ボタン。`handleChangeEmail` で `supabase.auth.updateUser({ email: trimmed })` を実行。成功時 toast「確認リンクを新しいメールアドレスに送りました。そのリンクを開いて変更を完了してください。」説明文に「メールが届いただけでは変更されません。届いたメール内のリンクを開くと変更が完了します。」を記載
    - `gol-web/app/settings/page.tsx`: アカウント・AI設定のカードに「メールアドレス」（/settings/account#email）を追加
-   - `docs/02-gol-design-doc.md`: Supabase Auth メール変更フロー（メモ）を追記。API・確認フロー・Secure email change 時の両方のメール確認が必要なこと、トラブルシュート（Secure email change の場所・オフにすると新メールのみで完了）、リダイレクト・端末の注意（localhost は同一PCで開く必要がある）、実装時のポイント（メールが届いただけでは変更されない旨）
+   - `docs/2-gol-design-doc.md`: Supabase Auth メール変更フロー（メモ）を追記。API・確認フロー・Secure email change 時の両方のメール確認が必要なこと、トラブルシュート（Secure email change の場所・オフにすると新メールのみで完了）、リダイレクト・端末の注意（localhost は同一PCで開く必要がある）、実装時のポイント（メールが届いただけでは変更されない旨）
 
-5. **02 と 07 の棲み分け**
-   - `docs/02-gol-design-doc.md`: 冒頭の「このファイルの役割」に「02には確定事項の仕様だけを書く。未確定・検討中の確認事項や案は 07 に書く」を追記。AIによる編集禁止・棲み分けルール内に「02 と 07 の棲み分け（徹底する）」を新設。02＝確定仕様のみ、07＝未確定・確認事項。進行中の確認用メモの置き場を `07-progress-support.md` に変更。00の説明内の「10」を「07」に。文中の 10-progress-support.md を 07-progress-support.md に一括置換
-   - `docs/07-progress-support.md`: 冒頭に「このファイルの役割」を追加。未確定事項を進める中での確認事項・検討案を記載する。確定した仕様は 02 に記載する旨を明記
+5. **2 と 7 の棲み分け**
+   - `docs/2-gol-design-doc.md`: 冒頭の「このファイルの役割」に「2には確定事項の仕様だけを書く。未確定・検討中の確認事項や案は 7 に書く」を追記。AIによる編集禁止・棲み分けルール内に「2 と 7 の棲み分け（徹底する）」を新設。2＝確定仕様のみ、7＝未確定・確認事項。進行中の確認用メモの置き場を `7-progress-support.md` に変更。0の説明内の「10」を「7」に。文中の 10-progress-support.md を 7-progress-support.md に一括置換
+   - `docs/7-progress-support.md`: 冒頭に「このファイルの役割」を追加。未確定事項を進める中での確認事項・検討案を記載する。確定した仕様は 02 に記載する旨を明記
 
 6. **世界観2種類（案C）の実装手順**
-   - `docs/02-gol-design-doc.md`: 将来の拡張機能「世界観テーマ切り替え機能」内に「案C: コードで2種類固定の実装手順」を追記。1.定数定義（lib/ai/story-worlds.ts 等）、2.設定画面を2択に、3.API で storyWorldId 受け取り、4.createStoryPrompt に storyWorldId、5.日誌フォームで localStorage の storyWorldId を API に送る、の5ステップ
+   - `docs/2-gol-design-doc.md`: 将来の拡張機能「世界観テーマ切り替え機能」内に「案C: コードで2種類固定の実装手順」を追記。1.定数定義（lib/ai/story-worlds.ts 等）、2.設定画面を2択に、3.API で storyWorldId 受け取り、4.createStoryPrompt に storyWorldId、5.日誌フォームで localStorage の storyWorldId を API に送る、の5ステップ
 
 7. **過去の日誌一覧の表示変更**
    - `gol-web/components/journal-list.tsx`: 一覧の各項目から日誌本文（journal_text）と一言感想（one_line_comment）のプレビュー表示を削除。日付・「今日」バッジ・「確定済み」バッジのみ表示するように変更
@@ -233,7 +277,7 @@
 
 **変更したファイル**
 
-- docs: 00-AI-prompt-memo.md（参照のみ・ユーザー記載）, 02-gol-design-doc.md, 04-project-progress.md, 07-progress-support.md
+- docs: 0-AI-prompt-memo.md（参照のみ・ユーザー記載）, 2-gol-design-doc.md, 4-project-progress.md, 7-progress-support.md
 - gol-web: app/dashboard/page.tsx, dashboard-tabs.tsx, journal-form.tsx / app/settings/account/page.tsx, page.tsx / components/date-selector.tsx, journal-list.tsx / lib/types.ts, lib/utils.ts
 
 **学んだこと・メモ**
@@ -275,7 +319,7 @@
    - journal-list: handleDateClick で `window.location.href` によるフルリロードで確実に遷移
 
 **変更したファイル**
-- docs: 04-project-progress, 05-dev-log / sql-snippet/add-is-confirmed-to-daily-logs.sql（新規）
+- docs: 4-project-progress, 5-dev-log / sql-snippet/add-is-confirmed-to-daily-logs.sql（新規）
 - gol-web: app/dashboard/page.tsx, dashboard-tabs.tsx, journal-form.tsx, journal-impression-sections.tsx / components/journal-list.tsx / lib/types.ts
 - gol-web: app/settings/rights/page.tsx
 
@@ -319,7 +363,7 @@
 
 **変更したファイル（コミット df000c1 より）**
 
-- docs: 00-AI-prompt-memo, 04-project-progress, 05-dev-log / sql-snippet/supabase-add-rights-config-column.sql
+- docs: 0-AI-prompt-memo, 4-project-progress, 5-dev-log / sql-snippet/supabase-add-rights-config-column.sql
 - gol-web/app/api: daily-logs/route.ts, settings/rights/route.ts, user/profile/route.ts（新規）
 - gol-web/app/dashboard: habit-list.tsx, journal-form.tsx, kanban-board.tsx, page.tsx, todo-summary-tab.tsx
 - gol-web/app/settings: account/page.tsx（新規）, page.tsx, rights/page.tsx, todos/page.tsx
@@ -527,8 +571,8 @@
    - filterTagIds, filterDifficulties の初期値を `[]` にし、マウント後の useEffect で localStorage から復元
    - filteredActiveTodos / filteredInProgressTodos を useMemo で算出（依存: todos, filterTagIds, filterDifficulties, searchQuery）
 
-3. **docs/00-AI-prompt-memo.md**
-   - .gitignore に追加済み。既に追跡されていたため `git rm --cached docs/00-AI-prompt-memo.md` でインデックスから除外
+3. **docs/0-AI-prompt-memo.md**
+   - .gitignore に追加済み。既に追跡されていたため `git rm --cached docs/0-AI-prompt-memo.md` でインデックスから除外
 
 4. **git add/commit の実行**
    - マルチルートワークスペースでは、実行時の cwd が別ルートになることがあるため、`working_directory: /Users/ta2/ALL-DTA2/Develop/dta2/gol/web-app` を指定して add/commit を実行することでリポジトリに反映
@@ -562,14 +606,14 @@
 
 2. **README・.gitignore**
    - web-app ルートに README と .gitignore を整備
-   - .gitignore に docs/00-AI-prompt-memo.md、docs/ex-secret.md、macOS の .DS_Store 等を記載
+   - .gitignore に docs/0-AI-prompt-memo.md、docs/ex-secret.md、macOS の .DS_Store 等を記載
    - 秘匿情報は別ファイル（ex-secret.md）に記載し、リポに含めない
 
 3. **gol-web の扱い**
    - gol-web 内に .git があった場合は削除し、web-app からは通常ディレクトリとして含める（サブモジュール解除）。`fix-gol-web-as-normal-dir.sh` または `git rm --cached gol-web` → `git add gol-web/` → commit
 
 4. **作成手順の記載**
-   - ブラウザ／CLI でのリポ作成手順、gol-web の直し方は docs/00-AI-prompt-memo.md に記載
+   - ブラウザ／CLI でのリポ作成手順、gol-web の直し方は docs/0-AI-prompt-memo.md に記載
 
 **使用した技術・ツール**
 
@@ -1082,7 +1126,7 @@
 
 **4. 検討内容の記載**
 
-**`00-AI-prompt-memo.md`への記載:**
+**`0-AI-prompt-memo.md`への記載:**
 - マークダウン同期機能の実装についての検討内容を記載
 - ディレクトリ構成の違いについての検討を記載
 - ステータス管理（「検討中」「完了」など）を追加
@@ -2831,7 +2875,7 @@ npx shadcn@latest add sonner --yes
 - `app/dashboard/journal-form.tsx`: すべての`alert()`を`toast()`に置き換え
 
 **ドキュメント:**
-- `docs/03-project-progress.md`: Phase 5の進捗を更新（エラーメッセージの統一完了）
+- `docs/4-project-progress.md`: Phase 5の進捗を更新（エラーメッセージの統一完了）
 
 **学んだこと:**
 
@@ -2921,7 +2965,7 @@ Phase 4完了を受けて、Phase 5の実装チェックリストを作成。エ
 
 **成果物:**
 
-- `docs/03-project-progress.md`: Phase 5チェックリストを追加
+- `docs/4-project-progress.md`: Phase 5チェックリストを追加
 
 **次回予定:**
 
@@ -3001,7 +3045,7 @@ Phase 5の各タスクを順次実装していく。優先順位は:
   - 習慣並び替え機能: 上/下移動ボタン
 
 **ドキュメント:**
-- `docs/03-project-progress.md`: Phase 4完了を更新（100%）
+- `docs/4-project-progress.md`: Phase 4完了を更新（100%）
 
 **学んだこと:**
 
@@ -3108,7 +3152,7 @@ Phase 4のすべてのタスクが完了しました:
 - `app/dashboard/dashboard-tabs.tsx`: タブのARIA属性を追加
 
 **ドキュメント:**
-- `docs/03-project-progress.md`: アクセシビリティ対応の進捗を更新
+- `docs/4-project-progress.md`: アクセシビリティ対応の進捗を更新
 
 **学んだこと:**
 
@@ -3194,7 +3238,7 @@ Phase 4のすべてのタスクが完了しました:
 - `components/ui/modal.tsx`: モーダルのレスポンシブ対応
 
 **ドキュメント:**
-- `docs/03-project-progress.md`: レスポンシブデザイン調整の進捗を更新
+- `docs/4-project-progress.md`: レスポンシブデザイン調整の進捗を更新
 
 **学んだこと:**
 
@@ -3272,7 +3316,7 @@ Phase 4のすべてのタスクが完了しました:
 - `@radix-ui/react-icons`: インストール済み
 
 **ドキュメント:**
-- `docs/03-project-progress.md`: コンポーネント共通化の進捗を更新（カードコンポーネント完了）
+- `docs/4-project-progress.md`: コンポーネント共通化の進捗を更新（カードコンポーネント完了）
 
 **学んだこと:**
 
@@ -3339,7 +3383,7 @@ Phase 4のすべてのタスクが完了しました:
 - `app/dashboard/todo-summary-tab.tsx`: 共通フォームコンポーネントを使用するように修正
 
 **ドキュメント:**
-- `docs/03-project-progress.md`: コンポーネント共通化の進捗を更新（フォームコンポーネント完了）
+- `docs/4-project-progress.md`: コンポーネント共通化の進捗を更新（フォームコンポーネント完了）
 
 **学んだこと:**
 
@@ -3401,7 +3445,7 @@ Phase 4のすべてのタスクが完了しました:
 - `app/dashboard/todo-summary-tab.tsx`: `Modal`コンポーネントを使用するように修正
 
 **ドキュメント:**
-- `docs/03-project-progress.md`: コンポーネント共通化の進捗を更新
+- `docs/4-project-progress.md`: コンポーネント共通化の進捗を更新
 
 **学んだこと:**
 
@@ -3489,7 +3533,7 @@ Phase 4のすべてのタスクが完了しました:
 - `app/dashboard/logout-button.tsx`: Buttonコンポーネントに置き換え
 
 **ドキュメント:**
-- `docs/03-project-progress.md`: Phase 4の進捗を更新（shadcn/ui導入完了）
+- `docs/4-project-progress.md`: Phase 4の進捗を更新（shadcn/ui導入完了）
 
 **学んだこと:**
 
@@ -6774,7 +6818,7 @@ $$ LANGUAGE plpgsql;
 
 **更新したファイル:**
 
-- `docs/03-project-progress.md`: Phase 2チェックリスト追加（9項目）
+- `docs/4-project-progress.md`: Phase 2チェックリスト追加（9項目）
 
 #### Supabaseテーブル作成手順
 
@@ -7702,7 +7746,7 @@ export async function createClient() {
 
 ```gitignore
 # API KEYなど機密情報が含まれるファイル
-docs/00-web-ai-directive-draft.md
+docs/1-web-ai-directive-draft.md
 
 # macOS
 .DS_Store

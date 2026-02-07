@@ -44,11 +44,11 @@ export const DEFAULT_STORY_WORLDS: Record<StoryWorldId, StoryWorldConfig> = {
     id: 'ghost',
     displayName: 'ゴースト・オブ・ヨウテイ風',
     protagonistName: '辰彦',
-    worldTone: '蝦夷地を舞台にした和風・武芸者の世界。厳しい修行と覚悟。',
+    worldTone: '北の大地を舞台にした和風・武芸者の世界。厳しい修行と覚悟。',
     adviceStyle: '厳しめの師匠口調。辛口だが本質を突くコーチング。',
-    metaphorSource: '和風・自然・刀剣・蝦夷地・修行',
+    metaphorSource: '和風・自然・刀剣・北国・修行',
     storySystemMessage:
-      'あなたはゴースト・オブ・ヨウテイ風のストーリーテラーです。蝦夷地を舞台にした和風の武芸者物語として、厳しめのトーンで日常を物語化してください。',
+      'あなたはゴースト・オブ・ヨウテイ風のストーリーテラーです。北の大地を舞台にした和風の武芸者物語として、厳しめのトーンで日常を物語化してください。物語内に「蝦夷」「蝦夷地」という語は使わないでください。',
     adviceToneInstruction:
       'ゴースト・オブ・ヨウテイ風で、厳しめの師匠口調。辛口だが本質を突くコーチングアドバイスをしてください。',
   },

@@ -199,7 +199,7 @@ export default function HabitsSettingsPage() {
       exp_body: habit.exp_body,
       exp_mind: habit.exp_mind,
       exp_spirit: habit.exp_spirit,
-      input_type: habit.input_type,
+      input_type: 'checkbox',
       exclude_weekends: habit.exclude_weekends,
       exclude_from_complete: habit.exclude_from_complete,
     });
@@ -229,7 +229,6 @@ export default function HabitsSettingsPage() {
               EXP: 身体+{habit.exp_body} / 頭脳+{habit.exp_mind} / 精神+{habit.exp_spirit}
             </div>
           )}
-          <div>入力タイプ: {habit.input_type === 'checkbox' ? 'チェックボックス' : '数値入力'}</div>
           {habit.exclude_weekends && <div>土日除外: 有効</div>}
           {habit.exclude_from_complete && <div>完了除外: 有効</div>}
         </div>
@@ -385,32 +384,7 @@ export default function HabitsSettingsPage() {
                     </>
                   )}
 
-                  {/* 入力タイプ */}
-                  <div>
-                    <Label className="text-zinc-300">入力タイプ</Label>
-                    <div className="flex gap-4 mt-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="checkbox"
-                          checked={formData.input_type === 'checkbox'}
-                          onChange={(e) => setFormData({ ...formData, input_type: 'checkbox' as const })}
-                          className="w-4 h-4 text-cyan-600"
-                        />
-                        <span className="text-zinc-300">チェックボックス</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="number"
-                          checked={formData.input_type === 'number'}
-                          onChange={(e) => setFormData({ ...formData, input_type: 'number' as const })}
-                          className="w-4 h-4 text-cyan-600"
-                        />
-                        <span className="text-zinc-300">数値入力</span>
-                      </label>
-                    </div>
-                  </div>
+                  {/* 入力タイプは当面チェックリストのみのため非表示（常に checkbox） */}
 
                   {/* オプション */}
                   <div className="space-y-2">

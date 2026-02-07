@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getOpenAIClient, createStoryPrompt, getStorySystemMessage } from '@/lib/ai/openai';
+import { getOpenAIClient, createStoryPrompt, createStoryFuturePrompt, getStorySystemMessage } from '@/lib/ai/openai';
 import { mergeStoryWorldConfig, type StoryWorldId } from '@/lib/ai/story-worlds';
 import { validateJournalText, validateImpressionText, validateAll } from '@/lib/validation';
 
@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { journalText, impressionText, habits, todos, storyWorldId: rawWorldId } = body;
+    const { journalText, impressionText, habits, todos, storyWorldId: rawWorldId, variant } = body;
+    const storyVariant = variant === 'future' ? 'future' : 'past';
 
     // サーバー側バリデーション
     const validation = validateAll([
@@ -79,14 +80,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = createStoryPrompt(
-      journalText || '',
-      impressionText || '',
-      habits || [],
-      todos || [],
-      nickname,
-      worldConfig
-    );
+    const prompt =
+      storyVariant === 'future'
+        ? createStoryFuturePrompt(
+            journalText || '',
+            impressionText || '',
+            habits || [],
+            todos || [],
+            nickname,
+            worldConfig
+          )
+        : createStoryPrompt(
+            journalText || '',
+            impressionText || '',
+            habits || [],
+            todos || [],
+            nickname,
+            worldConfig
+          );
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',

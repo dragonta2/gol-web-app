@@ -40,6 +40,13 @@ export default async function DashboardPage({
     }
   }
 
+  // 管理者: profiles.is_admin が true のほか、環境変数で指定したメールも管理者扱い
+  const email = user.email ?? ""
+  const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS
+    ? process.env.NEXT_PUBLIC_ADMIN_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+    : []
+  const isAdmin = profile?.is_admin === true || (email ? adminEmails.includes(email.toLowerCase()) : false)
+
   // profilesが存在しない場合（新規ユーザーなど）はデフォルト値を使用
   const userProfile = profile
     ? {
@@ -69,14 +76,13 @@ export default async function DashboardPage({
   const resolvedParams = await searchParams
   const getTodayJST = () =>
     new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
-      new Date()
+      new Date(),
     )
   const selectedDate = resolvedParams?.date || getTodayJST()
 
   // 選択された日付のdaily_logsを取得（なければ作成）
   let dailyLogId: string | null = null
   let dailyLogData: any = null
-  const isToday = selectedDate === getTodayJST()
 
   const { data: dailyLog, error: dailyLogError } = await supabase
     .from("daily_logs")
@@ -88,9 +94,8 @@ export default async function DashboardPage({
   if (dailyLog) {
     dailyLogId = dailyLog.id
     dailyLogData = dailyLog
-  } else if (isToday && (!dailyLogError || dailyLogError.code === "PGRST116")) {
-    // 今日の日付の場合のみ、daily_logsが存在しない場合は作成
-    // 過去の日付の場合は作成しない（閲覧のみ）
+  } else if (!dailyLogError || dailyLogError.code === "PGRST116") {
+    // 選択した日付に daily_log がなければ作成（今日・過去どちらでも習慣チェック・日誌が書けるようにする）
     const { data: newDailyLog, error: insertError } = await supabase
       .from("daily_logs")
       .insert({
@@ -151,7 +156,7 @@ export default async function DashboardPage({
           .select("*")
           .in(
             "todo_id",
-            todos.map((t) => t.id)
+            todos.map((t) => t.id),
           )
           .order("display_order", { ascending: true })
       : { data: [] }
@@ -168,8 +173,8 @@ export default async function DashboardPage({
         todos={todos || []}
         todoLogs={todoLogs || []}
         todoSubtasks={todoSubtasks || []}
-        selectedDate={selectedDate}
         userName={userProfile.name}
+        isAdmin={isAdmin}
       />
     </div>
   )

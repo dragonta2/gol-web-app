@@ -8,8 +8,8 @@ OUTPUT_DIR="${HOME}/Downloads"
 
 # 渡したいファイルだけを指定（存在するものだけ ZIP に追加）
 FILES=(
-  docs/00-AI-prompt-memo.md
-  docs/02-gol-design-doc.md
+  docs/0-AI-prompt-memo.md
+  docs/2-gol-design-doc.md
   gol-web/.env.local
 )
 

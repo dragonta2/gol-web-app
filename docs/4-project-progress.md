@@ -45,13 +45,13 @@
 
 ### 住み分け
 
-**このファイル（03-project-progress.md）:**
+**このファイル（4-project-progress.md）:**
 
 - 役割: 概要、一覧、サマリー程度
 - 記載内容: 実施内容の箇条書き（要点のみ）、決定事項、成果物リスト、学んだこと（簡潔に）
 - 記述レベル: クリーンで読みやすい。「何を作ったか」を記録
 
-**04-dev-log.md（開発ログ）:**
+**5-dev-log.md（開発ログ）:**
 
 - 役割: 詳細にやったことを全て記録
 - 記載内容: 使用したコマンド（全て）、コードの詳細、実装手順（ステップバイステップ）、エラーと解決方法、学習メモ（詳細な技術解説）
@@ -284,13 +284,37 @@
 
 ## 2602 --------------
 
+### 260207-土
+
+#### 実施内容
+
+- 習慣・日誌: 過去日付でも習慣チェック・日誌が書けるよう、選択日付に daily_log がなければ作成（今日に限らず）
+- 習慣: dailyLogId が null のときトーストで「この日付の日誌がまだありません」と表示
+- AI一括生成: 4xx/5xx 時に実際のエラー文言を表示（Response を throw する場合のハンドリング）、カラム未追加時は「AI一括生成用のDB更新が必要です」を返す
+- 世界観: 「蝦夷」を出さないよう北の大地・北国に変更、プロンプトに禁止指示を追加。表示名はバッチAPIでサーバー側 profiles のみ参照
+- 設定: 管理者用「世界観の詳細設定」を isAdmin 時は常に表示（取得中・失敗時は読み込み中/再読み込み）。NEXT_PUBLIC_ADMIN_EMAILS で管理者メールを指定可能に（page + lib/auth/admin）
+- 日誌: 利用数ポイント表示の括弧を削除（-1G のみ表示）。「あらすじ：これからの冒険」の見出し行をプロンプト禁止＋表示時除去。彼/彼女禁止をプロンプト・システムメッセージに追加。表示名・性別中立のプロンプト強化
+- 再生成: 一括生成直後に「これからの冒険」が上書きされないよう skipNextAiStorySyncRef で保護
+- 管理者: 再生成回数リセットAPI（POST /api/ai/batch-reset）と、管理者・テストアカウントのみ表示の「再生成回数をリセット（管理者用）」ボタンを追加。isAdmin をダッシュボード→JournalForm に渡す
+- 表示名調査: バッチAPIで開発時ログ・_debug_nickname_used を返却、成功トーストに表示名を表示。docs/appendix/表示名がデフォルトになる原因調査.md と 7 にメモを追記
+
+#### 決定事項
+
+- 特になし
+
+#### 次回予定
+
+- 未定
+
+---
+
 ### 260206-金
 
 #### 実施内容
 
 - ToDoサマリー: 画面上に1行説明を追加（「この画面ではタスクのドラッグ操作や状態変更はできません。状態の変更は、日誌タブのカンバンで行います。ここでは編集・削除のみできます。」）、見出し「全ToDoリスト一覧」直下に直列配置・白文字・上マージン15px
 - ToDoサマリー: カードのドラッグを無効化（useDraggable を disabled: true にし、チェック操作ができないようサブタスクのチェックボックスのみ非表示（サブタスク名・編集・削除は表示のまま）
-- 07-progress-support: 手動テスト対応依頼箇所のうち「→ **対応:**」がある項目の見出しに【対応済み】と（対応日: 要記入）を追加
+- 7-progress-support: 手動テスト対応依頼箇所のうち「→ **対応:**」がある項目の見出しに【対応済み】と（対応日: 要記入）を追加
 
 #### 決定事項
 
@@ -407,7 +431,7 @@
 
 **02・07の棲み分け:**
 - 02は確定事項の仕様のみ、07は未確定・確認事項を書くルールを02・07の冒頭と棲み分けセクションに明記
-- 進行中の確認用メモの置き場を 07-progress-support.md に統一（02内の10→07参照に修正）
+- 進行中の確認用メモの置き場を 7-progress-support.md に統一（2内の10→7参照に修正）
 
 **世界観2種類（案C）:**
 - 02の将来の拡張機能に「案C: コードで2種類固定の実装手順」を追記
@@ -578,7 +602,7 @@
 
 **作業記録:**
 
-- `docs/10-progress-support.md`にTo Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
+- `docs/7-progress-support.md`にTo Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
 
 #### 決定事項
 
@@ -589,7 +613,7 @@
 #### 成果物
 
 **ドキュメント:**
-- `docs/10-progress-support.md`: To Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
+- `docs/7-progress-support.md`: To Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
 - `README.md`: 自動コミットシステムの説明とセットアップ手順を追加
 
 **コード:**
@@ -625,14 +649,14 @@
 - ToDoサマリー（todo-summary-tab.tsx）
   - フィルターの初期値も同様に「初回デフォルト、復元は useEffect」に変更
   - filteredActiveTodos / filteredInProgressTodos を useMemo でメモ化し、useEffect の無限ループ（Maximum update depth exceeded）を解消
-- docs/00-AI-prompt-memo.md を .gitignore に追加し、追跡対象から除外（git rm --cached 済み）
+- docs/0-AI-prompt-memo.md を .gitignore に追加し、追跡対象から除外（git rm --cached 済み）
 
 **リモートリポジトリ作成・Git管理化:**
 
 - gol-web-app のリモートリポジトリを Private で作成（GitHub 上で用意）
 - 本プロジェクト（web-app）を Git 管理下に置いた（README・.gitignore 整備含む）
 - md版（gol-md-app）と Web版（gol-web-app）は別リポジトリで管理する方針（同期しない）
-- 作成手順（ブラウザ／CLI）は docs/00-AI-prompt-memo.md に記載
+- 作成手順（ブラウザ／CLI）は docs/0-AI-prompt-memo.md に記載
 
 #### 決定事項
 
@@ -875,7 +899,7 @@
   - データ構造の対応（分析完了）
   - 日付フォーマット変換（`YYMMDD-W` ↔ `YYYY-MM-DD`）
   - ファイル構造の統一（現状維持を推奨）
-- `00-AI-prompt-memo.md`に検討内容を記載
+- `0-AI-prompt-memo.md`に検討内容を記載
 
 **決定事項:**
 - ファイル構造は現状維持（各版の役割が明確で、同期機能はAPI/ファイルパスを抽象化すれば対応可能）
@@ -1885,7 +1909,7 @@ web-app/gol-web/app/dashboardの中
 #### 成果物
 
 - `A-Dta2/Memo/tailwind-css-memo.md`: ユーティリティクラスの覚え方、参照リンク、代表的パターンを追記
-- `docs/04-dev-log.md`: 251120-木の学習ログを詳細に追記（認証フロー、フォーム制御、BaaS理解など）
+- `docs/5-dev-log.md`: 251120-木の学習ログを詳細に追記（認証フロー、フォーム制御、BaaS理解など）
 
 
 #### 学んだこと
@@ -2187,9 +2211,9 @@ web-app/gol-web/app/dashboardの中
 
 **ドキュメント:**
 
-- `03-project-progress.md`: Phase 1チェックリスト追加、本日分更新
+- `4-project-progress.md`: Phase 1チェックリスト追加、本日分更新
 
-- `04-dev-log.md`: 詳細ログ更新（251108-土セクション作成）
+- `5-dev-log.md`: 詳細ログ更新（251108-土セクション作成）
 
 #### 学んだこと
 
@@ -2233,12 +2257,12 @@ web-app/gol-web/app/dashboardの中
 
 - ドキュメント構成確立
   - `_INDEX.md`: ドキュメント目次
-  - `00-web-ai-directive-draft.md`: AIへの指示・草案（AI編集禁止）
-  - `01-gol-design-doc.md`: 決定稿の実装ルール
-  - `02-wireframe.md`: ワイヤーフレーム（6画面分）
-  - `03-project-progress.md`: 進捗表（本ファイル）
-  - `04-dev-log.md`: 開発ログ（雑多でOK）
-  - `05-dta2-memo.md`: AI時代のエンジニア観
+  - `1-web-ai-directive-draft.md`: AIへの指示・草案（AI編集禁止）
+  - `2-gol-design-doc.md`: 決定稿の実装ルール
+  - `3-wireframe.md`: ワイヤーフレーム（6画面分）
+  - `4-project-progress.md`: 進捗表（本ファイル）
+  - `5-dev-log.md`: 開発ログ（雑多でOK）
+  - `6-dta2-memo.md`: AI時代のエンジニア観
 
 - 開発スタイル決定
   - Cursor AI（Chat）とのペアプログラミング方式
@@ -2264,7 +2288,7 @@ web-app/gol-web/app/dashboardの中
   - 接続テスト成功
 
 - セキュリティ設定
-  - `.gitignore` 作成（`00-web-ai-directive-draft.md` を除外、API KEY保護）
+  - `.gitignore` 作成（`1-web-ai-directive-draft.md` を除外、API KEY保護）
 
 **認証システム実装（Phase 0 完了）:**
 
@@ -2316,17 +2340,17 @@ web-app/gol-web/app/dashboardの中
 
 - `_INDEX.md`: ドキュメント目次
 
-- `00-web-ai-directive-draft.md`: AI指示・草案
+- `1-web-ai-directive-draft.md`: AI指示・草案
 
-- `01-gol-design-doc.md`: 設計書（更新版、現在の進捗状況を反映）
+- `2-gol-design-doc.md`: 設計書（更新版、現在の進捗状況を反映）
 
-- `02-wireframe.md`: ワイヤーフレーム
+- `3-wireframe.md`: ワイヤーフレーム
 
-- `03-project-progress.md`: 進捗表（本ファイル）
+- `4-project-progress.md`: 進捗表（本ファイル）
 
-- `04-dev-log.md`: 開発ログ（詳細記録）
+- `5-dev-log.md`: 開発ログ（詳細記録）
 
-- `05-dta2-memo.md`: エンジニア観・学習メモ
+- `6-dta2-memo.md`: エンジニア観・学習メモ
 
 **コード:**
 

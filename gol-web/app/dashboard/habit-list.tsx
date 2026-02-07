@@ -10,7 +10,7 @@ import { Modal } from '@/components/ui/modal';
 import { FormInput, FormInputSmall, FormLabel } from '@/components/ui/form-input';
 import { FormCard, FormCardContent } from '@/components/ui/form-card';
 import { toast } from 'sonner';
-import { Settings, Edit, ChevronDown, ChevronUp } from 'lucide-react';
+import { Settings, Edit, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 import { isWeekendOrHoliday } from '@/lib/date-utils';
 
 interface Habit {
@@ -74,8 +74,9 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aiSuggesting, setAiSuggesting] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
-  const [formData, setFormData] = useState<HabitFormData>({
+  const defaultFormData: HabitFormData = {
     habit_name: '',
     habit_type: 'good',
     points: 1,
@@ -85,7 +86,10 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
     input_type: 'checkbox',
     exclude_weekends: false,
     exclude_from_complete: false,
-  });
+  };
+  const [formData, setFormData] = useState<HabitFormData>(defaultFormData);
+  /** モーダル内フォーム用。開閉時と入力時のみ更新され、他から上書きされない */
+  const [modalFormData, setModalFormData] = useState<HabitFormData>(defaultFormData);
 
   // habitsとhabit_logsをマージ（useMemoで計算）
   const baseHabitsWithLogs = useMemo<HabitWithLog[]>(() => {
@@ -128,29 +132,28 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
   const applyFilters = (habits: HabitWithLog[]) => habits;
 
   // 週末除外ラベル表示
-  // - 常時: exclude_weekends の習慣に薄いラベルを表示（設定が分かるように）
-  // - 土日祝: より目立つ表示（この日は任意であることを強調）
   const showWeekendExcludedLabel = (habit: HabitWithLog) => habit.exclude_weekends;
   const isWeekendOrHolidayToday = isWeekendOrHoliday(logDate);
+  // Completeボーナス対象外ラベル表示
+  const showCompExcludedLabel = (habit: HabitWithLog) => habit.exclude_from_complete;
 
   // 良習慣、悪習慣、ボーナスに分類（フィルター適用後）
   const goodHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'good'));
   const badHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'bad'));
   const bonusHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'bonus'));
 
-  // habit_logsを更新または作成
+  // habit_logsを更新または作成（API経由でサーバー側認証を使用）
   const updateHabitLog = async (habitId: string, isChecked: boolean, count: number) => {
     if (!dailyLogId) {
-      console.error('dailyLogId is null');
+      toast.error('この日付の日誌がまだありません', {
+        description: '日誌エリアで日付を選ぶか、今日の日付でチェックできます。',
+      });
       return;
     }
 
     const habit = habits.find((h) => h.id === habitId);
     if (!habit) return;
 
-    const existingLog = habitLogs.find((log) => log.habit_id === habitId);
-    const wasChecked = existingLog?.is_checked || false;
-    const previousCount = existingLog?.count || 0;
     const currentCount = habit.input_type === 'number' ? count : (isChecked ? 1 : 0);
 
     // 一時的な状態を先に更新（即座にUI反映）
@@ -164,154 +167,47 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
     });
 
     try {
-      // ユーザー情報を取得
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        throw new Error('ユーザー情報の取得に失敗しました');
+      const res = await fetch('/api/habit-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          dailyLogId,
+          habitId,
+          isChecked,
+          count: currentCount,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 401) {
+        toast.error('ログインが必要です', {
+          description: '再度ログインしてください',
+        });
+        setLocalUpdates((prev) => {
+          const newMap = new Map(prev);
+          newMap.delete(habitId);
+          return newMap;
+        });
+        return;
       }
 
-      // 現在のプロファイルを取得
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('points, exp_body, exp_mind, exp_spirit')
-        .eq('id', user.id)
-        .single();
-
-      if (profileError || !profile) {
-        throw new Error('プロファイル情報の取得に失敗しました');
+      if (!res.ok) {
+        toast.error('習慣の更新に失敗しました', {
+          description: (data?.error ?? data?.details) || 'しばらくしてからお試しください',
+        });
+        setLocalUpdates((prev) => {
+          const newMap = new Map(prev);
+          newMap.delete(habitId);
+          return newMap;
+        });
+        return;
       }
 
-      // ポイント・EXPの差分を計算
-      let pointsDelta = 0;
-      let expBodyDelta = 0;
-      let expMindDelta = 0;
-      let expSpiritDelta = 0;
-
-      if (habit.habit_type === 'bad') {
-        // 悪習慣: チェックが入ったら（やってしまったら）マイナス、外れたら（回避したら）プラス
-        if (isChecked && !wasChecked) {
-          // 新しくチェックが入った → マイナス
-          pointsDelta = -habit.points * currentCount;
-          expBodyDelta = -habit.exp_body * currentCount;
-          expMindDelta = -habit.exp_mind * currentCount;
-          expSpiritDelta = -habit.exp_spirit * currentCount;
-        } else if (!isChecked && wasChecked) {
-          // チェックが外れた → プラス（元に戻す）
-          pointsDelta = habit.points * previousCount;
-          expBodyDelta = habit.exp_body * previousCount;
-          expMindDelta = habit.exp_mind * previousCount;
-          expSpiritDelta = habit.exp_spirit * previousCount;
-        } else if (isChecked && wasChecked && habit.input_type === 'number') {
-          // 数値入力で既にチェック済みの場合、差分を計算
-          const countDelta = currentCount - previousCount;
-          pointsDelta = -habit.points * countDelta;
-          expBodyDelta = -habit.exp_body * countDelta;
-          expMindDelta = -habit.exp_mind * countDelta;
-          expSpiritDelta = -habit.exp_spirit * countDelta;
-        }
-      } else {
-        // 良習慣・ボーナス: チェックが入ったらプラス、外れたらマイナス
-        if (isChecked && !wasChecked) {
-          // 新しくチェックが入った → プラス
-          pointsDelta = habit.points * currentCount;
-          expBodyDelta = habit.exp_body * currentCount;
-          expMindDelta = habit.exp_mind * currentCount;
-          expSpiritDelta = habit.exp_spirit * currentCount;
-        } else if (!isChecked && wasChecked) {
-          // チェックが外れた → マイナス（元に戻す）
-          pointsDelta = -habit.points * previousCount;
-          expBodyDelta = -habit.exp_body * previousCount;
-          expMindDelta = -habit.exp_mind * previousCount;
-          expSpiritDelta = -habit.exp_spirit * previousCount;
-        } else if (isChecked && wasChecked && habit.input_type === 'number') {
-          // 数値入力で既にチェック済みの場合、差分を計算
-          const countDelta = currentCount - previousCount;
-          pointsDelta = habit.points * countDelta;
-          expBodyDelta = habit.exp_body * countDelta;
-          expMindDelta = habit.exp_mind * countDelta;
-          expSpiritDelta = habit.exp_spirit * countDelta;
-        }
-      }
-
-      // プロファイルのポイント・EXPを更新（差分がある場合のみ）
-      // 注意: プロファイル更新を先に行い、成功したらhabit_logsを更新する
-      // これにより、プロファイル更新が失敗した場合はhabit_logsも更新されない（整合性を保つ）
-      if (pointsDelta !== 0 || expBodyDelta !== 0 || expMindDelta !== 0 || expSpiritDelta !== 0) {
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({
-            points: Math.max(0, profile.points + pointsDelta),
-            exp_body: Math.max(0, profile.exp_body + expBodyDelta),
-            exp_mind: Math.max(0, profile.exp_mind + expMindDelta),
-            exp_spirit: Math.max(0, profile.exp_spirit + expSpiritDelta),
-          })
-          .eq('id', user.id);
-
-        if (updateError) {
-          throw new Error(`プロファイル更新エラー: ${updateError.message}`);
-        }
-      }
-
-      // habit_logsを更新または作成（プロファイル更新が成功した後）
-      if (existingLog) {
-        // 既存のログを更新
-        const { error } = await supabase
-          .from('habit_logs')
-          .update({
-            is_checked: isChecked,
-            count: currentCount,
-          })
-          .eq('id', existingLog.id);
-
-        if (error) {
-          // habit_logs更新エラー時は、プロファイルを元に戻す必要がある
-          // ただし、プロファイル更新は既に成功しているため、ロールバック処理を実行
-          if (pointsDelta !== 0 || expBodyDelta !== 0 || expMindDelta !== 0 || expSpiritDelta !== 0) {
-            await supabase
-              .from('profiles')
-              .update({
-                points: Math.max(0, profile.points - pointsDelta),
-                exp_body: Math.max(0, profile.exp_body - expBodyDelta),
-                exp_mind: Math.max(0, profile.exp_mind - expMindDelta),
-                exp_spirit: Math.max(0, profile.exp_spirit - expSpiritDelta),
-              })
-              .eq('id', user.id);
-          }
-          throw error;
-        }
-      } else {
-        // 新しいログを作成（チェックを入れた場合のみ）
-        if (isChecked) {
-          const { error } = await supabase.from('habit_logs').insert({
-            daily_log_id: dailyLogId,
-            habit_id: habitId,
-            is_checked: isChecked,
-            count: currentCount,
-          });
-
-          if (error) {
-            // habit_logs作成エラー時は、プロファイルを元に戻す
-            if (pointsDelta !== 0 || expBodyDelta !== 0 || expMindDelta !== 0 || expSpiritDelta !== 0) {
-              await supabase
-                .from('profiles')
-                .update({
-                  points: Math.max(0, profile.points - pointsDelta),
-                  exp_body: Math.max(0, profile.exp_body - expBodyDelta),
-                  exp_mind: Math.max(0, profile.exp_mind - expMindDelta),
-                  exp_spirit: Math.max(0, profile.exp_spirit - expSpiritDelta),
-                })
-                .eq('id', user.id);
-            }
-            throw error;
-          }
-        }
-      }
-
-      // 成功時はページをリフレッシュして最新データを取得
       router.refresh();
     } catch (error) {
       console.error('習慣更新エラー:', error);
-      // エラー時は元の状態に戻す
       setLocalUpdates((prev) => {
         const newMap = new Map(prev);
         newMap.delete(habitId);
@@ -346,9 +242,40 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
     if (!habit.checked) return 0;
     // 悪習慣の場合はマイナス、良習慣・ボーナスはプラス
     if (habit.habit_type === 'bad') {
+      // 週末除外が付いている習慣は、週末は減点表示しない（メモ仕様）
+      if (habit.exclude_weekends && isWeekendOrHolidayToday) return 0;
       return -habit.points * habit.count;
     }
     return habit.points * habit.count;
+  };
+
+  // 習慣のゴルド・EXPの加減算設定値（表示用・ライン揃えのため g と exp を分離）
+  const getHabitPointsExpParts = (habit: HabitWithLog): { g: string; exp: string } => {
+    const sign = habit.habit_type === 'bad' ? '-' : '+';
+    const g = `${sign}${habit.points}G`;
+    const expParts: string[] = [];
+    if (habit.exp_body > 0) expParts.push(`身体${sign}${habit.exp_body}`);
+    if (habit.exp_mind > 0) expParts.push(`頭脳${sign}${habit.exp_mind}`);
+    if (habit.exp_spirit > 0) expParts.push(`精神${sign}${habit.exp_spirit}`);
+    return { g, exp: expParts.join(' ') };
+  };
+
+  // チェック時に加算・減算されるゴルド・EXP（表示用・週末除外考慮）
+  const getCheckTimeDeltaParts = (habit: HabitWithLog): { g: string; exp: string } => {
+    if (!habit.checked) return { g: '', exp: '' };
+    const badWeekendExcluded = habit.habit_type === 'bad' && habit.exclude_weekends && isWeekendOrHolidayToday;
+    if (badWeekendExcluded) return { g: '', exp: '' };
+    const sign = habit.habit_type === 'bad' ? '-' : '+';
+    const gVal = habit.points * habit.count;
+    const g = gVal !== 0 ? `${sign}${gVal}G` : '';
+    const expParts: string[] = [];
+    const body = habit.exp_body * habit.count;
+    const mind = habit.exp_mind * habit.count;
+    const spirit = habit.exp_spirit * habit.count;
+    if (body !== 0) expParts.push(`身体${sign}${Math.abs(body)}`);
+    if (mind !== 0) expParts.push(`頭脳${sign}${Math.abs(mind)}`);
+    if (spirit !== 0) expParts.push(`精神${sign}${Math.abs(spirit)}`);
+    return { g, exp: expParts.join(' ') };
   };
 
   // Completeボーナスのチェック状態を取得
@@ -364,17 +291,12 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
   // モーダルを開く
   const handleOpenModal = (habitType: 'good' | 'bad' | 'bonus' = 'good') => {
     setEditingHabit(null);
-    setFormData({
-      habit_name: '',
+    const initial = {
+      ...defaultFormData,
       habit_type: habitType,
-      points: 1,
-      exp_body: 0,
-      exp_mind: 0,
-      exp_spirit: 0,
-      input_type: 'checkbox',
-      exclude_weekends: false,
-      exclude_from_complete: false,
-    });
+    };
+    setFormData(initial);
+    setModalFormData(initial);
     setIsModalOpen(true);
   };
 
@@ -382,6 +304,42 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingHabit(null);
+  };
+
+  // ポイント設定をAIにおまかせ
+  const handleAiSuggestPoints = async () => {
+    const name = modalFormData.habit_name.trim();
+    if (!name) {
+      toast.error('習慣名を入力してからお試しください');
+      return;
+    }
+    setAiSuggesting(true);
+    try {
+      const res = await fetch('/api/ai/habit-points-suggestion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          habit_name: name,
+          habit_type: modalFormData.habit_type,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? '提案の取得に失敗しました');
+      }
+      setModalFormData((prev) => ({
+        ...prev,
+        points: data.points ?? prev.points,
+        exp_body: data.exp_body ?? prev.exp_body,
+        exp_mind: data.exp_mind ?? prev.exp_mind,
+        exp_spirit: data.exp_spirit ?? prev.exp_spirit,
+      }));
+      toast.success('ポイント・EXPを提案しました');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '提案の取得に失敗しました');
+    } finally {
+      setAiSuggesting(false);
+    }
   };
 
   // 習慣管理モーダルを開く
@@ -398,7 +356,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
   // 習慣編集モーダルを開く
   const handleOpenEditModal = (habit: Habit) => {
     setEditingHabit(habit);
-    setFormData({
+    const initial = {
       habit_name: habit.habit_name,
       habit_type: habit.habit_type,
       points: habit.points,
@@ -408,14 +366,16 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
       input_type: habit.input_type,
       exclude_weekends: habit.exclude_weekends,
       exclude_from_complete: habit.exclude_from_complete,
-    });
+    };
+    setFormData(initial);
+    setModalFormData(initial);
     setIsManagementModalOpen(false);
     setIsModalOpen(true);
   };
 
   // 習慣を更新
   const handleUpdateHabit = async () => {
-    if (!formData.habit_name.trim() || !editingHabit) {
+    if (!modalFormData.habit_name.trim() || !editingHabit) {
       toast.error('習慣名を入力してください');
       return;
     }
@@ -425,15 +385,15 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
       const { error } = await supabase
         .from('habits')
         .update({
-          habit_name: formData.habit_name.trim(),
-          habit_type: formData.habit_type,
-          points: formData.points,
-          exp_body: formData.exp_body,
-          exp_mind: formData.exp_mind,
-          exp_spirit: formData.exp_spirit,
-          input_type: formData.input_type,
-          exclude_weekends: formData.exclude_weekends,
-          exclude_from_complete: formData.exclude_from_complete,
+          habit_name: modalFormData.habit_name.trim(),
+          habit_type: modalFormData.habit_type,
+          points: modalFormData.points,
+          exp_body: modalFormData.exp_body,
+          exp_mind: modalFormData.exp_mind,
+          exp_spirit: modalFormData.exp_spirit,
+          input_type: 'checkbox',
+          exclude_weekends: modalFormData.exclude_weekends,
+          exclude_from_complete: modalFormData.exclude_from_complete,
         })
         .eq('id', editingHabit.id);
 
@@ -563,16 +523,16 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
 
   // 習慣を保存（新規作成または更新）
   const handleSaveHabit = async () => {
-    if (!formData.habit_name.trim()) {
+    if (!modalFormData.habit_name.trim()) {
       toast.error('習慣名を入力してください');
       return;
     }
-    const pointsLabel = formData.habit_type === 'good' ? '加点ポイント' : formData.habit_type === 'bad' ? '減点ポイント' : 'ボーナスポイント';
+    const pointsLabel = modalFormData.habit_type === 'good' ? '加点ポイント' : modalFormData.habit_type === 'bad' ? '減点ポイント' : 'ボーナスポイント';
     const numericFields = [
-      { label: pointsLabel, value: formData.points },
-      { label: '身体EXP', value: formData.exp_body },
-      { label: '頭脳EXP', value: formData.exp_mind },
-      { label: '精神EXP', value: formData.exp_spirit },
+      { label: pointsLabel, value: modalFormData.points },
+      { label: '身体EXP', value: modalFormData.exp_body },
+      { label: '頭脳EXP', value: modalFormData.exp_mind },
+      { label: '精神EXP', value: modalFormData.exp_spirit },
     ];
     for (const f of numericFields) {
       if (Number.isNaN(f.value) || f.value < 0) {
@@ -583,78 +543,70 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
 
     setIsSubmitting(true);
     try {
-      // 現在のユーザーを取得
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        toast.error('ログインが必要です', {
-          description: '再度ログインしてください',
-        });
-        return;
-      }
-
       if (editingHabit) {
-        // 更新
-        const { error } = await supabase
-          .from('habits')
-          .update({
-            habit_name: formData.habit_name.trim(),
-            habit_type: formData.habit_type,
-            points: formData.points,
-            exp_body: formData.exp_body,
-            exp_mind: formData.exp_mind,
-            exp_spirit: formData.exp_spirit,
-            input_type: formData.input_type,
-            exclude_weekends: formData.exclude_weekends,
-            exclude_from_complete: formData.exclude_from_complete,
-          })
-          .eq('id', editingHabit.id);
+        // 更新（API経由でサーバー側認証を使用）
+        const res = await fetch('/api/habits', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            habitId: editingHabit.id,
+            habit_name: modalFormData.habit_name.trim(),
+            habit_type: modalFormData.habit_type,
+            points: modalFormData.points,
+            exp_body: modalFormData.exp_body,
+            exp_mind: modalFormData.exp_mind,
+            exp_spirit: modalFormData.exp_spirit,
+            input_type: 'checkbox',
+            exclude_weekends: modalFormData.exclude_weekends,
+            exclude_from_complete: modalFormData.exclude_from_complete,
+          }),
+        });
 
-        if (error) {
-          console.error('習慣更新エラー:', error);
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          toast.error('ログインが必要です', {
+            description: '再度ログインしてください',
+          });
+          return;
+        }
+        if (!res.ok) {
           toast.error('習慣の更新に失敗しました', {
-            description: error.message || 'データベースエラーが発生しました',
+            description: (data?.error ?? data?.details) || 'しばらくしてからお試しください',
           });
           return;
         }
 
         toast.success('習慣を更新しました');
       } else {
-        // 新規作成
-        // 最大display_orderを取得
-        const { data: maxOrderHabit } = await supabase
-          .from('habits')
-          .select('display_order')
-          .eq('user_id', user.id)
-          .order('display_order', { ascending: false })
-          .limit(1)
-          .single();
+        // 新規作成（API経由でサーバー側認証を使用）
+        const res = await fetch('/api/habits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            habit_name: modalFormData.habit_name.trim(),
+            habit_type: modalFormData.habit_type,
+            points: modalFormData.points,
+            exp_body: modalFormData.exp_body,
+            exp_mind: modalFormData.exp_mind,
+            exp_spirit: modalFormData.exp_spirit,
+            input_type: 'checkbox',
+            exclude_weekends: modalFormData.exclude_weekends,
+            exclude_from_complete: modalFormData.exclude_from_complete,
+          }),
+        });
 
-        const displayOrder = maxOrderHabit ? maxOrderHabit.display_order + 1 : 0;
-
-        // 習慣を作成
-        const { data: newHabit, error } = await supabase
-          .from('habits')
-          .insert({
-            user_id: user.id,
-            habit_name: formData.habit_name.trim(),
-            habit_type: formData.habit_type,
-            points: formData.points,
-            exp_body: formData.exp_body,
-            exp_mind: formData.exp_mind,
-            exp_spirit: formData.exp_spirit,
-            input_type: formData.input_type,
-            exclude_weekends: formData.exclude_weekends,
-            exclude_from_complete: formData.exclude_from_complete,
-            is_custom: true,
-            display_order: displayOrder,
-          })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('習慣作成エラー:', error);
+        const data = await res.json().catch(() => ({}));
+        if (res.status === 401) {
+          toast.error('ログインが必要です', {
+            description: '再度ログインしてください',
+          });
+          return;
+        }
+        if (!res.ok) {
           toast.error('習慣の作成に失敗しました', {
-            description: error.message || 'データベースエラーが発生しました',
+            description: (data?.error ?? data?.details) || 'しばらくしてからお試しください',
           });
           return;
         }
@@ -736,39 +688,52 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
                 {habit.habit_name}
               </label>
 
-              {/* 右側グループ（週末除外・数値入力・ポイント） */}
-              <div className="flex items-center justify-end gap-3 shrink-0">
-                {showWeekendExcludedLabel(habit) && (
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded ${
-                      isWeekendOrHolidayToday
-                        ? 'text-cyan-300/90 bg-cyan-900/30'
-                        : 'text-zinc-500 bg-zinc-800'
-                    }`}
-                    title="土日祝は任意（進捗に影響しません）"
-                  >
-                    週末除外
-                  </span>
-                )}
-                {habit.input_type === 'number' ? (
-                  <Input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={habit.count}
-                    onChange={(e) => updateCount(habit.id, parseFloat(e.target.value) || 0)}
-                    className="w-16 px-2 py-1 bg-zinc-800 border-zinc-600 text-zinc-100 text-center text-base focus:border-cyan-500"
-                  />
-                ) : (
-                  <div className="w-16" />
-                )}
-                <span className={`text-base font-medium whitespace-nowrap min-w-[3.5rem] text-right ${
+              {/* 右側グループ: 設定ポイント → 週末除外 → Comp対象外 → チェック時の増減（列幅固定で縦揃え） */}
+              <div className="flex items-center justify-end gap-2 shrink-0">
+                <div className="w-16" />
+                {/* 1. 設定ポイント（開始位置・幅に余裕） */}
+                <div className="flex items-baseline gap-1 text-xs text-zinc-500 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                  <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(habit).g}</span>
+                  <span className="min-w-0 truncate">{getHabitPointsExpParts(habit).exp}</span>
+                </div>
+                {/* 2. 週末除外（固定幅で縦揃え） */}
+                <div className="w-[4.5rem] flex justify-end shrink-0">
+                  {showWeekendExcludedLabel(habit) && (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        isWeekendOrHolidayToday
+                          ? 'text-cyan-300/90 bg-cyan-900/30'
+                          : 'text-zinc-500 bg-zinc-800'
+                      }`}
+                      title="土日祝は任意（進捗に影響しません）"
+                    >
+                      週末除外
+                    </span>
+                  )}
+                </div>
+                {/* 3. Comp対象外（固定幅で縦揃え） */}
+                <div className="w-[5.5rem] flex justify-end shrink-0">
+                  {showCompExcludedLabel(habit) && (
+                    <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">
+                      Comp対象外
+                    </span>
+                  )}
+                </div>
+                {/* 4. チェック時の増減（ゴルド・EXPすべて・幅に余裕） */}
+                <div className={`flex items-baseline gap-1 text-base font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${
                   habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
-                }`}>
-                  {habit.checked && calculatePoints(habit) !== 0 ? (
-                    calculatePoints(habit) > 0 ? `(+${calculatePoints(habit)}G)` : `(${calculatePoints(habit)}G)`
-                  ) : ''}
-                </span>
+                }`} title="チェック時に加算・減算される数値">
+                  {(() => {
+                    const { g, exp } = getCheckTimeDeltaParts(habit);
+                    if (!g && !exp) return null;
+                    return (
+                      <>
+                        {g && <span className="shrink-0">{g}</span>}
+                        {exp && <span className="min-w-0 truncate">{exp}</span>}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           ))}
@@ -857,28 +822,52 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
                 {habit.habit_name}
               </label>
 
-              {/* 右側グループ（週末除外・スペーサー・ポイント） */}
-              <div className="flex items-center justify-end gap-3 shrink-0">
-                {showWeekendExcludedLabel(habit) && (
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded ${
-                      isWeekendOrHolidayToday
-                        ? 'text-cyan-300/90 bg-cyan-900/30'
-                        : 'text-zinc-500 bg-zinc-800'
-                    }`}
-                    title="土日祝は任意（進捗に影響しません）"
-                  >
-                    週末除外
-                  </span>
-                )}
+              {/* 右側グループ: 設定ポイント → 週末除外 → Comp対象外 → チェック時の増減（列幅固定で縦揃え） */}
+              <div className="flex items-center justify-end gap-2 shrink-0">
                 <div className="w-16" />
-                <span className={`text-base font-medium whitespace-nowrap min-w-[3.5rem] text-right ${
+                {/* 1. 設定ポイント */}
+                <div className="flex items-baseline gap-1 text-xs text-zinc-500 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                  <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(habit).g}</span>
+                  <span className="min-w-0 truncate">{getHabitPointsExpParts(habit).exp}</span>
+                </div>
+                {/* 2. 週末除外 */}
+                <div className="w-[4.5rem] flex justify-end shrink-0">
+                  {showWeekendExcludedLabel(habit) && (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        isWeekendOrHolidayToday
+                          ? 'text-cyan-300/90 bg-cyan-900/30'
+                          : 'text-zinc-500 bg-zinc-800'
+                      }`}
+                      title="土日祝は任意（進捗に影響しません）"
+                    >
+                      週末除外
+                    </span>
+                  )}
+                </div>
+                {/* 3. Comp対象外 */}
+                <div className="w-[5.5rem] flex justify-end shrink-0">
+                  {showCompExcludedLabel(habit) && (
+                    <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">
+                      Comp対象外
+                    </span>
+                  )}
+                </div>
+                {/* 4. チェック時の増減（ゴルド・EXPすべて・幅に余裕） */}
+                <div className={`flex items-baseline gap-1 text-base font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${
                   habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
-                }`}>
-                  {habit.checked && calculatePoints(habit) !== 0 ? (
-                    calculatePoints(habit) > 0 ? `(+${calculatePoints(habit)}G)` : `(${calculatePoints(habit)}G)`
-                  ) : ''}
-                </span>
+                }`} title="チェック時に加算・減算される数値">
+                  {(() => {
+                    const { g, exp } = getCheckTimeDeltaParts(habit);
+                    if (!g && !exp) return null;
+                    return (
+                      <>
+                        {g && <span className="shrink-0">{g}</span>}
+                        {exp && <span className="min-w-0 truncate">{exp}</span>}
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
             </div>
           ))}
@@ -966,13 +955,48 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
                 {bonusHabits[0].habit_name}
               </label>
 
-              {/* スペーサー（良習慣の数値入力と揃える） */}
-              <div className="w-16"></div>
+              {/* スペーサー（列揃え） */}
+              <div className="w-16" />
 
-              {/* ポイント表示 */}
-              <span className="text-base text-cyan-400 font-medium whitespace-nowrap min-w-[3.5rem] text-right">
-                {completeBonus ? `(+${bonusHabits[0].points}G)` : ''}
-              </span>
+              {/* 1. 設定ポイント */}
+              <div className="flex items-baseline gap-1 text-xs text-zinc-500 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(bonusHabits[0]).g}</span>
+                <span className="min-w-0 truncate">{getHabitPointsExpParts(bonusHabits[0]).exp}</span>
+              </div>
+              {/* 2. 週末除外 */}
+              <div className="w-[4.5rem] flex justify-end shrink-0">
+                {showWeekendExcludedLabel(bonusHabits[0]) && (
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded ${
+                      isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
+                    }`}
+                    title="土日祝は任意（進捗に影響しません）"
+                  >
+                    週末除外
+                  </span>
+                )}
+              </div>
+              {/* 3. Comp対象外 */}
+              <div className="w-[5.5rem] flex justify-end shrink-0">
+                {showCompExcludedLabel(bonusHabits[0]) && (
+                  <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">
+                    Comp対象外
+                  </span>
+                )}
+              </div>
+              {/* 4. チェック時の増減（ゴルド・EXPすべて・幅に余裕） */}
+              <div className="flex items-baseline gap-1 text-base font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 text-cyan-400" title="チェック時に加算・減算される数値">
+                {(() => {
+                  const { g, exp } = getCheckTimeDeltaParts(bonusHabits[0]);
+                  if (!g && !exp) return null;
+                  return (
+                    <>
+                      {g && <span className="shrink-0">{g}</span>}
+                      {exp && <span className="min-w-0 truncate">{exp}</span>}
+                    </>
+                  );
+                })()}
+              </div>
             </div>
             </FormCard>
           )}
@@ -983,7 +1007,15 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
       <Modal
         open={isModalOpen}
         onOpenChange={setIsModalOpen}
-        title={editingHabit ? '習慣を編集' : '+ 新規習慣を作成'}
+        title={
+          editingHabit
+            ? '習慣を編集'
+            : modalFormData.habit_type === 'good'
+              ? '良習慣を追加'
+              : modalFormData.habit_type === 'bad'
+                ? '悪習慣を追加'
+                : 'ボーナスを追加'
+        }
         description={editingHabit ? '習慣の内容を編集します' : '新しい習慣を追加して、日々の成長を記録しましょう'}
         footer={
           <>
@@ -1012,36 +1044,48 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
               label="習慣名"
               required
               type="text"
-              value={formData.habit_name}
-              onChange={(e) => setFormData({ ...formData, habit_name: e.target.value })}
+              value={modalFormData.habit_name}
+              onChange={(e) => setModalFormData((prev) => ({ ...prev, habit_name: e.target.value }))}
               placeholder="例: 筋トレ、読書、タバコを吸わない"
             />
 
-            {/* 入力タイプ */}
-            <div>
-              <FormLabel htmlFor="input_type">入力タイプ</FormLabel>
-              <select
-                id="input_type"
-                value={formData.input_type}
-                onChange={(e) => setFormData({ ...formData, input_type: e.target.value as 'checkbox' | 'number' })}
-                className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
+            {/* 入力タイプは当面チェックリストのみのため選択肢なし（常に checkbox） */}
+
+            {/* ポイント設定をAIにおまかせ */}
+            <div className="mb-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleAiSuggestPoints}
+                disabled={aiSuggesting || !modalFormData.habit_name.trim()}
+                className="gap-2 bg-zinc-800/50 border-zinc-600 text-cyan-400 hover:bg-zinc-700 hover:text-cyan-300"
+                aria-label="習慣名からポイント・EXPをAIに提案してもらう"
               >
-                <option value="checkbox">チェックボックス</option>
-                <option value="number">数値入力（回数・距離など）</option>
-              </select>
+                <Sparkles className="w-4 h-4 shrink-0" />
+                {aiSuggesting ? '提案中...' : 'ポイント設定をAIにおまかせ'}
+              </Button>
+              <p className="text-xs text-zinc-400 mt-2">
+                習慣名と種類から、ポイント・EXPを提案します。反映後も編集できます。
+              </p>
+              <ul className="text-xs text-zinc-400 mt-1 list-disc list-inside space-y-0.5">
+                <li>良習慣はゴルド +1・EXPは、身体/頭脳/精神のどれかを +1。</li>
+                <li>悪習慣はゴルド -1・EXPは、身体/頭脳/精神のどれかを -1。</li>
+                <li>習慣名から、どの属性値に振るか判断します。</li>
+              </ul>
             </div>
 
             {/* ポイント（種類に応じたラベル：加点/減点/ボーナス） */}
             <div>
               <FormLabel htmlFor="points">
-                {formData.habit_type === 'good' ? '加点ポイント（ゴルド）' : formData.habit_type === 'bad' ? '減点ポイント（ゴルド）' : 'ボーナスポイント（ゴルド）'}
+                {modalFormData.habit_type === 'good' ? '加点ポイント（ゴルド）' : modalFormData.habit_type === 'bad' ? '減点ポイント（ゴルド）' : 'ボーナスポイント（ゴルド）'}
               </FormLabel>
               <input
                 id="points"
                 type="number"
                 min="0"
-                value={formData.points}
-                onChange={(e) => setFormData({ ...formData, points: parseInt(e.target.value) || 0 })}
+                value={modalFormData.points}
+                onChange={(e) => setModalFormData((prev) => ({ ...prev, points: parseInt(e.target.value) || 0 }))}
                 className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               />
             </div>
@@ -1055,24 +1099,24 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
                   label="身体EXP"
                   type="number"
                   min="0"
-                  value={formData.exp_body}
-                  onChange={(e) => setFormData({ ...formData, exp_body: parseInt(e.target.value) || 0 })}
+                  value={modalFormData.exp_body}
+                  onChange={(e) => setModalFormData((prev) => ({ ...prev, exp_body: parseInt(e.target.value) || 0 }))}
                 />
                 <FormInputSmall
                   id="exp_mind"
                   label="頭脳EXP"
                   type="number"
                   min="0"
-                  value={formData.exp_mind}
-                  onChange={(e) => setFormData({ ...formData, exp_mind: parseInt(e.target.value) || 0 })}
+                  value={modalFormData.exp_mind}
+                  onChange={(e) => setModalFormData((prev) => ({ ...prev, exp_mind: parseInt(e.target.value) || 0 }))}
                 />
                 <FormInputSmall
                   id="exp_spirit"
                   label="精神EXP"
                   type="number"
                   min="0"
-                  value={formData.exp_spirit}
-                  onChange={(e) => setFormData({ ...formData, exp_spirit: parseInt(e.target.value) || 0 })}
+                  value={modalFormData.exp_spirit}
+                  onChange={(e) => setModalFormData((prev) => ({ ...prev, exp_spirit: parseInt(e.target.value) || 0 }))}
                 />
               </div>
             </FormCard>
@@ -1083,20 +1127,35 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
                 <input
                   type="checkbox"
                   id="exclude_weekends"
-                  checked={formData.exclude_weekends}
-                  onChange={(e) => setFormData({ ...formData, exclude_weekends: e.target.checked })}
+                  checked={modalFormData.exclude_weekends}
+                  onChange={(e) => setModalFormData((prev) => ({ ...prev, exclude_weekends: e.target.checked }))}
                   className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-700 rounded focus:ring-cyan-500"
                 />
                 <Label htmlFor="exclude_weekends" className="text-base text-zinc-300 cursor-pointer">
                   週末を除外する
                 </Label>
               </div>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                {modalFormData.habit_type === 'bad' ? (
+                  <>
+                    ユーザーの任意で、週末はマストではない悪習慣に設定します。
+                    <br />
+                    ONの場合、週末にチェックが入ったとしても減点されることはありません。
+                  </>
+                ) : (
+                  <>
+                    ユーザーの任意で、週末はマスト実行ではない良習慣に設定します。
+                    <br />
+                    ONの場合でも、週末に実行することも可能でポイントも加算されます。
+                  </>
+                )}
+              </p>
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
                   id="exclude_from_complete"
-                  checked={formData.exclude_from_complete}
-                  onChange={(e) => setFormData({ ...formData, exclude_from_complete: e.target.checked })}
+                  checked={modalFormData.exclude_from_complete}
+                  onChange={(e) => setModalFormData((prev) => ({ ...prev, exclude_from_complete: e.target.checked }))}
                   className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-700 rounded focus:ring-cyan-500"
                 />
                 <Label htmlFor="exclude_from_complete" className="text-base text-zinc-300 cursor-pointer">
@@ -1134,9 +1193,6 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
                       <span className="text-base text-zinc-400">
                         {habit.points}G / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
                       </span>
-                      {habit.input_type === 'number' && (
-                        <span className="text-base text-zinc-500">数値入力</span>
-                      )}
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
