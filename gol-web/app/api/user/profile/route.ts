@@ -75,10 +75,13 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
-    // 1. まず username のみで更新（use_username_as_display_name カラム未追加のDBでも動くように）
+    const updateData: Record<string, unknown> = { username }
+    if (useUsernameAsDisplayName !== undefined) {
+      updateData.use_username_as_display_name = useUsernameAsDisplayName
+    }
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ username })
+      .update(updateData)
       .eq("id", user.id)
 
     if (updateError) {
@@ -90,20 +93,6 @@ export async function PATCH(request: NextRequest) {
         },
         { status: 500 },
       )
-    }
-
-    // 2. use_username_as_display_name がある場合のみ別途更新（カラムが存在するDB用）
-    if (useUsernameAsDisplayName !== undefined) {
-      const { error: flagError } = await supabase
-        .from("profiles")
-        .update({ use_username_as_display_name: useUsernameAsDisplayName })
-        .eq("id", user.id)
-      if (flagError) {
-        console.warn(
-          "use_username_as_display_name の更新をスキップ:",
-          flagError.message,
-        )
-      }
     }
 
     return NextResponse.json({

@@ -134,19 +134,31 @@ export async function POST(request: NextRequest) {
 
     // GOL世界の表示名: 「この名前をGOL世界の表示名として利用する」がONのときは
     // 必ずDBに保存された username を使う（クライアントの古いキャッシュに依存しない）
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('username, use_username_as_display_name')
       .eq('id', user.id)
       .single();
-    const useAsDisplayName = profile?.use_username_as_display_name !== false;
-    const nickname = useAsDisplayName ? (profile?.username ?? '').trim() : '';
+    let finalProfile = profile;
+    if (profileError) {
+      console.error('[AI batch] プロファイル取得エラー:', profileError.message);
+      const { data: fallback } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single();
+      finalProfile = fallback
+        ? { ...fallback, use_username_as_display_name: true }
+        : null;
+    }
+    const useAsDisplayName = finalProfile?.use_username_as_display_name !== false;
+    const nickname = useAsDisplayName ? (finalProfile?.username ?? '').trim() : '';
 
     // 調査用: 表示名がデフォルトになる原因切り分け（本番ではレスポンスから削除しても可）
     if (process.env.NODE_ENV !== 'production') {
       console.log('[AI batch] display name check', {
-        use_username_as_display_name: profile?.use_username_as_display_name,
-        username_from_db: profile?.username ?? '(null)',
+        use_username_as_display_name: finalProfile?.use_username_as_display_name,
+        username_from_db: finalProfile?.username ?? '(null)',
         nickname_used: nickname || '(空・デフォルト名が使われます)',
       });
     }

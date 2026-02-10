@@ -284,6 +284,24 @@
 
 ## 2602 --------------
 
+### 260210-火
+
+#### 実施内容
+
+- 表示名まわり: 個別あらすじAPIで getStorySystemMessage に nickname を渡すよう修正。profile API の username と use_username_as_display_name を1回の UPDATE に統合。設定画面のプロファイル取得にエラーハンドリングと username のみフォールバックを追加（リロード時空欄になる問題を解消）。batch / story / advice 各APIのプロファイル取得にも同様のフォールバックを追加。調査ドキュメントに修正履歴を追記
+- Google Auth: 新規ユーザー登録時の「Database error saving new user」対策として fix-trigger-handle-new-user.sql を追加（handle_new_user で username のフォールバック・デフォルト習慣失敗時も profiles は作成するよう EXCEPTION で囲む）。appendix に原因・対処ドキュメントを追加
+- ログアウト後の Google 再ログインで PKCE code verifier エラーが出る問題を解消: OAuth 開始をサーバー側に移し GET /api/auth/google を新設。ログイン・サインアップの「Googleでログイン」「Googleで登録」をこの API へのリンクに変更。appendix にドキュメントを追加・更新
+
+#### 決定事項
+
+- 特になし
+
+#### 次回予定
+
+- 未定
+
+---
+
 ### 260207-土
 
 #### 実施内容

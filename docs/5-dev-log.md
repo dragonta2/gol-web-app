@@ -50,6 +50,35 @@
 
 ## 2602 --------------
 
+### 260210-火
+
+#### 表示名デフォルト問題・Google Auth（新規登録・ログアウト後再ログイン）
+
+**実施内容（詳細）:**
+
+- **表示名がデフォルトになる問題の修正**
+  - app/api/ai/story/route.ts: getStorySystemMessage(worldConfig) → getStorySystemMessage(worldConfig, nickname) に変更。
+  - app/api/user/profile/route.ts: username と use_username_as_display_name の2回 UPDATE を1回の updateData に統合。失敗時はエラーを返す。
+  - app/settings/account/page.tsx: プロファイル取得で error をチェックし、失敗時は username のみ select するフォールバックを追加。finalProfile で initialData を組み立て（リロード時ニックネームが空欄になる問題を解消）。
+  - app/api/ai/batch/route.ts, story/route.ts, advice/route.ts: プロファイル取得で profileError 時は username のみフォールバック取得し、nickname が空で世界観デフォルト名になる事象を防止。
+  - docs/appendix/表示名がデフォルトになる原因調査.md: 個別あらすじのバグ・修正履歴（空欄問題・プロフィール1回更新・各APIフォールバック）を追記。
+
+- **Google 新規ログイン時の「Database error saving new user」**
+  - docs/sql-snippet/fix-trigger-handle-new-user.sql を新規作成: handle_new_user で username を full_name/name/email からフォールバック、profiles は元カラムのみ INSERT。create_default_habits_for_user を EXCEPTION で囲み失敗してもユーザー作成は成功させる。
+  - docs/appendix/Google新規ログイン時のDatabase-error-saving-new-user.md を新規作成（原因・対処・関連ファイル）。
+
+- **ログアウト後の Google 再ログインで「PKCE code verifier not found」**
+  - app/api/auth/google/route.ts を新規作成: GET で signInWithOAuth をサーバー側で実行し、code_verifier をサーバーのクッキーに保存してから Google へリダイレクト。
+  - app/login/page.tsx: 「Googleでログイン」をクライアントの signInWithOAuth から <a href="/api/auth/google"> に変更。PKCE エラー時は「もう一度Googleでログインを押してください」にメッセージ差し替え。
+  - app/signup/page.tsx: 「Googleで登録」を同様に /api/auth/google へのリンクに変更。
+  - docs/appendix/ログアウト後のGoogle再ログインでPKCEエラー.md: 根本対策（サーバー側 OAuth 開始）と関連ファイルを追記。
+
+**変更・追加ファイル:**
+- gol-web: app/api/ai/story/route.ts, app/api/ai/batch/route.ts, app/api/ai/advice/route.ts, app/api/user/profile/route.ts, app/settings/account/page.tsx, app/api/auth/google/route.ts（新規）, app/login/page.tsx, app/signup/page.tsx
+- docs: 4-project-progress.md, 5-dev-log.md, appendix/表示名がデフォルトになる原因調査.md, appendix/Google新規ログイン時のDatabase-error-saving-new-user.md（新規）, appendix/ログアウト後のGoogle再ログインでPKCEエラー.md, sql-snippet/fix-trigger-handle-new-user.sql（新規）, 0-AI-prompt-memo.md（表示名対応箇所のメモ追記）
+
+---
+
 ### 260207-土
 
 #### 習慣・日誌・AI一括・世界観・表示名・管理者用リセット・表示名調査

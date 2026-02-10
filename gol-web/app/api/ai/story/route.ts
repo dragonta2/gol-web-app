@@ -64,13 +64,25 @@ export async function POST(request: NextRequest) {
     }
     const worldConfig = mergeStoryWorldConfig(storyWorldId, override);
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('username, use_username_as_display_name')
       .eq('id', user.id)
       .single();
-    const useAsDisplayName = profile?.use_username_as_display_name !== false;
-    const nickname = useAsDisplayName ? (profile?.username ?? '').trim() : '';
+    let finalProfile = profile;
+    if (profileError) {
+      console.error('[AI story] プロファイル取得エラー:', profileError.message);
+      const { data: fallback } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single();
+      finalProfile = fallback
+        ? { ...fallback, use_username_as_display_name: true }
+        : null;
+    }
+    const useAsDisplayName = finalProfile?.use_username_as_display_name !== false;
+    const nickname = useAsDisplayName ? (finalProfile?.username ?? '').trim() : '';
 
     const openai = getOpenAIClient();
     if (!openai) {
@@ -104,7 +116,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: getStorySystemMessage(worldConfig),
+          content: getStorySystemMessage(worldConfig, nickname),
         },
         {
           role: 'user',

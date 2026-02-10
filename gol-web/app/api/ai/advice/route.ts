@@ -62,13 +62,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .select('username, use_username_as_display_name')
       .eq('id', user.id)
       .single();
-    const useAsDisplayName = profile?.use_username_as_display_name !== false;
-    const nickname = useAsDisplayName ? (profile?.username ?? '').trim() : '';
+    let finalProfile = profile;
+    if (profileError) {
+      console.error('[AI advice] プロファイル取得エラー:', profileError.message);
+      const { data: fallback } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single();
+      finalProfile = fallback
+        ? { ...fallback, use_username_as_display_name: true }
+        : null;
+    }
+    const useAsDisplayName = finalProfile?.use_username_as_display_name !== false;
+    const nickname = useAsDisplayName ? (finalProfile?.username ?? '').trim() : '';
 
     let override: Record<string, unknown> | null = null;
     const { data: overrideRows, error: overrideError } = await supabase

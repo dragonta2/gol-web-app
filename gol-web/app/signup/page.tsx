@@ -61,36 +61,8 @@ export default function SignupPage() {
     }
   };
 
-  const handleOAuthSignup = async (provider: 'google') => {
-    setError('');
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            prompt: 'select_account', // 毎回 Google のアカウント選択画面を表示する
-          },
-        },
-      });
-
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-      }
-      if (data?.url) {
-        await new Promise((r) => setTimeout(r, 300));
-        window.location.href = data.url;
-      }
-    } catch (err) {
-      setError('予期しないエラーが発生しました');
-      setLoading(false);
-      console.error(err);
-    }
-  };
+  // Google OAuth はサーバー側 API で開始（ログアウト後の再ログインでも PKCE が通る）
+  const googleSignupUrl = '/api/auth/google';
 
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
@@ -201,15 +173,14 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {/* OAuthボタン */}
+          {/* OAuthボタン（サーバー側で開始） */}
           <div>
-            <button
-              onClick={() => handleOAuthSignup('google')}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 text-zinc-300 font-medium py-3 rounded-lg transition-colors"
+            <a
+              href={googleSignupUrl}
+              className="w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium py-3 rounded-lg transition-colors"
             >
               Googleで登録
-            </button>
+            </a>
           </div>
         </div>
       </div>

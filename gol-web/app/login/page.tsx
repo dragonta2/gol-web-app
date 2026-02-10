@@ -21,8 +21,17 @@ function LoginContent() {
   useEffect(() => {
     const err = searchParams.get('error');
     const from = searchParams.get('from');
-    if (err) setError(decodeURIComponent(err));
-    else if (from === 'dashboard')
+    if (err) {
+      const decoded = decodeURIComponent(err);
+      // ログアウト後の再ログインで出る PKCE エラーは、再試行を促すメッセージに差し替え
+      if (decoded.includes('PKCE') || decoded.includes('code verifier')) {
+        setError(
+          '認証の準備ができていませんでした。もう一度「Googleでログイン」ボタンを押してください。'
+        );
+      } else {
+        setError(decoded);
+      }
+    } else if (from === 'dashboard')
       setError('ダッシュボードから戻されました（セッションがありません）。OAuth 後のクッキーが届いていない可能性があります。');
   }, [searchParams]);
 
@@ -55,37 +64,8 @@ function LoginContent() {
   };
 
 
-  const handleOAuthLogin = async (provider: 'google') => {
-    setError('');
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            prompt: 'select_account', // 毎回 Google のアカウント選択画面を表示する
-          },
-        },
-      });
-
-      if (error) {
-        setError(error.message);
-        setLoading(false);
-        return;
-      }
-      // code_verifier がクッキーに書き込まれてからリダイレクトする（別アカウント選択時も PKCE が通るように）
-      if (data?.url) {
-        await new Promise((r) => setTimeout(r, 300));
-        window.location.href = data.url;
-      }
-    } catch (err) {
-      setError('予期しないエラーが発生しました');
-      setLoading(false);
-      console.error(err);
-    }
-  };
+  // Google OAuth はサーバー側 API で開始（code_verifier をサーバーのクッキーに保存するため、ログアウト後の再ログインでも通る）
+  const googleLoginUrl = '/api/auth/google';
 
   return (
     <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
@@ -200,15 +180,14 @@ function LoginContent() {
             </div>
           </div>
 
-          {/* OAuthボタン */}
+          {/* OAuthボタン（サーバー側で開始して PKCE を確実にクッキーに保存） */}
           <div>
-            <button
-              onClick={() => handleOAuthLogin('google')}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 disabled:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 text-zinc-300 font-medium py-3 rounded-lg transition-colors"
+            <a
+              href={googleLoginUrl}
+              className="w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium py-3 rounded-lg transition-colors"
             >
               Googleでログイン
-            </button>
+            </a>
           </div>
         </div>
       </div>

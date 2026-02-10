@@ -661,7 +661,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                 size="sm"
                 onClick={handleResetBatchCount}
                 disabled={isResettingBatchCount || !dailyLogId}
-                className="mt-2 border-zinc-600 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-300 text-xs"
+                className="mt-2 bg-zinc-600 border-zinc-500 text-zinc-200 hover:bg-zinc-500 hover:text-zinc-100 text-xs"
               >
                 {isResettingBatchCount ? 'リセット中...' : '再生成回数をリセット（管理者用）'}
               </Button>
