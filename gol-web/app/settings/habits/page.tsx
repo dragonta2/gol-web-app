@@ -25,6 +25,7 @@ interface Habit {
   input_type: 'checkbox' | 'number';
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
+  description?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +41,7 @@ export default function HabitsSettingsPage() {
   // フォーム状態
   const [formData, setFormData] = useState({
     habit_name: '',
+    description: '',
     habit_type: 'good' as 'good' | 'bad' | 'bonus',
     points: 1,
     exp_body: 0,
@@ -84,6 +86,7 @@ export default function HabitsSettingsPage() {
   const resetForm = () => {
     setFormData({
       habit_name: '',
+      description: '',
       habit_type: 'good',
       points: 1,
       exp_body: 0,
@@ -194,6 +197,7 @@ export default function HabitsSettingsPage() {
     setEditingHabit(habit);
     setFormData({
       habit_name: habit.habit_name,
+      description: habit.description ?? '',
       habit_type: habit.habit_type,
       points: habit.points,
       exp_body: habit.exp_body,
@@ -217,7 +221,7 @@ export default function HabitsSettingsPage() {
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-2">
           <GripVertical className="w-4 h-4 text-zinc-500" />
-          <h3 className="text-lg font-medium text-zinc-100">{habit.habit_name}</h3>
+          <h3 className="text-lg font-medium text-zinc-100">{[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}</h3>
           {!habit.is_custom && (
             <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded">デフォルト</span>
           )}
@@ -226,7 +230,7 @@ export default function HabitsSettingsPage() {
           <div>ゴルド: {habit.points > 0 ? '+' : ''}{habit.points}G</div>
           {habit.habit_type === 'good' && (
             <div>
-              EXP: 身体+{habit.exp_body} / 頭脳+{habit.exp_mind} / 精神+{habit.exp_spirit}
+              EXP: 身体 + {habit.exp_body} / 頭脳 + {habit.exp_mind} / 精神 + {habit.exp_spirit}
             </div>
           )}
           {habit.exclude_weekends && <div>土日除外: 有効</div>}
@@ -296,6 +300,19 @@ export default function HabitsSettingsPage() {
                       onChange={(e) => setFormData({ ...formData, habit_name: e.target.value })}
                       placeholder="例: 朝の散歩"
                       className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                    />
+                  </div>
+
+                  {/* 補足説明 */}
+                  <div>
+                    <Label htmlFor="habit_description" className="text-zinc-300">補足説明</Label>
+                    <textarea
+                      id="habit_description"
+                      rows={3}
+                      value={formData.description}
+                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                      placeholder="習慣の詳細やメモを自由に記入できます（任意）"
+                      className="mt-1 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-y min-h-[80px]"
                     />
                   </div>
 

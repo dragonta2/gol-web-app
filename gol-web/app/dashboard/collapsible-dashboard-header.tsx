@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import {
   Trophy,
@@ -44,16 +44,8 @@ export default function CollapsibleDashboardHeader({
   screenName,
   pendingDeltas,
 }: CollapsibleDashboardHeaderProps) {
+  // タイトルバー（ヘッダー）は常に展開して表示。折りたたみ状態は保存するが、次回表示時は展開で開始する。
   const [collapsed, setCollapsed] = useState(false)
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored !== null) setCollapsed(JSON.parse(stored))
-    } catch {
-      // ignore
-    }
-  }, [])
 
   const toggle = () => {
     setCollapsed((prev) => {
@@ -200,16 +192,16 @@ export default function CollapsibleDashboardHeader({
               <div className="text-sm text-cyan-300/90 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5" role="status" aria-label="未確定スコア">
                 <span className="font-medium">未確定:</span>
                 {pendingDeltas.points_delta !== 0 && (
-                  <span>{pendingDeltas.points_delta > 0 ? '+' : ''}{pendingDeltas.points_delta}G</span>
+                  <span>{pendingDeltas.points_delta >= 0 ? '+' : '-'} {Math.abs(pendingDeltas.points_delta)}G</span>
                 )}
                 {pendingDeltas.exp_body_delta !== 0 && (
-                  <span>身体{pendingDeltas.exp_body_delta > 0 ? '+' : ''}{pendingDeltas.exp_body_delta}</span>
+                  <span>身体 {pendingDeltas.exp_body_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_body_delta)}</span>
                 )}
                 {pendingDeltas.exp_mind_delta !== 0 && (
-                  <span>頭脳{pendingDeltas.exp_mind_delta > 0 ? '+' : ''}{pendingDeltas.exp_mind_delta}</span>
+                  <span>頭脳 {pendingDeltas.exp_mind_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_mind_delta)}</span>
                 )}
                 {pendingDeltas.exp_spirit_delta !== 0 && (
-                  <span>精神{pendingDeltas.exp_spirit_delta > 0 ? '+' : ''}{pendingDeltas.exp_spirit_delta}</span>
+                  <span>精神 {pendingDeltas.exp_spirit_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_spirit_delta)}</span>
                 )}
               </div>
             )}

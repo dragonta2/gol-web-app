@@ -547,11 +547,11 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                   </span>
 
                   {/* 1回あたりの利用ポイント（スピナーのすぐ左） */}
-                  <span className="text-zinc-500 text-sm whitespace-nowrap">1回あたり -{right.points}G</span>
+                  <span className="text-zinc-100 text-sm whitespace-nowrap">- {right.points}G/1回</span>
 
                   {/* ポイント表示（スピナーの左） */}
                   <span className="text-base text-red-400 font-medium whitespace-nowrap min-w-14 text-right">
-                    {right.count > 0 ? `-${right.points * right.count}G` : ''}
+                    {right.count > 0 ? `- ${right.points * right.count}G` : ''}
                   </span>
 
                   {/* 数値入力（一番右端） */}
@@ -571,7 +571,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                 <div className="pt-3 mt-3 border-t border-zinc-800 text-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-zinc-200 font-medium">本日消費ゴルド合計</span>
-                    <span className="text-red-400 font-bold">-{totalPoints}G</span>
+                    <span className="text-red-400 font-bold">- {totalPoints}G</span>
                   </div>
                 </div>
               )}
@@ -752,52 +752,53 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           return (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-2">
             <h3 className="text-lg font-medium text-cyan-400">獲得スコア</h3>
-            <div className="text-sm space-y-1.5 text-zinc-300">
-              <div>ToDo: <span className={scoreBreakdown.todo.points_delta >= 0 ? 'text-green-400' : 'text-red-400'}>{scoreBreakdown.todo.points_delta >= 0 ? '+' : ''}{scoreBreakdown.todo.points_delta}G</span>{' '}
-                {[['身体', scoreBreakdown.todo.exp_body_delta], ['頭脳', scoreBreakdown.todo.exp_mind_delta], ['精神', scoreBreakdown.todo.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label}${(val as number) >= 0 ? '+' : ''}${val}`).join(' ') || ''}
+            <div className="text-base space-y-1.5 text-zinc-300">
+              <div>ToDo: <span className={`font-medium ${scoreBreakdown.todo.points_delta >= 0 ? 'text-green-400' : 'text-red-400'}`}>{scoreBreakdown.todo.points_delta >= 0 ? '+' : '-'} {Math.abs(scoreBreakdown.todo.points_delta)}G</span>
+                {(() => { const expStr = [['身体', scoreBreakdown.todo.exp_body_delta], ['頭脳', scoreBreakdown.todo.exp_mind_delta], ['精神', scoreBreakdown.todo.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label} ${(val as number) >= 0 ? '+' : '-'} ${Math.abs(val as number)}`).join('｜'); return expStr ? `｜${expStr}` : ''; })()}
               </div>
-              <div>良習慣: <span className="text-green-400">+{scoreBreakdown.habits_good.points_delta}G</span>{' '}
-                {[['身体', scoreBreakdown.habits_good.exp_body_delta], ['頭脳', scoreBreakdown.habits_good.exp_mind_delta], ['精神', scoreBreakdown.habits_good.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label}+${val}`).join(' ') || ''}
+              <div>良習慣: <span className="text-green-400 font-medium">+ {scoreBreakdown.habits_good.points_delta}G</span>
+                {(() => { const expStr = [['身体', scoreBreakdown.habits_good.exp_body_delta], ['頭脳', scoreBreakdown.habits_good.exp_mind_delta], ['精神', scoreBreakdown.habits_good.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label} + ${val}`).join('｜'); return expStr ? `｜${expStr}` : ''; })()}
               </div>
-              <div>AI判定: <span className="text-purple-400">+{scoreBreakdown.ai.points_delta}G</span>{' '}
-                {[['身体', scoreBreakdown.ai.exp_body_delta], ['頭脳', scoreBreakdown.ai.exp_mind_delta], ['精神', scoreBreakdown.ai.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label}+${val}`).join(' ') || ''}
+              <div>AI判定: <span className="text-purple-400 font-medium">+ {scoreBreakdown.ai.points_delta}G</span>
+                {(() => { const expStr = [['身体', scoreBreakdown.ai.exp_body_delta], ['頭脳', scoreBreakdown.ai.exp_mind_delta], ['精神', scoreBreakdown.ai.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label} + ${val}`).join('｜'); return expStr ? `｜${expStr}` : ''; })()}
               </div>
-              <div>悪習慣（マイナス）: <span className="text-red-400">{scoreBreakdown.habits_bad.points_delta >= 0 ? '' : '-'}{Math.abs(scoreBreakdown.habits_bad.points_delta)}G</span>{' '}
-                {[['身体', scoreBreakdown.habits_bad.exp_body_delta], ['頭脳', scoreBreakdown.habits_bad.exp_mind_delta], ['精神', scoreBreakdown.habits_bad.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label}${(val as number) < 0 ? '-' : '+'}${Math.abs(val as number)}`).join(' ') || ''}
+              <div>悪習慣（マイナス）: <span className="text-red-400 font-medium">{scoreBreakdown.habits_bad.points_delta >= 0 ? '+' : '-'} {Math.abs(scoreBreakdown.habits_bad.points_delta)}G</span>
+                {(() => { const expStr = [['身体', scoreBreakdown.habits_bad.exp_body_delta], ['頭脳', scoreBreakdown.habits_bad.exp_mind_delta], ['精神', scoreBreakdown.habits_bad.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label} ${(val as number) < 0 ? '-' : '+'} ${Math.abs(val as number)}`).join('｜'); return expStr ? `｜${expStr}` : ''; })()}
               </div>
-              <div>権利消費（マイナス）: <span className="text-orange-400">-{totalPoints}G</span></div>
+              <div>権利消費（マイナス）: <span className="text-orange-400 font-medium">- {totalPoints}G</span></div>
             </div>
             {/* 総加算 − 総減算 = 今回の獲得 */}
             <div className="pt-3 mt-3 border-t border-zinc-600 text-base space-y-1.5">
               <div className="text-zinc-300">
                 <span className="text-zinc-400">総加算ゴルド</span>
-                <span className="text-green-400 font-medium mx-1">+{pointsAdd}G</span>
+                <span className="text-green-400 font-medium mx-1">+ {pointsAdd}G</span>
                 <span className="text-zinc-500 mx-1">−</span>
                 <span className="text-zinc-400">総減算ゴルド</span>
-                <span className="text-red-400 font-medium mx-1">-{pointsSub}G</span>
+                <span className="text-red-400 font-medium mx-1">- {pointsSub}G</span>
                 <span className="text-zinc-500 mx-1">=</span>
                 <span className="text-zinc-400">今回の獲得ゴルド</span>
                 <span className={`font-medium ml-1 ${adjustedTotalPoints >= 0 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {adjustedTotalPoints >= 0 ? '+' : ''}{adjustedTotalPoints}G
+                  {adjustedTotalPoints >= 0 ? '+' : '-'} {Math.abs(adjustedTotalPoints)}G
                 </span>
               </div>
               {hasAnyExp && (
                 <div className="text-zinc-300 text-sm">
                   <span className="text-zinc-400">総加算EXP</span>
                   <span className="text-cyan-400">
-                    {[['身体', expBodyAdd], ['頭脳', expMindAdd], ['精神', expSpiritAdd]].filter(([, v]) => v !== 0).map(([l, v]) => `${l}+${v}`).join(' ') || ' 0'}
+                    {[['身体', expBodyAdd], ['頭脳', expMindAdd], ['精神', expSpiritAdd]].filter(([, v]) => v !== 0).map(([l, v]) => `${l} + ${v}`).join('｜') || ' 0'}
                   </span>
                   <span className="text-zinc-500 mx-1">−</span>
                   <span className="text-zinc-400">総減算EXP</span>
                   <span className="text-cyan-400">
-                    {[['身体', expBodySub], ['頭脳', expMindSub], ['精神', expSpiritSub]].filter(([, v]) => v !== 0).map(([l, v]) => `${l}-${v}`).join(' ') || ' 0'}
+                    {[['身体', expBodySub], ['頭脳', expMindSub], ['精神', expSpiritSub]].filter(([, v]) => v !== 0).map(([l, v]) => `${l} - ${v}`).join('｜') || ' 0'}
                   </span>
                   <span className="text-zinc-500 mx-1">=</span>
                   <span className="text-zinc-400">今回の獲得EXP</span>
                   <span className="text-cyan-400 ml-1">
-                    身体{scoreBreakdown.total.exp_body_delta >= 0 ? '+' : ''}{scoreBreakdown.total.exp_body_delta}{' '}
-                    頭脳{scoreBreakdown.total.exp_mind_delta >= 0 ? '+' : ''}{scoreBreakdown.total.exp_mind_delta}{' '}
-                    精神{scoreBreakdown.total.exp_spirit_delta >= 0 ? '+' : ''}{scoreBreakdown.total.exp_spirit_delta}
+                    {['身体', '頭脳', '精神'].map((label, i) => {
+                      const vals = [scoreBreakdown.total.exp_body_delta, scoreBreakdown.total.exp_mind_delta, scoreBreakdown.total.exp_spirit_delta];
+                      return `${label} ${vals[i] >= 0 ? '+' : '-'} ${Math.abs(vals[i])}`;
+                    }).join('｜')}
                   </span>
                 </div>
               )}

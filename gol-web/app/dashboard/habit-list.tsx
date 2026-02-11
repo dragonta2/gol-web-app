@@ -27,6 +27,7 @@ interface Habit {
   input_type: 'checkbox' | 'number';
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
+  description?: string | null;
   difficulty?: string;
   created_at: string;
   updated_at: string;
@@ -60,6 +61,7 @@ interface HabitWithLog extends Habit {
 
 interface HabitFormData {
   habit_name: string;
+  description: string;
   habit_type: 'good' | 'bad' | 'bonus';
   points: number;
   exp_body: number;
@@ -80,6 +82,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const defaultFormData: HabitFormData = {
     habit_name: '',
+    description: '',
     habit_type: 'good',
     points: 1,
     exp_body: 0,
@@ -256,12 +259,12 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   // 習慣のゴルド・EXPの加減算設定値（表示用・ライン揃えのため g と exp を分離）
   const getHabitPointsExpParts = (habit: HabitWithLog): { g: string; exp: string } => {
     const sign = habit.habit_type === 'bad' ? '-' : '+';
-    const g = `${sign}${habit.points}G`;
+    const g = `${sign} ${habit.points}G`;
     const expParts: string[] = [];
-    if (habit.exp_body > 0) expParts.push(`身体${sign}${habit.exp_body}`);
-    if (habit.exp_mind > 0) expParts.push(`頭脳${sign}${habit.exp_mind}`);
-    if (habit.exp_spirit > 0) expParts.push(`精神${sign}${habit.exp_spirit}`);
-    return { g, exp: expParts.join(' ') };
+    if (habit.exp_body > 0) expParts.push(`身体 ${sign} ${habit.exp_body}`);
+    if (habit.exp_mind > 0) expParts.push(`頭脳 ${sign} ${habit.exp_mind}`);
+    if (habit.exp_spirit > 0) expParts.push(`精神 ${sign} ${habit.exp_spirit}`);
+    return { g, exp: expParts.join('｜') };
   };
 
   // チェック時に加算・減算されるゴルド・EXP（表示用・週末除外考慮）
@@ -271,15 +274,15 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     if (badWeekendExcluded) return { g: '', exp: '' };
     const sign = habit.habit_type === 'bad' ? '-' : '+';
     const gVal = habit.points * habit.count;
-    const g = gVal !== 0 ? `${sign}${gVal}G` : '';
+    const g = gVal !== 0 ? `${sign} ${gVal}G` : '';
     const expParts: string[] = [];
     const body = habit.exp_body * habit.count;
     const mind = habit.exp_mind * habit.count;
     const spirit = habit.exp_spirit * habit.count;
-    if (body !== 0) expParts.push(`身体${sign}${Math.abs(body)}`);
-    if (mind !== 0) expParts.push(`頭脳${sign}${Math.abs(mind)}`);
-    if (spirit !== 0) expParts.push(`精神${sign}${Math.abs(spirit)}`);
-    return { g, exp: expParts.join(' ') };
+    if (body !== 0) expParts.push(`身体 ${sign} ${Math.abs(body)}`);
+    if (mind !== 0) expParts.push(`頭脳 ${sign} ${Math.abs(mind)}`);
+    if (spirit !== 0) expParts.push(`精神 ${sign} ${Math.abs(spirit)}`);
+    return { g, exp: expParts.join('｜') };
   };
 
   // Completeボーナスのチェック状態を取得
@@ -362,6 +365,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     setEditingHabit(habit);
     const initial = {
       habit_name: habit.habit_name,
+      description: habit.description ?? '',
       habit_type: habit.habit_type,
       points: habit.points,
       exp_body: habit.exp_body,
@@ -390,6 +394,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         .from('habits')
         .update({
           habit_name: modalFormData.habit_name.trim(),
+          description: modalFormData.description.trim() || null,
           habit_type: modalFormData.habit_type,
           points: modalFormData.points,
           exp_body: modalFormData.exp_body,
@@ -556,6 +561,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           body: JSON.stringify({
             habitId: editingHabit.id,
             habit_name: modalFormData.habit_name.trim(),
+            description: modalFormData.description.trim() || null,
             habit_type: modalFormData.habit_type,
             points: modalFormData.points,
             exp_body: modalFormData.exp_body,
@@ -590,6 +596,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           credentials: 'include',
           body: JSON.stringify({
             habit_name: modalFormData.habit_name.trim(),
+            description: modalFormData.description.trim() || null,
             habit_type: modalFormData.habit_type,
             points: modalFormData.points,
             exp_body: modalFormData.exp_body,
@@ -687,20 +694,21 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                 )}
               </button>
 
-              {/* 習慣名 */}
+              {/* 習慣名｜補足説明 */}
               <label
                 htmlFor={`habit-${habit.id}`}
                 className={`block truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${habit.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
               >
-                {habit.habit_name}
+                {[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}
               </label>
 
               {/* 右側グループ: 設定ポイント → 週末除外 → Comp対象外 → チェック時の増減（列幅固定で縦揃え） */}
               <div className="flex items-center justify-end gap-2 shrink-0">
                 <div className="w-16" />
-                {/* 1. 設定ポイント（開始位置・幅に余裕） */}
-                <div className="flex items-baseline gap-1 text-xs text-zinc-500 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                {/* 1. 設定ポイント（+◯G｜身体±◯｜頭脳±◯｜精神±◯） */}
+                <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
                   <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(habit).g}</span>
+                  {getHabitPointsExpParts(habit).exp && <span className="shrink-0">｜</span>}
                   <span className="min-w-0 truncate">{getHabitPointsExpParts(habit).exp}</span>
                 </div>
                 {/* 2. 週末除外（固定幅で縦揃え） */}
@@ -726,8 +734,8 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                     </span>
                   )}
                 </div>
-                {/* 4. チェック時の増減（ゴルド・EXPすべて・幅に余裕） */}
-                <div className={`flex items-baseline gap-1 text-base font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${
+                {/* 4. チェック時の増減（±◯G｜身体±◯｜精神±◯） */}
+                <div className={`flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${
                   habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
                 }`} title="チェック時に加算・減算される数値">
                   {(() => {
@@ -736,6 +744,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                     return (
                       <>
                         {g && <span className="shrink-0">{g}</span>}
+                        {g && exp && <span className="shrink-0">｜</span>}
                         {exp && <span className="min-w-0 truncate">{exp}</span>}
                       </>
                     );
@@ -824,20 +833,21 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                 )}
               </button>
 
-              {/* 習慣名 */}
+              {/* 習慣名｜補足説明 */}
               <label
                 htmlFor={`habit-${habit.id}`}
                 className={`block cursor-pointer truncate min-w-0 ${habit.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
               >
-                {habit.habit_name}
+                {[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}
               </label>
 
               {/* 右側グループ: 設定ポイント → 週末除外 → Comp対象外 → チェック時の増減（列幅固定で縦揃え） */}
               <div className="flex items-center justify-end gap-2 shrink-0">
                 <div className="w-16" />
-                {/* 1. 設定ポイント */}
-                <div className="flex items-baseline gap-1 text-xs text-zinc-500 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                {/* 1. 設定ポイント（+◯G｜身体±◯｜頭脳±◯｜精神±◯） */}
+                <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
                   <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(habit).g}</span>
+                  {getHabitPointsExpParts(habit).exp && <span className="shrink-0">｜</span>}
                   <span className="min-w-0 truncate">{getHabitPointsExpParts(habit).exp}</span>
                 </div>
                 {/* 2. 週末除外 */}
@@ -863,8 +873,8 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                     </span>
                   )}
                 </div>
-                {/* 4. チェック時の増減（ゴルド・EXPすべて・幅に余裕） */}
-                <div className={`flex items-baseline gap-1 text-base font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${
+                {/* 4. チェック時の増減（±◯G｜身体±◯｜精神±◯） */}
+                <div className={`flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${
                   habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
                 }`} title="チェック時に加算・減算される数値">
                   {(() => {
@@ -873,6 +883,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                     return (
                       <>
                         {g && <span className="shrink-0">{g}</span>}
+                        {g && exp && <span className="shrink-0">｜</span>}
                         {exp && <span className="min-w-0 truncate">{exp}</span>}
                       </>
                     );
@@ -960,20 +971,21 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                 )}
               </button>
 
-              {/* ボーナス名 */}
+              {/* 習慣名｜補足説明 */}
               <label
                 htmlFor={`bonus-${bonusHabits[0].id}`}
                 className={`flex-1 cursor-pointer ${completeBonus ? 'text-zinc-100' : 'text-zinc-400'}`}
               >
-                {bonusHabits[0].habit_name}
+                {[bonusHabits[0].habit_name, bonusHabits[0].description?.trim()].filter(Boolean).join('｜')}
               </label>
 
               {/* スペーサー（列揃え） */}
               <div className="w-16" />
 
-              {/* 1. 設定ポイント */}
-              <div className="flex items-baseline gap-1 text-xs text-zinc-500 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+              {/* 1. 設定ポイント（+◯G｜身体±◯｜頭脳±◯｜精神±◯） */}
+              <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
                 <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(bonusHabits[0]).g}</span>
+                {getHabitPointsExpParts(bonusHabits[0]).exp && <span className="shrink-0">｜</span>}
                 <span className="min-w-0 truncate">{getHabitPointsExpParts(bonusHabits[0]).exp}</span>
               </div>
               {/* 2. 週末除外 */}
@@ -998,13 +1010,14 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                 )}
               </div>
               {/* 4. チェック時の増減（ゴルド・EXPすべて・幅に余裕） */}
-              <div className="flex items-baseline gap-1 text-base font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 text-cyan-400" title="チェック時に加算・減算される数値">
+              <div className="flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 text-cyan-400" title="チェック時に加算・減算される数値">
                 {(() => {
                   const { g, exp } = getCheckTimeDeltaParts(bonusHabits[0]);
                   if (!g && !exp) return null;
                   return (
                     <>
                       {g && <span className="shrink-0">{g}</span>}
+                      {g && exp && <span className="shrink-0">｜</span>}
                       {exp && <span className="min-w-0 truncate">{exp}</span>}
                     </>
                   );
@@ -1061,6 +1074,19 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               onChange={(e) => setModalFormData((prev) => ({ ...prev, habit_name: e.target.value }))}
               placeholder="例: 筋トレ、読書、タバコを吸わない"
             />
+
+            {/* 補足説明 */}
+            <div>
+              <FormLabel htmlFor="habit_description" className="text-zinc-300">補足説明</FormLabel>
+              <textarea
+                id="habit_description"
+                rows={3}
+                value={modalFormData.description}
+                onChange={(e) => setModalFormData((prev) => ({ ...prev, description: e.target.value }))}
+                placeholder="習慣の詳細やメモを自由に記入できます（任意）"
+                className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-y min-h-[80px]"
+              />
+            </div>
 
             {/* 入力タイプは当面チェックリストのみのため選択肢なし（常に checkbox） */}
 
@@ -1202,7 +1228,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   >
                     <div className="flex items-center gap-2 flex-1">
                       <span className="text-base text-zinc-500 w-8">{index + 1}</span>
-                      <span className="flex-1 text-base text-zinc-100">{habit.habit_name}</span>
+                      <span className="flex-1 text-base text-zinc-100">{[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}</span>
                       <span className="text-base text-zinc-400">
                         {habit.points}G / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
                       </span>
@@ -1268,7 +1294,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   >
                     <div className="flex items-center gap-2 flex-1">
                       <span className="text-base text-zinc-500 w-8">{index + 1}</span>
-                      <span className="flex-1 text-base text-zinc-100">{habit.habit_name}</span>
+                      <span className="flex-1 text-base text-zinc-100">{[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}</span>
                       <span className="text-base text-zinc-400">
                         {habit.points}G / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
                       </span>
@@ -1335,7 +1361,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                     >
                       <div className="flex items-center gap-2 flex-1">
                         <span className="text-base text-zinc-500 w-8">{index + 1}</span>
-                        <span className="flex-1 text-base text-zinc-100">{habit.habit_name}</span>
+                        <span className="flex-1 text-base text-zinc-100">{[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}</span>
                         <span className="text-base text-zinc-400">
                           {habit.points}G / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
                         </span>

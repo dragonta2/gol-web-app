@@ -182,6 +182,7 @@ export default async function DashboardPage({
       <DashboardClientLayout
         userProfile={userProfile}
         selectedDate={selectedDate}
+        userId={user.id}
         habits={habits || []}
         habitLogs={habitLogs || []}
         dailyLogId={dailyLogId}

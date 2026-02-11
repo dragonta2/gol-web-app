@@ -95,9 +95,9 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
             {reward.points > 0 && <>{reward.points}Gold</>}
             {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
               <span className={reward.points > 0 ? ' ml-1' : ''}>
-                {reward.exp_body > 0 && <>身体+{reward.exp_body}</>}
-                {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳+{reward.exp_mind}</>}
-                {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神+{reward.exp_spirit}</>}
+                {reward.exp_body > 0 && <>身体 + {reward.exp_body}</>}
+                {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳 + {reward.exp_mind}</>}
+                {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神 + {reward.exp_spirit}</>}
               </span>
             )}
           </div>
@@ -120,7 +120,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
           aria-expanded={isSubtaskExpanded}
           className="flex items-center gap-2 text-zinc-400 hover:text-zinc-300 w-full text-left"
         >
-          <span aria-hidden="true">{isSubtaskExpanded ? '▼' : '▶'}</span>
+          <span aria-hidden="true" className="inline-block text-[0.7rem] leading-none scale-95 origin-left">{isSubtaskExpanded ? '▼' : '▶'}</span>
           <span>サブタスク ({subtasks.length}件)</span>
         </button>
         {isSubtaskExpanded && (
@@ -231,9 +231,9 @@ function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
             {reward.points > 0 && <>{reward.points}Gold</>}
             {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
               <span className={reward.points > 0 ? ' ml-1' : ''}>
-                {reward.exp_body > 0 && <>身体+{reward.exp_body}</>}
-                {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳+{reward.exp_mind}</>}
-                {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神+{reward.exp_spirit}</>}
+                {reward.exp_body > 0 && <>身体 + {reward.exp_body}</>}
+                {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳 + {reward.exp_mind}</>}
+                {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神 + {reward.exp_spirit}</>}
               </span>
             )}
           </div>
@@ -289,7 +289,7 @@ function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, o
           aria-expanded={isSubtaskExpanded}
           className="flex items-center gap-2 text-zinc-400 hover:text-zinc-300 w-full text-left"
         >
-          <span aria-hidden="true">{isSubtaskExpanded ? '▼' : '▶'}</span>
+          <span aria-hidden="true" className="inline-block text-[0.7rem] leading-none scale-95 origin-left">{isSubtaskExpanded ? '▼' : '▶'}</span>
           <span>サブタスク ({subtasks.length}件)</span>
         </button>
         {isSubtaskExpanded && (
@@ -512,12 +512,17 @@ function DroppableColumn({
   );
 }
 
-function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, dailyLogId, isExpanded: externalIsExpanded, onExpandedChange, onEditTodo, onOpenCreateModal, isConfirmed = false }: KanbanBoardProps) {
+function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtasks, dailyLogId, isExpanded: externalIsExpanded, onExpandedChange, onEditTodo, onOpenCreateModal, isConfirmed = false }: KanbanBoardProps) {
 
   // ローカル状態でtodosを管理（ドラッグ&ドロップで即座に反映）
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
   const [subtasks, setSubtasks] = useState<TodoSubtask[]>(initialSubtasks ?? []);
-  const [expandedSubtaskTodoIds, setExpandedSubtaskTodoIds] = useState<Set<string>>(new Set());
+  // サブタスクが1件以上あるToDoはデフォルトで展開
+  const [expandedSubtaskTodoIds, setExpandedSubtaskTodoIds] = useState<Set<string>>(() => {
+    const ids = new Set<string>();
+    for (const st of initialSubtasks ?? []) ids.add(st.todo_id);
+    return ids;
+  });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [internalIsExpanded, setInternalIsExpanded] = useState(true); // アコーディオンの開閉状態（内部管理）
@@ -531,6 +536,12 @@ function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, daily
 
   useEffect(() => {
     setSubtasks(initialSubtasks ?? []);
+    // サブタスクがある ToDo を展開状態にしておく
+    setExpandedSubtaskTodoIds((prev) => {
+      const next = new Set(prev);
+      for (const st of initialSubtasks ?? []) next.add(st.todo_id);
+      return next;
+    });
   }, [initialSubtasks]);
 
   // マウント後に localStorage からフィルター・ソートを復元（Hydration 後のみ実行）
@@ -819,14 +830,7 @@ function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, daily
     try {
       const supabase = createClient();
 
-      // 現在のユーザーを取得
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError || !user) {
-        console.error('ユーザー取得エラー:', authError);
-        return;
-      }
-
-      // 報酬を計算
+      // 報酬を計算（userId はサーバーから props で渡されているため、ここでの再認証は不要）
       const reward = calculateReward(todo);
 
       // todo_logsに記録を作成または更新（UNIQUE制約があるためUPSERT）
@@ -865,12 +869,7 @@ function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, daily
     try {
       const supabase = createClient();
 
-      const { error: authError } = await supabase.auth.getUser();
-      if (authError) {
-        console.error('ユーザー取得エラー:', authError);
-        return;
-      }
-
+      // userId はサーバーから props で渡されているため、ここでの再認証は不要
       const { error: logDeleteError } = await supabase
         .from('todo_logs')
         .delete()
@@ -1304,9 +1303,9 @@ function KanbanBoard({ todos: initialTodos, todoSubtasks: initialSubtasks, daily
                         {r.points > 0 && <>{r.points}G</>}
                         {(r.exp_body > 0 || r.exp_mind > 0 || r.exp_spirit > 0) && (
                           <span className={r.points > 0 ? ' ml-2' : ''}>
-                            {r.exp_body > 0 && <>身体+{r.exp_body}</>}
-                            {r.exp_mind > 0 && <>{r.exp_body > 0 ? ' ' : ''}頭脳+{r.exp_mind}</>}
-                            {r.exp_spirit > 0 && <>{r.exp_mind > 0 || r.exp_body > 0 ? ' ' : ''}精神+{r.exp_spirit}</>}
+                            {r.exp_body > 0 && <>身体 + {r.exp_body}</>}
+                            {r.exp_mind > 0 && <>{r.exp_body > 0 ? ' ' : ''}頭脳 + {r.exp_mind}</>}
+                            {r.exp_spirit > 0 && <>{r.exp_mind > 0 || r.exp_body > 0 ? ' ' : ''}精神 + {r.exp_spirit}</>}
                           </span>
                         )}
                       </div>

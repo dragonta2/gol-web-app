@@ -292,6 +292,11 @@
 - AI判定: 判定理由の上に「総評」見出しを追加
 - AI生成テキストの文字数制限: 管理者用に総評・これまでの冒険・これからの冒険・辛口コーチングアドバイスの最小・最大文字数を設定可能に。ai_output_limits テーブル・GET/PATCH API・世界観設定画面の「文字数制限」UIを追加。一括生成時に制限をプロンプトに反映
 - 文字数制限の保存失敗対応: RLS に管理者用 INSERT ポリシーを追加（add-ai-output-limits.sql）。保存エラー時にサーバー詳細をトーストで表示
+- 表記統一: 「- 5G」「身体 + ◯」「頭脳 + ◯」「精神 + ◯」の半角スペースを全画面で統一（habit-list, journal-form, kanban-board, todo-summary-tab, collapsible-dashboard-header, settings/habits, settings/todos）
+- ToDo編集のモーダル集約: サブタスクのリネーム・削除・追加は編集モーダル内のみ。カード一覧ではサブタスクは名前＋完了日時表示のみ
+- 属性ラベル: EXP_ATTRIBUTE_LABELS を「体→身体」「頭→頭脳」「心→精神」に変更（lib/types.ts）
+- サブタスク三角マークのサイズ調整・サブタスクありのToDoはデフォルト展開（ToDoサマリー・カンバン）
+- 子習慣ネスト機能: Planモードで実装計画を策定（親は見出しのみ・子のみチェック）。99-cursor-manual に Plan 保存先・.cursor 統一のメモを追記し改行ルール適用。ワークスペースを web-app に変更し .cursor を web-app に統一
 
 #### 決定事項
 
@@ -301,6 +306,7 @@
 
 - 一括生成: 「AI判定を実行」押下で「再生成」に変える／再生成の1日上限を2回に
 - 習慣: チェック時の増減ゴルド数・EXP数の表示／並び順の統一／Complete・SuperComplete ボーナス実装
+- 子習慣ネスト機能の実装（DB・API・スコア・UI）
 
 ---
 

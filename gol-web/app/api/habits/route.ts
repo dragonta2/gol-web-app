@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       habit_name,
+      description,
       habit_type,
       points,
       exp_body,
@@ -71,23 +72,29 @@ export async function POST(request: NextRequest) {
 
     const displayOrder = maxOrderHabit ? maxOrderHabit.display_order + 1 : 0;
 
-    // 習慣を作成
+    // 習慣を作成（description はカラムがある場合のみ送る＝マイグレーション未実施でも作成できるようにする）
+    const insertPayload: Record<string, unknown> = {
+      user_id: user.id,
+      habit_name: habit_name.trim(),
+      habit_type,
+      points: points || 1,
+      exp_body: exp_body || 0,
+      exp_mind: exp_mind || 0,
+      exp_spirit: exp_spirit || 0,
+      input_type: input_type || 'checkbox',
+      exclude_weekends: exclude_weekends || false,
+      exclude_from_complete: exclude_from_complete || false,
+      is_custom: true,
+      display_order: displayOrder,
+    };
+    const descValue = typeof description === 'string' && description.trim() ? description.trim() : null;
+    if (descValue !== null) {
+      insertPayload.description = descValue;
+    }
+
     const { data: newHabit, error: insertError } = await supabase
       .from('habits')
-      .insert({
-        user_id: user.id,
-        habit_name: habit_name.trim(),
-        habit_type,
-        points: points || 1,
-        exp_body: exp_body || 0,
-        exp_mind: exp_mind || 0,
-        exp_spirit: exp_spirit || 0,
-        input_type: input_type || 'checkbox',
-        exclude_weekends: exclude_weekends || false,
-        exclude_from_complete: exclude_from_complete || false,
-        is_custom: true,
-        display_order: displayOrder,
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
@@ -126,6 +133,7 @@ export async function PUT(request: NextRequest) {
     const {
       habitId,
       habit_name,
+      description,
       habit_type,
       points,
       exp_body,
@@ -176,20 +184,26 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // 習慣を更新
+    // 習慣を更新（description は値があるときだけ送る＝マイグレーション未実施でも更新できるようにする）
+    const updatePayload: Record<string, unknown> = {
+      habit_name: habit_name.trim(),
+      habit_type,
+      points: points || 1,
+      exp_body: exp_body || 0,
+      exp_mind: exp_mind || 0,
+      exp_spirit: exp_spirit || 0,
+      input_type: input_type || 'checkbox',
+      exclude_weekends: exclude_weekends || false,
+      exclude_from_complete: exclude_from_complete || false,
+    };
+    const descValue = typeof description === 'string' && description.trim() ? description.trim() : null;
+    if (descValue !== null) {
+      updatePayload.description = descValue;
+    }
+
     const { error: updateError } = await supabase
       .from('habits')
-      .update({
-        habit_name: habit_name.trim(),
-        habit_type,
-        points: points || 1,
-        exp_body: exp_body || 0,
-        exp_mind: exp_mind || 0,
-        exp_spirit: exp_spirit || 0,
-        input_type: input_type || 'checkbox',
-        exclude_weekends: exclude_weekends || false,
-        exclude_from_complete: exclude_from_complete || false,
-      })
+      .update(updatePayload)
       .eq('id', habitId);
 
     if (updateError) {

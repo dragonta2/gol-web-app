@@ -1,0 +1,5 @@
+{"location":"todo-summary-tab.tsx:637","message":"handleSaveTodo called","data":{"taskName":"テストタスクA","selectedAttributes":["mind"],"isEditing":false},"timestamp":1770797623528,"hypothesisId":"D","runId":"run1"}
+{"location":"todo-summary-tab.tsx:665","message":"Using userId from props","data":{"userId":"0ae2e7b0-d3f3-4d9a-96b5-eee183aa6379","supabaseExists":true},"timestamp":1770797623528,"hypothesisId":"fix-verify","runId":"post-fix"}
+{"location":"todo-summary-tab.tsx:760","message":"insert result","data":{"success":true,"errorMsg":null,"errorCode":null,"newTodoId":"3e71d42e-1a62-4b71-b2fe-49677f9ed8bb"},"timestamp":1770797624373,"hypothesisId":"fix-verify","runId":"post-fix"}
+{"location":"todo-summary-tab.tsx:637","message":"handleSaveTodo called","data":{"taskName":"テストタスクA","selectedAttributes":["mind"],"isEditing":true},"timestamp":1770797668628,"hypothesisId":"D","runId":"run1"}
+{"location":"todo-summary-tab.tsx:665","message":"Using userId from props","data":{"userId":"0ae2e7b0-d3f3-4d9a-96b5-eee183aa6379","supabaseExists":true},"timestamp":1770797668629,"hypothesisId":"fix-verify","runId":"post-fix"}

@@ -69,11 +69,31 @@ export default function TestTodosPage() {
         console.log('✅ プロファイル既に存在');
       }
 
+      // 挿入するテスト用のタスク名一覧（重複挿入対策で既存を削除するために使用）
+      const testTaskNames = [
+        '沖縄旅行',
+        '確定申告',
+        '健康診断',
+        'パスポート受領',
+        'スキルシート',
+        'ブログ記事',
+      ];
+
+      // 既存のテストデータ（同じ task_name）を削除（2回目以降の挿入で UNIQUE 制約エラーを防ぐ）
+      setMessage('既存のテストデータを確認中...');
+      const { error: deleteError } = await supabase
+        .from('todos')
+        .delete()
+        .eq('user_id', user.id)
+        .in('task_name', testTaskNames);
+
+      if (deleteError) {
+        console.warn('既存テストデータ削除時の警告（無視して続行）:', deleteError);
+      }
+
       // テストデータを挿入
       setMessage('ToDoテストデータを挿入中...');
       console.log('📝 テストデータ準備中...');
-      // 注意: difficultyフィールドはデータベースのデフォルト値（'medium'）に依存
-      // スキーマキャッシュの問題を回避するため、明示的に指定しない
       const testTodos = [
         {
           user_id: user.id,
@@ -85,6 +105,8 @@ export default function TestTodosPage() {
           status: 'active' as const,
           due_date: new Date('2024-11-01').toISOString().split('T')[0], // 期限超過
           display_order: 1,
+          difficulty: 'medium' as const,
+          is_on_hold: false,
         },
         {
           user_id: user.id,
@@ -96,6 +118,8 @@ export default function TestTodosPage() {
           status: 'active' as const,
           due_date: new Date('2024-11-15').toISOString().split('T')[0],
           display_order: 2,
+          difficulty: 'medium' as const,
+          is_on_hold: false,
         },
         {
           user_id: user.id,
@@ -107,6 +131,8 @@ export default function TestTodosPage() {
           status: 'active' as const,
           due_date: new Date('2024-11-20').toISOString().split('T')[0],
           display_order: 3,
+          difficulty: 'medium' as const,
+          is_on_hold: false,
         },
         {
           user_id: user.id,
@@ -118,6 +144,8 @@ export default function TestTodosPage() {
           status: 'in_progress' as const,
           due_date: new Date('2024-11-05').toISOString().split('T')[0],
           display_order: 4,
+          difficulty: 'medium' as const,
+          is_on_hold: false,
         },
         {
           user_id: user.id,
@@ -130,6 +158,8 @@ export default function TestTodosPage() {
           due_date: null,
           completed_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3日前
           display_order: 5,
+          difficulty: 'medium' as const,
+          is_on_hold: false,
         },
         {
           user_id: user.id,
@@ -142,6 +172,8 @@ export default function TestTodosPage() {
           due_date: null,
           completed_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(), // 4日前
           display_order: 6,
+          difficulty: 'medium' as const,
+          is_on_hold: false,
         },
       ];
 

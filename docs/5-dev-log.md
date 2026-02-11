@@ -79,6 +79,33 @@
 - gol-web: lib/ai/ai-output-limits.ts（新規）, app/api/settings/ai-output-limits/route.ts（新規）, lib/ai/openai.ts, app/api/ai/batch/route.ts, app/settings/account/account-settings-client.tsx, app/dashboard/journal-form.tsx, lib/score-calculator.ts, app/dashboard/page.tsx ほか
 - docs: sql-snippet/add-ai-output-limits.sql（新規）, 4-project-progress.md, 5-dev-log.md
 
+#### 表記統一・ToDo編集モーダル集約・子習慣計画・Cursor手順
+
+**実施内容（詳細）:**
+
+- **表記統一**
+  - 「- 5G」「身体 + ◯」「頭脳 + ◯」「精神 + ◯」の半角スペースを全画面で統一。対象: habit-list.tsx, journal-form.tsx, kanban-board.tsx, todo-summary-tab.tsx, collapsible-dashboard-header.tsx, settings/habits/page.tsx, settings/todos/page.tsx
+
+- **ToDo編集のモーダル集約**
+  - サブタスクのリネーム・削除・追加は編集モーダル内に集約。カード一覧ではサブタスクは名前＋完了日時表示のみ（編集・削除ボタンは削除）。handleEditSubtask(subtask, nameOverride?) を追加し、モーダル用に modalSubtaskNames を利用。
+
+- **属性ラベル**
+  - lib/types.ts の EXP_ATTRIBUTE_LABELS を「体→身体」「頭→頭脳」「心→精神」に変更。
+
+- **サブタスク表示**
+  - 三角マークを text-[0.7rem] leading-none scale-95 origin-left に調整（todo-summary-tab.tsx, kanban-board.tsx）。サブタスクが1件以上ある ToDo はデフォルトで展開（expandedTodos / expandedSubtaskTodoIds の初期値と useEffect で同期）。
+
+- **子習慣ネスト機能の計画**
+  - Planモードで実装計画を策定（親は見出しのみ・子のみチェック、報酬は親の points/exp を1回だけ加算）。計画は .cursor/plans/ に保存。
+
+- **Cursor手順・ワークスペース**
+  - 99-cursor-manual.md に「ワークスペースで保存したときの保存先と .cursor の統一」を追記（リスト項目間の改行ルールを適用）。ワークスペースを web-app で開く形に変更し、.cursor を web-app 配下に統一（plans・rules を Git 管理内に）。
+
+**変更・追加ファイル:**
+- gol-web: app/api/auth/google/route.ts, app/api/habits/route.ts, app/auth/callback/route.ts, middleware.ts, collapsible-dashboard-header.tsx, dashboard-tabs.tsx, habit-list.tsx, journal-form.tsx, kanban-board.tsx, page.tsx, todo-summary-tab.tsx, settings/habits/page.tsx, settings/todos/page.tsx, test-todos/page.tsx, date-selector.tsx, lib/types.ts
+- docs: 0-AI-prompt-memo.md, sql-snippet/add-habit-description.sql, 4-project-progress.md, 5-dev-log.md
+- .cursor/plans/（子習慣ネスト機能の計画）
+
 ---
 
 ### 260210-火

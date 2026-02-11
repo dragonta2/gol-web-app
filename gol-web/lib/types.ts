@@ -311,9 +311,9 @@ export const DIFFICULTY_MULTIPLIERS: Record<Difficulty, number> = {
 export type ExpAttribute = 'body' | 'mind' | 'spirit';
 
 export const EXP_ATTRIBUTE_LABELS: Record<ExpAttribute, string> = {
-  body: '体',
-  mind: '頭',
-  spirit: '心',
+  body: '身体',
+  mind: '頭脳',
+  spirit: '精神',
 };
 
 /**
@@ -401,6 +401,8 @@ export interface HabitListProps {
  * 親コンポーネント（page.tsx）から受け取るデータ
  */
 export interface DashboardTabsProps {
+  /** 認証済みユーザーID（サーバーで取得してクライアントに渡す） */
+  userId: string;
   /** 習慣リスト（配列） */
   habits: Habit[];
   /** 今日の習慣記録（配列） */
@@ -461,6 +463,8 @@ export interface JournalFormProps {
  * サブタスクの追加・テキスト編集はToDoサマリー画面で行い、日誌からは編集リンクで遷移する。
  */
 export interface KanbanBoardProps {
+  /** 認証済みユーザーID（サーバーで取得してクライアントに渡す） */
+  userId: string;
   /** ToDoタスクリスト（配列） */
   todos: Todo[];
   /** 今日のToDo完了記録（配列） */

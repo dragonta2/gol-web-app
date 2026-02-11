@@ -36,6 +36,7 @@ export interface DashboardTabsOwnProps extends DashboardTabsProps {
 }
 
 export default function DashboardTabs({
+  userId,
   habits,
   habitLogs,
   dailyLogId,
@@ -240,6 +241,7 @@ export default function DashboardTabs({
 
             {/* ToDoリスト（フィルター枠内右上に新規タスクボタン） */}
             <KanbanBoard
+              userId={userId}
               todos={todos}
               todoLogs={todoLogs}
               todoSubtasks={todoSubtasks}
@@ -346,6 +348,7 @@ export default function DashboardTabs({
             className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg"
           >
             <TodoSummaryTab
+              userId={userId}
               todos={todos}
               todoLogs={todoLogs}
               todoSubtasks={todoSubtasks}

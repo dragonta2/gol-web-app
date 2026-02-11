@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo, useRef } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { Todo, TodoLog, TodoSubtask, Difficulty } from "@/lib/types"
@@ -35,6 +35,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
 
 interface TodoSummaryTabProps {
+  userId: string
   todos: Todo[]
   todoLogs: TodoLog[]
   todoSubtasks: TodoSubtask[]
@@ -62,6 +63,7 @@ interface TodoFormData {
 }
 
 export default function TodoSummaryTab({
+  userId,
   todos,
   todoLogs,
   todoSubtasks,
@@ -76,6 +78,10 @@ export default function TodoSummaryTab({
   const [isModalOpen, setIsModalOpen] = useState(false)
   /** 編集モーダル内で新規追加するサブタスク名 */
   const [modalNewSubtaskName, setModalNewSubtaskName] = useState("")
+  /** 編集モーダル内でサブタスク名を編集するときの一時値（subtask.id -> 表示名） */
+  const [modalSubtaskNames, setModalSubtaskNames] = useState<
+    Record<string, string>
+  >({})
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   // サブタスクが1件以上あるToDoはデフォルトで展開
@@ -84,15 +90,15 @@ export default function TodoSummaryTab({
     for (const st of todoSubtasks) ids.add(st.todo_id)
     return ids
   })
-  const [editingSubtask, setEditingSubtask] = useState<{
-    todoId: string
-    subtask: TodoSubtask | null
-  } | null>(null)
-  const [subtaskFormData, setSubtaskFormData] = useState({ subtask_name: "" })
-  /** サブタスク名入力（非制御にしてIME確実に動作。保存時に ref から取得） */
-  const subtaskInputRef = useRef<HTMLInputElement>(null)
-  /** 枠外クリックで編集解除するための編集エリア ref */
-  const subtaskEditAreaRef = useRef<HTMLDivElement>(null)
+  // todoSubtasks の変更時（例: 再取得後）も、サブタスクがある ToDo を展開状態にしておく
+  useEffect(() => {
+    if (todoSubtasks.length === 0) return
+    setExpandedTodos((prev) => {
+      const next = new Set(prev)
+      for (const st of todoSubtasks) next.add(st.todo_id)
+      return next
+    })
+  }, [todoSubtasks])
   // フィルター状態（初回はサーバーとクライアントで同じにし、マウント後に localStorage から復元して Hydration エラーを防ぐ）
   const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>([])
   // 月ごとのフィルター状態（'all' = すべて、'YYYY-MM' = 特定の月）
@@ -128,21 +134,6 @@ export default function TodoSummaryTab({
       JSON.stringify(filterDifficulties),
     )
   }, [filterDifficulties])
-
-  // サブタスク編集時：枠外クリックで編集解除
-  useEffect(() => {
-    if (editingSubtask == null) return
-    const el = subtaskEditAreaRef.current
-    if (!el) return
-    const handleMouseDown = (e: MouseEvent) => {
-      if (!el.contains(e.target as Node)) {
-        setEditingSubtask(null)
-        setSubtaskFormData({ subtask_name: "" })
-      }
-    }
-    document.addEventListener("mousedown", handleMouseDown)
-    return () => document.removeEventListener("mousedown", handleMouseDown)
-  }, [editingSubtask])
 
   /** 属性選択（体・頭・心）。やさしいは1つのみ。編集時も変更可 */
   const [selectedAttributes, setSelectedAttributes] = useState<ExpAttribute[]>([
@@ -493,6 +484,7 @@ export default function TodoSummaryTab({
   // モーダルを開く（編集）
   const handleOpenEditModal = (todo: Todo) => {
     setEditingTodo(todo)
+    setModalSubtaskNames({})
     const attrs = inferAttributesFromTodo(todo)
     setSelectedAttributes(attrs)
     setFormData({
@@ -514,6 +506,7 @@ export default function TodoSummaryTab({
     setIsModalOpen(false)
     setEditingTodo(null)
     setModalNewSubtaskName("")
+    setModalSubtaskNames({})
   }
 
   // 日誌カンバンから「編集」で飛んできたとき、該当タスクの編集モーダルを開く
@@ -522,6 +515,7 @@ export default function TodoSummaryTab({
     const todo = todos.find((t) => t.id === initialEditTodoId)
     if (!todo) return
     setEditingTodo(todo)
+    setModalSubtaskNames({})
     setSelectedAttributes(inferAttributesFromTodo(todo))
     setFormData({
       task_name: todo.task_name,
@@ -566,17 +560,7 @@ export default function TodoSummaryTab({
     try {
       const supabase = createClient()
 
-      // 現在のユーザーを取得
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser()
-      if (authError || !user) {
-        console.error("ユーザー取得エラー:", authError)
-        return
-      }
-
-      // 報酬を計算
+      // 報酬を計算（userId はサーバーから props で渡されているため、ここでの再認証は不要）
       const reward = calculateReward(todo)
 
       // todo_logsに記録を作成または更新（UNIQUE制約があるためUPSERT）
@@ -613,12 +597,7 @@ export default function TodoSummaryTab({
     try {
       const supabase = createClient()
 
-      const { error: authError } = await supabase.auth.getUser()
-      if (authError) {
-        console.error("ユーザー取得エラー:", authError)
-        return
-      }
-
+      // userId はサーバーから props で渡されているため、ここでの再認証は不要
       const { error: logDeleteError } = await supabase
         .from("todo_logs")
         .delete()
@@ -661,17 +640,7 @@ export default function TodoSummaryTab({
     try {
       const supabase = createClient()
 
-      // 現在のユーザーを取得
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser()
-      if (authError || !user) {
-        toast.error("ログインが必要です", {
-          description: "再度ログインしてください",
-        })
-        return
-      }
+      // サーバーで認証済みの userId を props から使用（ミドルウェア＋Cookie 非 httpOnly でブラウザ側セッションも利用可能）
 
       // 最大display_orderを取得（新規作成時）
       let displayOrder = 0
@@ -679,7 +648,7 @@ export default function TodoSummaryTab({
         const { data: maxOrderTodo } = await supabase
           .from("todos")
           .select("display_order")
-          .eq("user_id", user.id)
+          .eq("user_id", userId)
           .order("display_order", { ascending: false })
           .limit(1)
           .single()
@@ -693,7 +662,7 @@ export default function TodoSummaryTab({
         ? { ...editingTodo, ...formData }
         : {
             id: "",
-            user_id: user.id,
+            user_id: userId,
             task_name: formData.task_name.trim(),
             sp_points: formData.sp_points,
             sp_exp_body: formData.sp_exp_body,
@@ -756,7 +725,7 @@ export default function TodoSummaryTab({
         const { data: newTodo, error } = await supabase
           .from("todos")
           .insert({
-            user_id: user.id,
+            user_id: userId,
             task_name: formData.task_name.trim(),
             sp_points: formData.sp_points,
             sp_exp_body: formData.sp_exp_body,
@@ -775,9 +744,18 @@ export default function TodoSummaryTab({
 
         if (error || !newTodo) {
           console.error("ToDo作成エラー:", error)
-          toast.error("ToDoの作成に失敗しました", {
-            description: error?.message || "データベースエラーが発生しました",
-          })
+          const isAuthError =
+            (error as { code?: string; status?: number } | null)?.code === "PGRST301" ||
+            (error as { status?: number } | null)?.status === 401
+          if (isAuthError) {
+            toast.error("ログインが必要です", {
+              description: "再度ログインしてください",
+            })
+          } else {
+            toast.error("ToDoの作成に失敗しました", {
+              description: error?.message || "データベースエラーが発生しました",
+            })
+          }
           return
         }
 
@@ -888,9 +866,9 @@ export default function TodoSummaryTab({
     }
   }
 
-  // サブタスクを追加（nameOverride が渡されればそれを使用、未指定時は ref から取得）
-  const handleAddSubtask = async (todoId: string, nameOverride?: string) => {
-    const name = (nameOverride ?? subtaskInputRef.current?.value)?.trim() ?? ""
+  // サブタスクを追加（モーダルから名前を渡す）
+  const handleAddSubtask = async (todoId: string, nameOverride: string) => {
+    const name = nameOverride?.trim() ?? ""
     if (!name) {
       toast.error("サブタスク名を入力してください")
       return
@@ -926,11 +904,6 @@ export default function TodoSummaryTab({
         return
       }
 
-      // フォームをリセット
-      setSubtaskFormData({ subtask_name: "" })
-      setEditingSubtask(null)
-
-      // ページをリフレッシュしてデータを再取得
       router.refresh()
     } catch (err) {
       console.error("予期しないエラー:", err)
@@ -941,12 +914,15 @@ export default function TodoSummaryTab({
     }
   }
 
-  // サブタスクを編集
-  const handleEditSubtask = async (subtask: TodoSubtask) => {
-    const name = subtaskInputRef.current?.value?.trim() ?? ""
+  // サブタスクを編集（モーダルから nameOverride を渡してリネーム）
+  const handleEditSubtask = async (
+    subtask: TodoSubtask,
+    nameOverride?: string,
+  ): Promise<boolean> => {
+    const name = (nameOverride ?? "").trim()
     if (!name) {
       toast.error("サブタスク名を入力してください")
-      return
+      return false
     }
 
     try {
@@ -962,21 +938,18 @@ export default function TodoSummaryTab({
         toast.error("サブタスクの更新に失敗しました", {
           description: error.message || "データベースエラーが発生しました",
         })
-        return
+        return false
       }
 
-      // フォームをリセット
-      setSubtaskFormData({ subtask_name: "" })
-      setEditingSubtask(null)
-
-      // ページをリフレッシュしてデータを再取得
       router.refresh()
+      return true
     } catch (err) {
       console.error("予期しないエラー:", err)
       toast.error("エラーが発生しました", {
         description:
           err instanceof Error ? err.message : "予期しないエラーが発生しました",
       })
+      return false
     }
   }
 
@@ -1071,16 +1044,16 @@ export default function TodoSummaryTab({
                 reward.exp_mind > 0 ||
                 reward.exp_spirit > 0) && (
                 <span className={reward.points > 0 ? " ml-1" : ""}>
-                  {reward.exp_body > 0 && <>身体+{reward.exp_body}</>}
+                  {reward.exp_body > 0 && <>身体 + {reward.exp_body}</>}
                   {reward.exp_mind > 0 && (
                     <>
-                      {reward.exp_body > 0 ? " " : ""}頭脳+{reward.exp_mind}
+                      {reward.exp_body > 0 ? " " : ""}頭脳 + {reward.exp_mind}
                     </>
                   )}
                   {reward.exp_spirit > 0 && (
                     <>
                       {reward.exp_mind > 0 || reward.exp_body > 0 ? " " : ""}
-                      精神+{reward.exp_spirit}
+                      精神 + {reward.exp_spirit}
                     </>
                   )}
                 </span>
@@ -1101,11 +1074,10 @@ export default function TodoSummaryTab({
           </div>
         </div>
 
-        {/* サブタスク表示 */}
+        {/* サブタスク表示（一覧のみ。編集・削除はタスクの「編集」モーダル内で行う） */}
         {(() => {
           const subtasks = getSubtasksForTodo(todo.id)
           const isExpanded = expandedTodos.has(todo.id)
-          const isEditing = editingSubtask?.todoId === todo.id
 
           return (
             <div
@@ -1122,104 +1094,40 @@ export default function TodoSummaryTab({
                   aria-expanded={isExpanded}
                   className="flex items-center gap-2 text-zinc-400 hover:text-zinc-300 h-auto p-0"
                 >
-                  <span aria-hidden="true">{isExpanded ? "▼" : "▶"}</span>
+                  <span aria-hidden="true" className="inline-block text-[0.7rem] leading-none scale-95 origin-left">{isExpanded ? "▼" : "▶"}</span>
                   <span>サブタスク ({subtasks.length}件)</span>
                 </Button>
               </div>
 
               {isExpanded && (
                 <div className="space-y-2 w-full min-w-0">
-                  {subtasks.length === 0 && !isEditing && (
+                  {subtasks.length === 0 && (
                     <p className="text-zinc-500">サブタスクがありません</p>
                   )}
                   {subtasks.map((subtask) => (
                     <div
                       key={subtask.id}
-                      className={`flex items-center w-full gap-2 p-2 bg-zinc-800 rounded ${!isCompleted && editingSubtask?.todoId === todo.id && editingSubtask?.subtask?.id === subtask.id ? "pr-0" : ""} ${isCompleted ? "opacity-75" : "hover:bg-zinc-750"}`}
+                      className={`flex items-center w-full gap-2 p-2 bg-zinc-800 rounded ${isCompleted ? "opacity-75" : ""}`}
                     >
-                      {/* ToDoサマリーではチェック操作不可のためチェックボックスは表示しない */}
-                      {!isCompleted &&
-                      editingSubtask?.todoId === todo.id &&
-                      editingSubtask?.subtask?.id === subtask.id ? (
-                        <div
-                          ref={subtaskEditAreaRef}
-                          className="flex-1 min-w-0 flex items-center gap-2 w-full"
+                      <span className="flex-1 flex items-center gap-2 flex-wrap min-w-0">
+                        <span
+                          className={
+                            subtask.is_completed
+                              ? "text-sm text-zinc-200 line-through decoration-[3px]"
+                              : "text-sm text-zinc-300"
+                          }
                         >
-                          <Input
-                            ref={subtaskInputRef}
-                            type="text"
-                            key={`subtask-edit-${subtask.id}`}
-                            defaultValue={subtask.subtask_name}
-                            className="flex-1 min-w-0 w-full px-2 py-1 bg-zinc-900 border-zinc-700 text-zinc-100 focus:ring-cyan-500"
-                            placeholder="サブタスク名"
-                            autoFocus
-                          />
-                          <Button
-                            onClick={() => handleEditSubtask(subtask)}
-                            size="sm"
-                            aria-label="サブタスクの編集を保存する"
-                            className="px-2 py-1 text-sm shrink-0 bg-cyan-600 hover:bg-cyan-700 text-white h-auto"
-                          >
-                            保存
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="flex-1 flex items-center gap-2 flex-wrap min-w-0">
-                            <span
-                              className={
-                                subtask.is_completed
-                                  ? "text-sm text-zinc-200 line-through decoration-[3px]"
-                                  : "text-sm text-zinc-300"
-                              }
-                            >
-                              {subtask.subtask_name}
-                            </span>
-                            {subtask.is_completed &&
-                              (subtask.completed_at ?? subtask.updated_at) && (
-                                <span className="text-zinc-300 text-sm font-normal no-underline shrink-0">
-                                  {formatCompletedDateTime(
-                                    subtask.completed_at ?? subtask.updated_at,
-                                  )}
-                                </span>
+                          {subtask.subtask_name}
+                        </span>
+                        {subtask.is_completed &&
+                          (subtask.completed_at ?? subtask.updated_at) && (
+                            <span className="text-zinc-300 text-sm font-normal no-underline shrink-0">
+                              {formatCompletedDateTime(
+                                subtask.completed_at ?? subtask.updated_at,
                               )}
-                          </span>
-                          {!isCompleted && (
-                            <div className="flex items-center gap-0 shrink-0 ml-auto pl-4 -mr-2 text-xs">
-                              <Button
-                                onClick={() => {
-                                  setEditingSubtask({
-                                    todoId: todo.id,
-                                    subtask,
-                                  })
-                                  setSubtaskFormData({
-                                    subtask_name: subtask.subtask_name,
-                                  })
-                                }}
-                                variant="ghost"
-                                size="sm"
-                                aria-label={`${subtask.subtask_name}を編集する`}
-                                className="text-xs text-cyan-400 hover:text-cyan-300 group h-auto px-2 py-0.5 flex items-center min-h-0"
-                              >
-                                <span className="group-hover:underline">
-                                  編集
-                                </span>
-                              </Button>
-                              <Button
-                                onClick={() => handleDeleteSubtask(subtask)}
-                                variant="ghost"
-                                size="sm"
-                                aria-label={`${subtask.subtask_name}を削除する`}
-                                className="text-xs text-red-400 hover:text-red-300 group h-auto px-2 py-0.5 flex items-center min-h-0 -ml-2"
-                              >
-                                <span className="group-hover:underline">
-                                  削除
-                                </span>
-                              </Button>
-                            </div>
+                            </span>
                           )}
-                        </>
-                      )}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -1683,8 +1591,8 @@ export default function TodoSummaryTab({
             })}
           </div>
           <p className="text-sm text-zinc-500 mt-1">
-            報酬: {formData.sp_points}Gold / 身体+{formData.sp_exp_body} 頭脳+
-            {formData.sp_exp_mind} 精神+{formData.sp_exp_spirit}
+            報酬: {formData.sp_points}Gold / 身体 + {formData.sp_exp_body} 頭脳 +
+            {formData.sp_exp_mind} 精神 + {formData.sp_exp_spirit}
           </p>
         </FormCard>
 
@@ -1728,19 +1636,53 @@ export default function TodoSummaryTab({
           </label>
         )}
 
-        {/* サブタスク（編集時のみ：一覧・追加・削除） */}
+        {/* サブタスク（編集時のみ：一覧・リネーム・追加・削除） */}
         {editingTodo && (
           <div className="space-y-3">
             <FormLabel>サブタスク</FormLabel>
+            <p className="text-sm text-zinc-400">
+              名前を変えたら「保存」を押してください。
+            </p>
             <div className="space-y-2">
               {getSubtasksForTodo(editingTodo.id).map((subtask) => (
                 <div
                   key={subtask.id}
-                  className="flex items-center justify-between gap-2 p-2 bg-zinc-800 rounded"
+                  className="flex items-center gap-2 p-2 bg-zinc-800 rounded"
                 >
-                  <span className="text-sm text-zinc-300 truncate min-w-0">
-                    {subtask.subtask_name}
-                  </span>
+                  <Input
+                    type="text"
+                    value={
+                      modalSubtaskNames[subtask.id] ?? subtask.subtask_name
+                    }
+                    onChange={(e) =>
+                      setModalSubtaskNames((prev) => ({
+                        ...prev,
+                        [subtask.id]: e.target.value,
+                      }))
+                    }
+                    className="flex-1 min-w-0 bg-zinc-900 border-zinc-700 text-zinc-100 text-sm"
+                    placeholder="サブタスク名"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      const name =
+                        modalSubtaskNames[subtask.id] ?? subtask.subtask_name
+                      const ok = await handleEditSubtask(subtask, name)
+                      if (ok) {
+                        setModalSubtaskNames((prev) => {
+                          const next = { ...prev }
+                          delete next[subtask.id]
+                          return next
+                        })
+                      }
+                    }}
+                    className="text-xs text-cyan-400 hover:text-cyan-300 shrink-0 h-auto py-1"
+                  >
+                    保存
+                  </Button>
                   <Button
                     type="button"
                     variant="ghost"

@@ -17,7 +17,8 @@ export async function GET(request: NextRequest) {
     path: '/' as const,
     maxAge: 60 * 60 * 24 * 400,
     sameSite: 'lax' as const,
-    httpOnly: true,
+    // httpOnly は false（デフォルト）にする。
+    // ブラウザの createBrowserClient が document.cookie 経由で PKCE の code_verifier Cookie を読む必要があるため。
     secure: process.env.NODE_ENV === 'production',
   };
 

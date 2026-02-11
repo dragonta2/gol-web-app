@@ -56,10 +56,11 @@ export default function DateSelector() {
           <Button
             variant="outline"
             size="default"
-            className="h-10 w-10 p-0 bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
+            className="h-10 gap-2 px-3 bg-zinc-900 border-zinc-700 hover:bg-zinc-800 text-white"
             aria-label="日付を選ぶ"
           >
-            <CalendarIcon className="h-5 w-5" />
+            <CalendarIcon className="h-5 w-5 shrink-0" />
+            <span className="text-white">カレンダー</span>
           </Button>
         </DialogTrigger>
         <DialogContent
