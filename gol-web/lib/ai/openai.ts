@@ -29,12 +29,20 @@ export function hasApiKey(): boolean {
 
 /**
  * AI判定用のプロンプト生成
- * 
+ *
  * @param journalText 日誌本文
  * @param impressionText 一言感想
- * @returns プロンプト文字列
+ * @param limits 総評（reasoning）の文字数制限（省略時は指示なし）
  */
-export function createJudgmentPrompt(journalText: string, impressionText: string): string {
+export function createJudgmentPrompt(
+  journalText: string,
+  impressionText: string,
+  limits?: { reasoning_min: number; reasoning_max: number } | null
+): string {
+  const limitLine =
+    limits && limits.reasoning_max > 0
+      ? `\n「reasoning」は${limits.reasoning_min}文字以上${limits.reasoning_max}文字以内で記述してください。`
+      : '';
   return `あなたは厳格なコーチです。以下の日誌と一言感想を読んで、体調スコアと気分スコアを0-100点で判定してください。
 
 【日誌本文】
@@ -47,8 +55,8 @@ ${impressionText || '（未記入）'}
 {
   "condition_body": 0-100の整数（体調スコア）,
   "condition_mood": 0-100の整数（気分スコア）,
-  "reasoning": "判定理由（簡潔に）"
-}`;
+  "reasoning": "判定理由（総評。簡潔に）"
+}${limitLine}`;
 }
 
 /**
@@ -63,6 +71,7 @@ ${impressionText || '（未記入）'}
  * @param worldConfig 世界観設定（未指定時はゴースト・オブ・ヨウテイ風のデフォルト）
  * @param personalityAddition 性格タイプによる追加指示（省略可）。世界観の口調の後に「加えて」で結合
  * @param nickname ユーザーのニックネーム（アドバイス冒頭の「〇〇よ。」に使用。未設定時は世界観のデフォルト名）
+ * @param limits アドバイスの文字数制限（省略時は 200-300 文字の指示）
  * @returns プロンプト文字列
  */
 export function createAdvicePrompt(
@@ -72,7 +81,8 @@ export function createAdvicePrompt(
   conditionMood: number,
   worldConfig?: StoryWorldConfig | null,
   personalityAddition?: string | null,
-  nickname: string = ''
+  nickname: string = '',
+  limits?: { advice_min: number; advice_max: number } | null
 ): string {
   const toneInstruction =
     worldConfig?.adviceToneInstruction ??
@@ -99,7 +109,7 @@ ${impressionText || '（未記入）'}
 【体調スコア】${conditionBody}/100
 【気分スコア】${conditionMood}/100
 
-200-300文字で生成してください。`;
+${limits && limits.advice_max > 0 ? `${limits.advice_min}-${limits.advice_max}文字で生成してください。` : '200-300文字で生成してください。'}`;
 }
 
 /**
@@ -111,6 +121,7 @@ ${impressionText || '（未記入）'}
  * @param todos 完了したToDo
  * @param nickname ユーザーのニックネーム（あらすじ内の主人公名に使用）
  * @param worldConfig 世界観設定（未指定時はゴースト・オブ・ヨウテイ風のデフォルト）
+ * @param limits これまでの冒険の文字数制限（省略時は 300-400 文字の指示）
  * @returns プロンプト文字列
  */
 export function createStoryPrompt(
@@ -119,7 +130,8 @@ export function createStoryPrompt(
   habits: string[],
   todos: string[],
   nickname: string = '',
-  worldConfig?: StoryWorldConfig | null
+  worldConfig?: StoryWorldConfig | null,
+  limits?: { story_past_min: number; story_past_max: number } | null
 ): string {
   const protagonist = worldConfig?.protagonistName ?? '勇者';
   const heroInstruction = nickname.trim()
@@ -142,7 +154,7 @@ ${habits.length > 0 ? habits.join('、') : 'なし'}
 【完了したToDo】
 ${todos.length > 0 ? todos.join('、') : 'なし'}
 
-300-400文字で物語風のあらすじを生成してください。
+${limits && limits.story_past_max > 0 ? `${limits.story_past_min}-${limits.story_past_max}文字で` : '300-400文字で'}物語風のあらすじを生成してください。
 【禁止】「彼」「彼女」など性別を特定する代名詞は使わないでください。主人公を指すときは名前や「主人公」など中性な表現を使ってください。`;
 }
 
@@ -156,7 +168,8 @@ export function createStoryFuturePrompt(
   habits: string[],
   todos: string[],
   nickname: string = '',
-  worldConfig?: StoryWorldConfig | null
+  worldConfig?: StoryWorldConfig | null,
+  limits?: { story_future_min: number; story_future_max: number } | null
 ): string {
   const protagonist = worldConfig?.protagonistName ?? '勇者';
   const heroInstruction = nickname.trim()
@@ -179,7 +192,7 @@ ${habits.length > 0 ? habits.join('、') : 'なし'}
 【完了したToDo】
 ${todos.length > 0 ? todos.join('、') : 'なし'}
 
-300-400文字で、前向きな展望・これからへの物語を生成してください。
+${limits && limits.story_future_max > 0 ? `${limits.story_future_min}-${limits.story_future_max}文字で` : '300-400文字で'}、前向きな展望・これからへの物語を生成してください。
 【禁止】出力に「あらすじ」「これからの冒険」などの見出し・タイトル行を含めないでください。物語本文のみを出力してください。
 【禁止】「彼」「彼女」など性別を特定する代名詞は使わないでください。主人公を指すときは名前や「主人公」など中性な表現を使ってください。`;
 }

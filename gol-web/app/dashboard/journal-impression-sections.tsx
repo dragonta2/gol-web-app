@@ -1,5 +1,6 @@
 'use client';
 
+import type { MutableRefObject } from 'react';
 import { useState, useEffect, memo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -20,6 +21,10 @@ interface JournalImpressionSectionsProps {
     journal?: boolean;
     impression?: boolean;
   }) => void;
+  /** 日誌確定済みのとき true（編集・自動保存を無効化） */
+  isConfirmed?: boolean;
+  /** AI判定実行時に親が参照する現在の日誌・感想テキスト（あれば更新する） */
+  journalTextsRef?: MutableRefObject<{ journalText: string; impressionText: string }>;
 }
 
 function JournalImpressionSections({ 
@@ -27,7 +32,9 @@ function JournalImpressionSections({
   dailyLog, 
   logDate,
   expandedStates,
-  onExpandedStateChange
+  onExpandedStateChange,
+  isConfirmed: isConfirmedProp,
+  journalTextsRef,
 }: JournalImpressionSectionsProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -90,26 +97,38 @@ function JournalImpressionSections({
     return selected.getTime() === today.getTime();
   })();
 
-  // 日誌が確定済みかどうか
-  const isConfirmed = dailyLog?.is_confirmed ?? false;
+  // 日誌が確定済みかどうか（親から渡されていればそれを優先）
+  const isConfirmed = isConfirmedProp ?? dailyLog?.is_confirmed ?? false;
 
-  // 編集可能かどうか（当日 OR 未確定の過去）
-  const isEditable = isToday || (isPastDate && !isConfirmed);
+  // 編集可能かどうか（未確定のときのみ。確定したら当日も編集不可）
+  const isEditable = !isConfirmed;
 
   // 日誌本文と一言感想の状態
   const [journalText, setJournalText] = useState(dailyLog?.journal_text || '');
   const [impressionText, setImpressionText] = useState(dailyLog?.one_line_comment || '');
 
-  // dailyLogが変更されたときに状態を更新
+  // 表示する日付（dailyLogId）が変わったときだけ props から状態を同期する。
+  // dailyLog の参照が変わるたびに上書きすると、保存後の router.refresh() で
+  // 入力中テキストが消えるため、日付変更時のみ同期する。
   useEffect(() => {
     if (dailyLog) {
-      setJournalText(dailyLog.journal_text || '');
-      setImpressionText(dailyLog.one_line_comment || '');
+      const j = dailyLog.journal_text || '';
+      const i = dailyLog.one_line_comment || '';
+      setJournalText(j);
+      setImpressionText(i);
+      if (journalTextsRef?.current) {
+        journalTextsRef.current.journalText = j;
+        journalTextsRef.current.impressionText = i;
+      }
     } else {
       setJournalText('');
       setImpressionText('');
+      if (journalTextsRef?.current) {
+        journalTextsRef.current.journalText = '';
+        journalTextsRef.current.impressionText = '';
+      }
     }
-  }, [dailyLog]);
+  }, [dailyLogId, dailyLog?.id, journalTextsRef]);
 
   // デバウンス用のタイマー
   const journalTextTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -118,6 +137,7 @@ function JournalImpressionSections({
   // 日誌本文の保存（デバウンス付き）
   const handleJournalTextChange = (value: string) => {
     setJournalText(value);
+    if (journalTextsRef?.current) journalTextsRef.current.journalText = value;
     if (!dailyLogId || !isEditable) return;
 
     // 既存のタイマーをクリア
@@ -145,6 +165,7 @@ function JournalImpressionSections({
   // 一言感想の保存（デバウンス付き）
   const handleImpressionTextChange = (value: string) => {
     setImpressionText(value);
+    if (journalTextsRef?.current) journalTextsRef.current.impressionText = value;
     if (!dailyLogId || !isEditable) return;
 
     // 既存のタイマーをクリア

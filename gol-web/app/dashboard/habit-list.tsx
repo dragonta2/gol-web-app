@@ -48,6 +48,8 @@ interface HabitListProps {
   dailyLogId: string | null;
   /** 表示中の日付（YYYY-MM-DD）。週末除外ラベル表示に使用 */
   logDate?: string | null;
+  /** 日誌確定済みのとき true（チェック・数値入力無効化） */
+  isConfirmed?: boolean;
 }
 
 interface HabitWithLog extends Habit {
@@ -68,7 +70,7 @@ interface HabitFormData {
   exclude_from_complete: boolean;
 }
 
-function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
+function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false }: HabitListProps) {
   const router = useRouter();
   const supabase = createClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -144,6 +146,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
 
   // habit_logsを更新または作成（API経由でサーバー側認証を使用）
   const updateHabitLog = async (habitId: string, isChecked: boolean, count: number) => {
+    if (isConfirmed) return;
     if (!dailyLogId) {
       toast.error('この日付の日誌がまだありません', {
         description: '日誌エリアで日付を選ぶか、今日の日付でチェックできます。',
@@ -230,6 +233,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
 
   // 数値入力の変更
   const updateCount = async (habitId: string, newCount: number) => {
+    if (isConfirmed) return;
     const habit = habitsWithLogs.find((h) => h.id === habitId);
     if (!habit) return;
 
@@ -656,8 +660,9 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
               {/* チェックボックス */}
               <button
                 id={`habit-${habit.id}`}
-                onClick={() => toggleCheck(habit.id)}
+                onClick={() => !isConfirmed && toggleCheck(habit.id)}
                 onKeyDown={(e) => {
+                  if (isConfirmed) return;
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     toggleCheck(habit.id);
@@ -665,13 +670,15 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
                 }}
                 aria-label={`${habit.habit_name}を${habit.checked ? '未完了' : '完了'}にする`}
                 aria-checked={habit.checked}
+                aria-disabled={isConfirmed}
                 role="checkbox"
-                tabIndex={0}
+                tabIndex={isConfirmed ? -1 : 0}
+                disabled={isConfirmed}
                 className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
                   habit.checked
                     ? 'bg-cyan-500 border-cyan-500'
                     : 'bg-transparent border-zinc-600 hover:border-zinc-400'
-                }`}
+                } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 {habit.checked && (
                   <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -683,7 +690,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
               {/* 習慣名 */}
               <label
                 htmlFor={`habit-${habit.id}`}
-                className={`block cursor-pointer truncate min-w-0 ${habit.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                className={`block truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${habit.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
               >
                 {habit.habit_name}
               </label>
@@ -790,8 +797,9 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
               {/* チェックボックス */}
               <button
                 id={`habit-${habit.id}`}
-                onClick={() => toggleCheck(habit.id)}
+                onClick={() => !isConfirmed && toggleCheck(habit.id)}
                 onKeyDown={(e) => {
+                  if (isConfirmed) return;
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     toggleCheck(habit.id);
@@ -799,13 +807,15 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
                 }}
                 aria-label={`${habit.habit_name}を${habit.checked ? '未完了' : '完了'}にする`}
                 aria-checked={habit.checked}
+                aria-disabled={isConfirmed}
                 role="checkbox"
-                tabIndex={0}
+                tabIndex={isConfirmed ? -1 : 0}
+                disabled={isConfirmed}
                 className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
                   habit.checked
                     ? 'bg-cyan-500 border-cyan-500'
                     : 'bg-transparent border-zinc-600 hover:border-zinc-400'
-                }`}
+                } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 {habit.checked && (
                   <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -923,8 +933,9 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
               {/* チェックボックス */}
               <button
                 id={`bonus-${bonusHabits[0].id}`}
-                onClick={toggleCompleteBonus}
+                onClick={() => !isConfirmed && toggleCompleteBonus()}
                 onKeyDown={(e) => {
+                  if (isConfirmed) return;
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     toggleCompleteBonus();
@@ -932,13 +943,15 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate }: HabitListProps) {
                 }}
                 aria-label={`${bonusHabits[0].habit_name}を${completeBonus ? '未完了' : '完了'}にする`}
                 aria-checked={completeBonus}
+                aria-disabled={isConfirmed}
                 role="checkbox"
-                tabIndex={0}
+                tabIndex={isConfirmed ? -1 : 0}
+                disabled={isConfirmed}
                 className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
                   completeBonus
                     ? 'bg-cyan-500 border-cyan-500'
                     : 'bg-transparent border-zinc-600 hover:border-zinc-400'
-                }`}
+                } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 {completeBonus && (
                   <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">

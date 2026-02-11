@@ -1,12 +1,11 @@
 /**
- * 習慣ログ更新API（習慣チェック・ポイント/EXP反映）
- * サーバー側で認証し、プロファイル更新と habit_logs の更新を行う
+ * 習慣ログ更新API（習慣チェックの記録のみ）
+ * ポイント/EXPの profiles 反映は確定ボタンで一括適用するため、ここでは habit_logs の更新のみ行う
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { validateUUID, validateAll } from '@/lib/validation';
-import { isWeekendOrHoliday } from '@/lib/date-utils';
 
 export async function POST(request: NextRequest) {
   try {
@@ -69,92 +68,7 @@ export async function POST(request: NextRequest) {
       .eq('habit_id', habitId)
       .maybeSingle();
 
-    const wasChecked = existingLog?.is_checked ?? false;
-    const previousCount = existingLog?.count ?? 0;
     const currentCount = habit.input_type === 'number' ? countNum : (isChecked ? 1 : 0);
-
-    // プロファイル取得
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('points, exp_body, exp_mind, exp_spirit')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: 'プロファイルの取得に失敗しました' }, { status: 500 });
-    }
-
-    // ポイント・EXP 差分計算（クライアントと同じロジック＋週末除外）
-    let pointsDelta = 0;
-    let expBodyDelta = 0;
-    let expMindDelta = 0;
-    let expSpiritDelta = 0;
-
-    const logDate = dailyLog.log_date;
-    const isWeekendToday = isWeekendOrHoliday(logDate);
-    const badHabitWeekendExcluded = habit.habit_type === 'bad' && habit.exclude_weekends === true && isWeekendToday;
-
-    if (habit.habit_type === 'bad') {
-      if (badHabitWeekendExcluded) {
-        // 週末除外: 減点・戻しなし
-      } else if (isChecked && !wasChecked) {
-        pointsDelta = -habit.points * currentCount;
-        expBodyDelta = -habit.exp_body * currentCount;
-        expMindDelta = -habit.exp_mind * currentCount;
-        expSpiritDelta = -habit.exp_spirit * currentCount;
-      } else if (!isChecked && wasChecked) {
-        pointsDelta = habit.points * previousCount;
-        expBodyDelta = habit.exp_body * previousCount;
-        expMindDelta = habit.exp_mind * previousCount;
-        expSpiritDelta = habit.exp_spirit * previousCount;
-      } else if (isChecked && wasChecked && habit.input_type === 'number') {
-        const countDelta = currentCount - previousCount;
-        pointsDelta = -habit.points * countDelta;
-        expBodyDelta = -habit.exp_body * countDelta;
-        expMindDelta = -habit.exp_mind * countDelta;
-        expSpiritDelta = -habit.exp_spirit * countDelta;
-      }
-    } else {
-      // 良習慣・ボーナス
-      if (isChecked && !wasChecked) {
-        pointsDelta = habit.points * currentCount;
-        expBodyDelta = habit.exp_body * currentCount;
-        expMindDelta = habit.exp_mind * currentCount;
-        expSpiritDelta = habit.exp_spirit * currentCount;
-      } else if (!isChecked && wasChecked) {
-        pointsDelta = -habit.points * previousCount;
-        expBodyDelta = -habit.exp_body * previousCount;
-        expMindDelta = -habit.exp_mind * previousCount;
-        expSpiritDelta = -habit.exp_spirit * previousCount;
-      } else if (isChecked && wasChecked && habit.input_type === 'number') {
-        const countDelta = currentCount - previousCount;
-        pointsDelta = habit.points * countDelta;
-        expBodyDelta = habit.exp_body * countDelta;
-        expMindDelta = habit.exp_mind * countDelta;
-        expSpiritDelta = habit.exp_spirit * countDelta;
-      }
-    }
-
-    // プロファイル更新（差分がある場合のみ）
-    if (pointsDelta !== 0 || expBodyDelta !== 0 || expMindDelta !== 0 || expSpiritDelta !== 0) {
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          points: Math.max(0, profile.points + pointsDelta),
-          exp_body: Math.max(0, profile.exp_body + expBodyDelta),
-          exp_mind: Math.max(0, profile.exp_mind + expMindDelta),
-          exp_spirit: Math.max(0, profile.exp_spirit + expSpiritDelta),
-        })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('習慣ログAPI: プロファイル更新エラー', updateError);
-        return NextResponse.json(
-          { error: 'プロファイルの更新に失敗しました', details: updateError.message },
-          { status: 500 }
-        );
-      }
-    }
 
     // habit_logs 更新または作成
     if (existingLog) {
@@ -164,17 +78,6 @@ export async function POST(request: NextRequest) {
         .eq('id', existingLog.id);
 
       if (logError) {
-        if (pointsDelta !== 0 || expBodyDelta !== 0 || expMindDelta !== 0 || expSpiritDelta !== 0) {
-          await supabase
-            .from('profiles')
-            .update({
-              points: Math.max(0, profile.points - pointsDelta),
-              exp_body: Math.max(0, profile.exp_body - expBodyDelta),
-              exp_mind: Math.max(0, profile.exp_mind - expMindDelta),
-              exp_spirit: Math.max(0, profile.exp_spirit - expSpiritDelta),
-            })
-            .eq('id', user.id);
-        }
         return NextResponse.json(
           { error: '習慣ログの更新に失敗しました', details: logError.message },
           { status: 500 }
@@ -192,17 +95,6 @@ export async function POST(request: NextRequest) {
           });
 
         if (insertError) {
-          if (pointsDelta !== 0 || expBodyDelta !== 0 || expMindDelta !== 0 || expSpiritDelta !== 0) {
-            await supabase
-              .from('profiles')
-              .update({
-                points: Math.max(0, profile.points - pointsDelta),
-                exp_body: Math.max(0, profile.exp_body - expBodyDelta),
-                exp_mind: Math.max(0, profile.exp_mind - expMindDelta),
-                exp_spirit: Math.max(0, profile.exp_spirit - expSpiritDelta),
-              })
-              .eq('id', user.id);
-          }
           return NextResponse.json(
             { error: '習慣ログの作成に失敗しました', details: insertError.message },
             { status: 500 }

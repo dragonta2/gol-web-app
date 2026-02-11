@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, lazy, Suspense } from "react"
+import { useState, useRef, lazy, Suspense } from "react"
 import KanbanBoard from "./kanban-board"
 import HabitList from "./habit-list"
 import JournalForm from "./journal-form"
@@ -46,6 +46,7 @@ export default function DashboardTabs({
   selectedDate,
   userName,
   isAdmin,
+  scoreBreakdown,
   activeTab: controlledActiveTab,
   onActiveTabChange,
 }: DashboardTabsOwnProps) {
@@ -71,6 +72,8 @@ export default function DashboardTabs({
     rights: true,
     ai: true,
   })
+  // 日誌・感想の現在値（AI判定実行時に JournalForm が参照する。JournalImpressionSections が更新）
+  const journalTextsRef = useRef({ journalText: '', impressionText: '' })
 
   // 日付判定
   const getTodayJST = () =>
@@ -84,8 +87,8 @@ export default function DashboardTabs({
 
   return (
     <div>
-      {/* 編集可否メッセージ（ページ上部に表示） */}
-      {isPastDate && isConfirmed && (
+      {/* 編集可否メッセージ（ページ上部に表示。確定したら当日も編集不可） */}
+      {isConfirmed && dailyLog && (
         <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4 mb-4">
           <p className="text-yellow-400 text-center font-medium flex items-center justify-center gap-2">
             <Lock className="w-4 h-4" />
@@ -93,7 +96,7 @@ export default function DashboardTabs({
           </p>
         </div>
       )}
-      {isPastDate && !isConfirmed && dailyLog && (
+      {!isConfirmed && dailyLog && (
         <div className="bg-blue-900/20 border border-blue-700/50 rounded-lg p-4 mb-4">
           <p className="text-blue-400 text-center font-medium flex items-center justify-center gap-2">
             <Unlock className="w-4 h-4" />
@@ -251,6 +254,7 @@ export default function DashboardTabs({
                 setActiveTab("todo-summary")
                 setOpenCreateModalOnSwitch(true)
               }}
+              isConfirmed={isConfirmed}
             />
 
             {/* 今日の日誌と一言感想 */}
@@ -268,6 +272,8 @@ export default function DashboardTabs({
                   ...states,
                 })
               }}
+              isConfirmed={isConfirmed}
+              journalTextsRef={journalTextsRef}
             />
 
             {/* 習慣チェックリスト */}
@@ -296,6 +302,7 @@ export default function DashboardTabs({
                     habitLogs={habitLogs}
                     dailyLogId={dailyLogId}
                     logDate={selectedDate || dailyLog?.log_date}
+                    isConfirmed={isConfirmed}
                   />
                 </div>
               )}
@@ -313,6 +320,8 @@ export default function DashboardTabs({
               }
               userName={userName}
               isAdmin={isAdmin}
+              scoreBreakdown={scoreBreakdown}
+              journalTextsRef={journalTextsRef}
             />
 
             {/* 過去の日誌一覧 */}

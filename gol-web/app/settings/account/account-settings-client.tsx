@@ -17,6 +17,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 import type { StoryWorldConfig, StoryWorldId } from "@/lib/ai/story-worlds"
+import type { AiOutputLimits } from "@/lib/ai/ai-output-limits"
+import { DEFAULT_AI_OUTPUT_LIMITS } from "@/lib/ai/ai-output-limits"
 import {
   type PersonalityTypeId,
   PERSONALITY_TYPES,
@@ -177,6 +179,11 @@ export default function AccountSettingsClient({
   const [dqExpanded, setDqExpanded] = useState(false)
   const [ghostExpanded, setGhostExpanded] = useState(false)
 
+  const [aiLimits, setAiLimits] = useState<AiOutputLimits>(DEFAULT_AI_OUTPUT_LIMITS)
+  const [aiLimitsLoading, setAiLimitsLoading] = useState(false)
+  const [aiLimitsSaving, setAiLimitsSaving] = useState(false)
+  const [aiLimitsLoadError, setAiLimitsLoadError] = useState<string | null>(null)
+
   const loadWorldConfigs = useCallback(async () => {
     if (!isAdmin) return
     setWorldConfigLoadError(null)
@@ -216,6 +223,53 @@ export default function AccountSettingsClient({
   useEffect(() => {
     loadWorldConfigs()
   }, [loadWorldConfigs])
+
+  const loadAiOutputLimits = useCallback(async () => {
+    if (!isAdmin) return
+    setAiLimitsLoadError(null)
+    setAiLimitsLoading(true)
+    try {
+      const res = await fetch("/api/settings/ai-output-limits")
+      if (res.ok) {
+        const data = await res.json()
+        if (data.limits) setAiLimits(data.limits)
+      } else {
+        setAiLimitsLoadError("文字数制限の取得に失敗しました")
+      }
+    } catch {
+      setAiLimitsLoadError("文字数制限の取得に失敗しました")
+    } finally {
+      setAiLimitsLoading(false)
+    }
+  }, [isAdmin])
+
+  useEffect(() => {
+    loadAiOutputLimits()
+  }, [loadAiOutputLimits])
+
+  const handleSaveAiOutputLimits = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setAiLimitsSaving(true)
+    try {
+      const res = await fetch("/api/settings/ai-output-limits", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(aiLimits),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const msg = data.error ?? "保存に失敗しました"
+        const detail = typeof data.details === "string" ? data.details : undefined
+        toast.error(msg, { description: detail })
+        return
+      }
+      toast.success("文字数制限を保存しました")
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "保存に失敗しました")
+    } finally {
+      setAiLimitsSaving(false)
+    }
+  }
 
   const handleChangeEmail = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -712,6 +766,73 @@ export default function AccountSettingsClient({
                         onSave={() => handleSaveWorldConfig("ghost", ghostConfig)}
                         saving={worldConfigSaving}
                       />
+                    )}
+                  </div>
+
+                  {/* 文字数制限（世界観共通・dq/ghost どちらも同じ値を参照） */}
+                  <div className="mt-6 pt-6 border-t border-zinc-700">
+                    <h3 className="text-base font-semibold text-cyan-400 mb-2">
+                      文字数制限
+                    </h3>
+                    <p className="text-sm text-zinc-500 mb-4">
+                      AI生成テキストの最低・最大文字数。総評・あらすじ・アドバイスに適用。世界観（dq/ghost）共通です。
+                    </p>
+                    {aiLimitsLoading && <p className="text-sm text-zinc-500 py-2">読み込み中...</p>}
+                    {aiLimitsLoadError && !aiLimitsLoading && (
+                      <p className="text-sm text-amber-400 mb-2">{aiLimitsLoadError}</p>
+                    )}
+                    {!aiLimitsLoading && (
+                      <form onSubmit={handleSaveAiOutputLimits} className="space-y-4 pl-2 border-l-2 border-zinc-700 py-2">
+                        {[
+                          { key: "reasoning" as const, label: "総評" },
+                          { key: "story_past" as const, label: "これまでの冒険" },
+                          { key: "story_future" as const, label: "これからの冒険" },
+                          { key: "advice" as const, label: "辛口コーチング アドバイス" },
+                        ].map(({ key, label }) => (
+                          <div key={key} className="flex flex-wrap items-center gap-3">
+                            <span className="text-sm text-zinc-300 w-48 shrink-0">{label}</span>
+                            <label className="flex items-center gap-1.5 text-sm text-zinc-400">
+                              最小
+                              <input
+                                type="number"
+                                min={0}
+                                value={aiLimits[`${key}_min`]}
+                                onChange={(e) =>
+                                  setAiLimits((prev) => ({
+                                    ...prev,
+                                    [`${key}_min`]: Math.max(0, parseInt(e.target.value, 10) || 0),
+                                  }))
+                                }
+                                className="w-20 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm"
+                              />
+                              文字
+                            </label>
+                            <label className="flex items-center gap-1.5 text-sm text-zinc-400">
+                              最大
+                              <input
+                                type="number"
+                                min={0}
+                                value={aiLimits[`${key}_max`]}
+                                onChange={(e) =>
+                                  setAiLimits((prev) => ({
+                                    ...prev,
+                                    [`${key}_max`]: Math.max(0, parseInt(e.target.value, 10) || 0),
+                                  }))
+                                }
+                                className="w-20 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm"
+                              />
+                              文字
+                            </label>
+                          </div>
+                        ))}
+                        <Button
+                          type="submit"
+                          disabled={aiLimitsSaving}
+                          className="bg-cyan-600 hover:bg-cyan-700 text-white"
+                        >
+                          {aiLimitsSaving ? "保存中..." : "文字数制限を保存"}
+                        </Button>
+                      </form>
                     )}
                   </div>
                 </>

@@ -5,6 +5,8 @@
  * データベースのテーブル構造に対応した型定義が含まれています。
  */
 
+import type { ScoreBreakdown } from '@/lib/score-calculator';
+
 // ============================================================================
 // データベーステーブル対応型定義
 // ============================================================================
@@ -149,6 +151,14 @@ export interface DailyLog {
   ai_batch_run_count?: number;
   /** 日誌確定フラグ（確定済みの過去日誌は編集不可） */
   is_confirmed: boolean;
+  /** 確定時に profiles に適用したポイント差分（取り消し時の巻き戻し用） */
+  confirmed_points_delta?: number;
+  /** 確定時に profiles に適用した身体EXP差分 */
+  confirmed_exp_body_delta?: number;
+  /** 確定時に profiles に適用した頭脳EXP差分 */
+  confirmed_exp_mind_delta?: number;
+  /** 確定時に profiles に適用した精神EXP差分 */
+  confirmed_exp_spirit_delta?: number;
   /** 作成日時 */
   created_at: string;
   /** 更新日時 */
@@ -411,6 +421,8 @@ export interface DashboardTabsProps {
   userName?: string;
   /** 管理者またはテストアカウント（再生成回数リセットボタン表示用） */
   isAdmin?: boolean;
+  /** 1日分のスコア内訳（ToDo・習慣・AI・権利ごと）。確定表示用 */
+  scoreBreakdown?: ScoreBreakdown | null;
 }
 
 /**
@@ -465,6 +477,8 @@ export interface KanbanBoardProps {
   onEditTodo?: (todoId: string) => void;
   /** 日誌タブ用：フィルター枠内右上に表示する「新規タスク」クリック時（ToDoサマリーへ切り替え＋新規作成モーダルを開く） */
   onOpenCreateModal?: () => void;
+  /** 日誌確定済みのとき true（カードの完了チェック・ドラッグを無効化） */
+  isConfirmed?: boolean;
 }
 
 // ============================================================================

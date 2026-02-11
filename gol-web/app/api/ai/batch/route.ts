@@ -17,6 +17,7 @@ import {
   getAdviceSystemMessage,
 } from '@/lib/ai/openai';
 import { mergeStoryWorldConfig, type StoryWorldId } from '@/lib/ai/story-worlds';
+import { rowToAiOutputLimits } from '@/lib/ai/ai-output-limits';
 import {
   getPersonalityPromptAddition,
   isValidPersonalityTypeId,
@@ -132,6 +133,14 @@ export async function POST(request: NextRequest) {
     }
     const worldConfig = mergeStoryWorldConfig(storyWorldId, override);
 
+    // 文字数制限（世界観共通・テーブルが無ければデフォルト）
+    const { data: limitsRow } = await supabase
+      .from('ai_output_limits')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle();
+    const aiLimits = rowToAiOutputLimits(limitsRow as Record<string, unknown> | null);
+
     // GOL世界の表示名: 「この名前をGOL世界の表示名として利用する」がONのときは
     // 必ずDBに保存された username を使う（クライアントの古いキャッシュに依存しない）
     const { data: profile, error: profileError } = await supabase
@@ -167,7 +176,11 @@ export async function POST(request: NextRequest) {
     const todos: string[] = [];
 
     // 1. 判定
-    const judgmentPrompt = createJudgmentPrompt(journalText || '', impressionText || '');
+    const judgmentPrompt = createJudgmentPrompt(
+      journalText || '',
+      impressionText || '',
+      { reasoning_min: aiLimits.reasoning_min, reasoning_max: aiLimits.reasoning_max }
+    );
     const judgmentCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -197,7 +210,8 @@ export async function POST(request: NextRequest) {
       habits,
       todos,
       nickname,
-      worldConfig
+      worldConfig,
+      { story_past_min: aiLimits.story_past_min, story_past_max: aiLimits.story_past_max }
     );
     const storyPastCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -218,7 +232,8 @@ export async function POST(request: NextRequest) {
       habits,
       todos,
       nickname,
-      worldConfig
+      worldConfig,
+      { story_future_min: aiLimits.story_future_min, story_future_max: aiLimits.story_future_max }
     );
     const storyFutureCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -246,7 +261,8 @@ export async function POST(request: NextRequest) {
       conditionMood,
       worldConfig,
       personalityAddition,
-      nickname
+      nickname,
+      { advice_min: aiLimits.advice_min, advice_max: aiLimits.advice_max }
     );
     const adviceCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -284,24 +300,7 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    // 6. profiles のポイント/EXP加算
-    const { data: profileRow } = await supabase
-      .from('profiles')
-      .select('points, exp_body, exp_mind, exp_spirit')
-      .eq('id', user.id)
-      .single();
-    if (profileRow) {
-      await supabase
-        .from('profiles')
-        .update({
-          points: (profileRow.points ?? 0) + points,
-          exp_body: (profileRow.exp_body ?? 0) + exp_body,
-          exp_mind: (profileRow.exp_mind ?? 0) + exp_mind,
-          exp_spirit: (profileRow.exp_spirit ?? 0) + exp_spirit,
-        })
-        .eq('id', user.id);
-    }
+    // ポイント/EXPの profiles 反映は確定ボタンで一括適用するため、ここでは daily_logs の更新のみ
 
     return NextResponse.json({
       condition_body: conditionBody,

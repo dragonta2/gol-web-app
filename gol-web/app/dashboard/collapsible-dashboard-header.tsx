@@ -27,17 +27,22 @@ export interface DashboardHeaderProfile {
   exp: { body: number; intellect: number; mind: number }
 }
 
+import type { DayDeltas } from "@/lib/score-calculator"
+
 interface CollapsibleDashboardHeaderProps {
   userProfile: DashboardHeaderProfile
   selectedDate: string
   /** 現在開いている画面名（日誌 / ToDoサマリー / 統計） */
   screenName?: string
+  /** 未確定の日誌がある日の仮スコア（確定時に反映されるデルタ） */
+  pendingDeltas?: DayDeltas | null
 }
 
 export default function CollapsibleDashboardHeader({
   userProfile,
   selectedDate,
   screenName,
+  pendingDeltas,
 }: CollapsibleDashboardHeaderProps) {
   const [collapsed, setCollapsed] = useState(false)
 
@@ -190,6 +195,24 @@ export default function CollapsibleDashboardHeader({
                 </div>
               </div>
             </div>
+
+            {pendingDeltas && (
+              <div className="text-sm text-cyan-300/90 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5" role="status" aria-label="未確定スコア">
+                <span className="font-medium">未確定:</span>
+                {pendingDeltas.points_delta !== 0 && (
+                  <span>{pendingDeltas.points_delta > 0 ? '+' : ''}{pendingDeltas.points_delta}G</span>
+                )}
+                {pendingDeltas.exp_body_delta !== 0 && (
+                  <span>身体{pendingDeltas.exp_body_delta > 0 ? '+' : ''}{pendingDeltas.exp_body_delta}</span>
+                )}
+                {pendingDeltas.exp_mind_delta !== 0 && (
+                  <span>頭脳{pendingDeltas.exp_mind_delta > 0 ? '+' : ''}{pendingDeltas.exp_mind_delta}</span>
+                )}
+                {pendingDeltas.exp_spirit_delta !== 0 && (
+                  <span>精神{pendingDeltas.exp_spirit_delta > 0 ? '+' : ''}{pendingDeltas.exp_spirit_delta}</span>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}

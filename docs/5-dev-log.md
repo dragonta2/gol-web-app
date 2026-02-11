@@ -50,6 +50,37 @@
 
 ## 2602 --------------
 
+### 260211-水
+
+#### 権利消費整合性・獲得スコア表示・総評見出し・AI文字数制限
+
+**実施内容（詳細）:**
+
+- **権利消費の整合性**
+  - 原因: 「本日消費ゴルド合計」はクライアント state（totalPoints）、獲得スコアの「権利消費（マイナス）」はサーバー計算（scoreBreakdown.rights）を参照しており、保存前や再表示前で不整合が発生。
+  - 対応: journal-form.tsx で獲得スコアの権利消費表示と合計をクライアントの totalPoints で算出するよう変更。総加算・総減算・今回の獲得を「総加算ゴルド − 総減算ゴルド = 今回の獲得ゴルド」および EXP 同形式で表示。
+
+- **総評見出し**
+  - journal-form.tsx: AI判定結果の判定理由（reasoning）の直前に見出し「総評」を追加。
+
+- **AI生成テキストの文字数制限（管理者用）**
+  - lib/ai/ai-output-limits.ts: 型 AiOutputLimits、デフォルト値、rowToAiOutputLimits を定義。
+  - docs/sql-snippet/add-ai-output-limits.sql: ai_output_limits テーブル（id=1 の1行）、RLS（SELECT 全認証、INSERT/UPDATE 管理者）、管理者用 INSERT ポリシーを追加。
+  - app/api/settings/ai-output-limits/route.ts: GET（認証ユーザー取得・テーブル未作成時はデフォルト返却）、PATCH（管理者のみ保存）。
+  - lib/ai/openai.ts: createJudgmentPrompt / createStoryPrompt / createStoryFuturePrompt / createAdvicePrompt に文字数制限オプションを追加し、プロンプトに「○文字以上○文字以内」を付与。
+  - app/api/ai/batch/route.ts: ai_output_limits を取得し、各プロンプトに制限を渡す。
+  - app/settings/account/account-settings-client.tsx: 管理者用「文字数制限」セクションを追加（総評・これまでの冒険・これからの冒険・アドバイスの最小・最大入力と保存）。保存失敗時に data.details をトーストで表示。
+
+- **文字数制限保存失敗**
+  - 原因: upsert で INSERT が走る場合に INSERT 用 RLS ポリシーがなく拒否されていた。またトリガー重複で SQL 再実行時にエラー。
+  - 対応: add-ai-output-limits.sql に「Admins can insert ai_output_limits」ポリシーを追加。既存環境には当該ポリシーだけ実行すればよい旨を案内。
+
+**変更・追加ファイル:**
+- gol-web: lib/ai/ai-output-limits.ts（新規）, app/api/settings/ai-output-limits/route.ts（新規）, lib/ai/openai.ts, app/api/ai/batch/route.ts, app/settings/account/account-settings-client.tsx, app/dashboard/journal-form.tsx, lib/score-calculator.ts, app/dashboard/page.tsx ほか
+- docs: sql-snippet/add-ai-output-limits.sql（新規）, 4-project-progress.md, 5-dev-log.md
+
+---
+
 ### 260210-火
 
 #### 表示名デフォルト問題・Google Auth（新規登録・ログアウト後再ログイン）

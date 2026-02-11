@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import { fetchWithRetry } from '@/lib/api-retry';
 import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 import type { DailyLog } from '@/lib/types';
+import type { ScoreBreakdown } from '@/lib/score-calculator';
 import { applyAiTextLineBreaks } from '@/lib/utils';
 import {
   STORAGE_AI_PERSONALITY_TYPE,
@@ -49,6 +50,10 @@ interface JournalFormProps {
   userName?: string;
   /** 管理者またはテストアカウント（再生成回数リセットボタン表示用） */
   isAdmin?: boolean;
+  /** 1日分のスコア内訳（ToDo・習慣・AI・権利ごと） */
+  scoreBreakdown?: ScoreBreakdown | null;
+  /** 日誌・感想の現在値（AI判定実行時にここから取得。JournalImpressionSections が更新） */
+  journalTextsRef?: React.MutableRefObject<{ journalText: string; impressionText: string }>;
 }
 
 interface AIJudgmentResult {
@@ -57,7 +62,7 @@ interface AIJudgmentResult {
   reasoning: string;
 }
 
-function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpandedStateChange, userName = '', isAdmin = false }: JournalFormProps) {
+function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpandedStateChange, userName = '', isAdmin = false, scoreBreakdown, journalTextsRef }: JournalFormProps) {
   const router = useRouter();
   const supabase = createClient();
 
@@ -183,8 +188,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     ));
   };
 
-  // 編集可能かどうか（当日 OR 未確定の過去）
-  const isEditable = isToday || (isPastDate && !isConfirmed);
+  // 編集可能かどうか（未確定のときのみ。確定したら当日も含め編集不可）
+  const isEditable = !isConfirmed;
 
   // 権利設定を取得（配列形式）
   const [rightsList, setRightsList] = useState<Array<{ code: string; name: string; points: number; unit: string }>>([]);
@@ -312,7 +317,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     }
   };
 
-  // 日誌を確定する
+  // 日誌を確定する（スコアを profiles に反映してから is_confirmed = true）
   const handleConfirm = async () => {
     if (!dailyLogId) {
       toast.error('日誌IDが取得できませんでした');
@@ -320,25 +325,29 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     }
 
     try {
-      const { error } = await supabase
-        .from('daily_logs')
-        .update({ is_confirmed: true })
-        .eq('id', dailyLogId);
+      const res = await fetch('/api/daily-logs/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dailyLogId }),
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
 
-      if (error) {
-        console.error('Error confirming journal:', error);
-        toast.error('日誌の確定に失敗しました');
-      } else {
-        toast.success('日誌を確定しました');
-        router.refresh();
+      if (!res.ok) {
+        toast.error(data.error || '日誌の確定に失敗しました', {
+          description: typeof data.details === 'string' ? data.details : undefined,
+        });
+        return;
       }
+      toast.success('日誌を確定しました');
+      router.refresh();
     } catch (error) {
       console.error('Error confirming journal:', error);
       toast.error('日誌の確定に失敗しました');
     }
   };
 
-  // 日誌の確定を取り消す（全日誌で可能）
+  // 日誌の確定を取り消す（適用済みスコアを profiles から差し引き is_confirmed = false）
   const handleUnconfirm = async () => {
     if (!dailyLogId) {
       toast.error('日誌IDが取得できませんでした');
@@ -346,18 +355,22 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     }
 
     try {
-      const { error } = await supabase
-        .from('daily_logs')
-        .update({ is_confirmed: false })
-        .eq('id', dailyLogId);
+      const res = await fetch('/api/daily-logs/unconfirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dailyLogId }),
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
 
-      if (error) {
-        console.error('Error unconfirming journal:', error);
-        toast.error('確定の取り消しに失敗しました');
-      } else {
-        toast.success('確定を取り消しました');
-        router.refresh();
+      if (!res.ok) {
+        toast.error(data.error || '確定の取り消しに失敗しました', {
+          description: typeof data.details === 'string' ? data.details : undefined,
+        });
+        return;
       }
+      toast.success('確定を取り消しました');
+      router.refresh();
     } catch (error) {
       console.error('Error unconfirming journal:', error);
       toast.error('確定の取り消しに失敗しました');
@@ -373,8 +386,9 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       return;
     }
 
-    const currentJournalText = dailyLog?.journal_text || '';
-    const currentImpressionText = dailyLog?.one_line_comment || '';
+    // 入力欄の現在値（ref）を優先。未設定時はサーバー由来の dailyLog を使用
+    const currentJournalText = journalTextsRef?.current?.journalText ?? dailyLog?.journal_text ?? '';
+    const currentImpressionText = journalTextsRef?.current?.impressionText ?? dailyLog?.one_line_comment ?? '';
 
     if (!currentJournalText.trim() && !currentImpressionText.trim()) {
       toast.error('日誌本文または一言感想を入力してください');
@@ -711,18 +725,86 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               </div>
             </div>
             {aiJudgmentResult.reasoning && (
-              <div className="text-lg text-zinc-300 bg-zinc-900 rounded p-3">
-                {aiJudgmentResult.reasoning}
-              </div>
-            )}
-            {dailyLog?.ai_points_earned !== null && dailyLog?.ai_points_earned !== undefined && (
-              <div className="text-base text-zinc-300">
-                <div>獲得ゴルド: <span className="text-yellow-400 font-medium">+{dailyLog.ai_points_earned}G</span></div>
-                <div>獲得EXP: 身体+{dailyLog.ai_exp_body || 0} 頭脳+{dailyLog.ai_exp_mind || 0} 精神+{dailyLog.ai_exp_spirit || 0}</div>
+              <div>
+                <h4 className="text-base font-medium text-cyan-400 mb-1">総評</h4>
+                <div className="text-lg text-zinc-300 bg-zinc-900 rounded p-3">
+                  {aiJudgmentResult.reasoning}
+                </div>
               </div>
             )}
           </div>
         ) : null}
+
+        {/* 獲得スコア（内訳・総計）。ToDo・習慣・悪習慣・AI・権利を含む。権利消費は「本日消費ゴルド合計」と整合させるためクライアントの totalPoints を使用 */}
+        {scoreBreakdown && (() => {
+          const displayRightsDelta = -totalPoints;
+          const adjustedTotalPoints = scoreBreakdown.total.points_delta - scoreBreakdown.rights.points_delta + displayRightsDelta;
+          // 総加算・総減算（表示用）。ゴルドは権利をクライアントの totalPoints で計算
+          const pointsAdd = scoreBreakdown.todo.points_delta + scoreBreakdown.habits_good.points_delta + scoreBreakdown.ai.points_delta;
+          const pointsSub = Math.abs(scoreBreakdown.habits_bad.points_delta) + totalPoints;
+          const expBodyAdd = scoreBreakdown.todo.exp_body_delta + scoreBreakdown.habits_good.exp_body_delta + scoreBreakdown.ai.exp_body_delta;
+          const expBodySub = Math.abs(Math.min(0, scoreBreakdown.habits_bad.exp_body_delta));
+          const expMindAdd = scoreBreakdown.todo.exp_mind_delta + scoreBreakdown.habits_good.exp_mind_delta + scoreBreakdown.ai.exp_mind_delta;
+          const expMindSub = Math.abs(Math.min(0, scoreBreakdown.habits_bad.exp_mind_delta));
+          const expSpiritAdd = scoreBreakdown.todo.exp_spirit_delta + scoreBreakdown.habits_good.exp_spirit_delta + scoreBreakdown.ai.exp_spirit_delta;
+          const expSpiritSub = Math.abs(Math.min(0, scoreBreakdown.habits_bad.exp_spirit_delta));
+          const hasAnyExp = scoreBreakdown.total.exp_body_delta !== 0 || scoreBreakdown.total.exp_mind_delta !== 0 || scoreBreakdown.total.exp_spirit_delta !== 0;
+          return (
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-2">
+            <h3 className="text-lg font-medium text-cyan-400">獲得スコア</h3>
+            <div className="text-sm space-y-1.5 text-zinc-300">
+              <div>ToDo: <span className={scoreBreakdown.todo.points_delta >= 0 ? 'text-green-400' : 'text-red-400'}>{scoreBreakdown.todo.points_delta >= 0 ? '+' : ''}{scoreBreakdown.todo.points_delta}G</span>{' '}
+                {[['身体', scoreBreakdown.todo.exp_body_delta], ['頭脳', scoreBreakdown.todo.exp_mind_delta], ['精神', scoreBreakdown.todo.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label}${(val as number) >= 0 ? '+' : ''}${val}`).join(' ') || ''}
+              </div>
+              <div>良習慣: <span className="text-green-400">+{scoreBreakdown.habits_good.points_delta}G</span>{' '}
+                {[['身体', scoreBreakdown.habits_good.exp_body_delta], ['頭脳', scoreBreakdown.habits_good.exp_mind_delta], ['精神', scoreBreakdown.habits_good.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label}+${val}`).join(' ') || ''}
+              </div>
+              <div>AI判定: <span className="text-purple-400">+{scoreBreakdown.ai.points_delta}G</span>{' '}
+                {[['身体', scoreBreakdown.ai.exp_body_delta], ['頭脳', scoreBreakdown.ai.exp_mind_delta], ['精神', scoreBreakdown.ai.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label}+${val}`).join(' ') || ''}
+              </div>
+              <div>悪習慣（マイナス）: <span className="text-red-400">{scoreBreakdown.habits_bad.points_delta >= 0 ? '' : '-'}{Math.abs(scoreBreakdown.habits_bad.points_delta)}G</span>{' '}
+                {[['身体', scoreBreakdown.habits_bad.exp_body_delta], ['頭脳', scoreBreakdown.habits_bad.exp_mind_delta], ['精神', scoreBreakdown.habits_bad.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label}${(val as number) < 0 ? '-' : '+'}${Math.abs(val as number)}`).join(' ') || ''}
+              </div>
+              <div>権利消費（マイナス）: <span className="text-orange-400">-{totalPoints}G</span></div>
+            </div>
+            {/* 総加算 − 総減算 = 今回の獲得 */}
+            <div className="pt-3 mt-3 border-t border-zinc-600 text-base space-y-1.5">
+              <div className="text-zinc-300">
+                <span className="text-zinc-400">総加算ゴルド</span>
+                <span className="text-green-400 font-medium mx-1">+{pointsAdd}G</span>
+                <span className="text-zinc-500 mx-1">−</span>
+                <span className="text-zinc-400">総減算ゴルド</span>
+                <span className="text-red-400 font-medium mx-1">-{pointsSub}G</span>
+                <span className="text-zinc-500 mx-1">=</span>
+                <span className="text-zinc-400">今回の獲得ゴルド</span>
+                <span className={`font-medium ml-1 ${adjustedTotalPoints >= 0 ? 'text-yellow-400' : 'text-red-400'}`}>
+                  {adjustedTotalPoints >= 0 ? '+' : ''}{adjustedTotalPoints}G
+                </span>
+              </div>
+              {hasAnyExp && (
+                <div className="text-zinc-300 text-sm">
+                  <span className="text-zinc-400">総加算EXP</span>
+                  <span className="text-cyan-400">
+                    {[['身体', expBodyAdd], ['頭脳', expMindAdd], ['精神', expSpiritAdd]].filter(([, v]) => v !== 0).map(([l, v]) => `${l}+${v}`).join(' ') || ' 0'}
+                  </span>
+                  <span className="text-zinc-500 mx-1">−</span>
+                  <span className="text-zinc-400">総減算EXP</span>
+                  <span className="text-cyan-400">
+                    {[['身体', expBodySub], ['頭脳', expMindSub], ['精神', expSpiritSub]].filter(([, v]) => v !== 0).map(([l, v]) => `${l}-${v}`).join(' ') || ' 0'}
+                  </span>
+                  <span className="text-zinc-500 mx-1">=</span>
+                  <span className="text-zinc-400">今回の獲得EXP</span>
+                  <span className="text-cyan-400 ml-1">
+                    身体{scoreBreakdown.total.exp_body_delta >= 0 ? '+' : ''}{scoreBreakdown.total.exp_body_delta}{' '}
+                    頭脳{scoreBreakdown.total.exp_mind_delta >= 0 ? '+' : ''}{scoreBreakdown.total.exp_mind_delta}{' '}
+                    精神{scoreBreakdown.total.exp_spirit_delta >= 0 ? '+' : ''}{scoreBreakdown.total.exp_spirit_delta}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+          );
+        })()}
 
         {/* AIあらすじ（一括生成で判定・あらすじ・アドバイスをまとめて生成） */}
         <div className="space-y-3">

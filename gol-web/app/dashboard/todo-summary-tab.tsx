@@ -598,47 +598,13 @@ export default function TodoSummaryTab({
         console.error("todo_logs記録エラー:", logError)
         return
       }
-
-      // profilesテーブルのポイント/EXPを更新（報酬がある場合のみ）
-      if (
-        reward.points > 0 ||
-        reward.exp_body > 0 ||
-        reward.exp_mind > 0 ||
-        reward.exp_spirit > 0
-      ) {
-        // 現在のprofilesデータを取得
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("points, exp_body, exp_mind, exp_spirit")
-          .eq("id", user.id)
-          .single()
-
-        if (profileError || !profile) {
-          console.error("profiles取得エラー:", profileError)
-          return
-        }
-
-        // 報酬を加算
-        const { error: updateError } = await supabase
-          .from("profiles")
-          .update({
-            points: profile.points + reward.points,
-            exp_body: profile.exp_body + reward.exp_body,
-            exp_mind: profile.exp_mind + reward.exp_mind,
-            exp_spirit: profile.exp_spirit + reward.exp_spirit,
-          })
-          .eq("id", user.id)
-
-        if (updateError) {
-          console.error("profiles更新エラー:", updateError)
-        }
-      }
+      // ポイント/EXPの profiles 反映は確定ボタンで一括適用するため、ここでは記録のみ
     } catch (err) {
       console.error("報酬計算・反映エラー:", err)
     }
   }
 
-  // タスク未完了時の報酬削除処理
+  // タスク未完了時: todo_logs から記録を削除（profiles の反映は確定時に一括なのでここでは削除のみ）
   const handleTaskUncompletion = async (todo: Todo) => {
     if (!dailyLogId) {
       return
@@ -647,62 +613,12 @@ export default function TodoSummaryTab({
     try {
       const supabase = createClient()
 
-      // 現在のユーザーを取得
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser()
-      if (authError || !user) {
+      const { error: authError } = await supabase.auth.getUser()
+      if (authError) {
         console.error("ユーザー取得エラー:", authError)
         return
       }
 
-      // todo_logsから記録を取得
-      const { data: todoLog, error: logSelectError } = await supabase
-        .from("todo_logs")
-        .select(
-          "points_earned, exp_body_earned, exp_mind_earned, exp_spirit_earned",
-        )
-        .eq("daily_log_id", dailyLogId)
-        .eq("todo_id", todo.id)
-        .single()
-
-      if (logSelectError || !todoLog) {
-        // 記録が存在しない場合は何もしない
-        return
-      }
-
-      // profilesテーブルから報酬を減算
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("points, exp_body, exp_mind, exp_spirit")
-        .eq("id", user.id)
-        .single()
-
-      if (profileError || !profile) {
-        console.error("profiles取得エラー:", profileError)
-        return
-      }
-
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          points: Math.max(0, profile.points - todoLog.points_earned),
-          exp_body: Math.max(0, profile.exp_body - todoLog.exp_body_earned),
-          exp_mind: Math.max(0, profile.exp_mind - todoLog.exp_mind_earned),
-          exp_spirit: Math.max(
-            0,
-            profile.exp_spirit - todoLog.exp_spirit_earned,
-          ),
-        })
-        .eq("id", user.id)
-
-      if (updateError) {
-        console.error("profiles更新エラー:", updateError)
-        return
-      }
-
-      // todo_logsから記録を削除
       const { error: logDeleteError } = await supabase
         .from("todo_logs")
         .delete()

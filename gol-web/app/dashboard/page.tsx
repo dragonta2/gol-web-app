@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import DashboardClientLayout from "./dashboard-client-layout"
 import { syncProfileLevel } from "@/lib/sync-profile-level"
+import { calculateDayDeltas, calculateDayDeltasWithBreakdown } from "@/lib/score-calculator"
 
 interface DashboardPageProps {
   searchParams: Promise<{ date?: string }>
@@ -161,6 +162,21 @@ export default async function DashboardPage({
           .order("display_order", { ascending: true })
       : { data: [] }
 
+  // 未確定の日誌がある場合、その日の仮スコア（確定時に反映されるデルタ）を計算
+  let pendingDeltas: { points_delta: number; exp_body_delta: number; exp_mind_delta: number; exp_spirit_delta: number } | null = null
+  if (dailyLogId && dailyLogData && !dailyLogData.is_confirmed) {
+    const deltas = await calculateDayDeltas(supabase, dailyLogId)
+    if (deltas && (deltas.points_delta !== 0 || deltas.exp_body_delta !== 0 || deltas.exp_mind_delta !== 0 || deltas.exp_spirit_delta !== 0)) {
+      pendingDeltas = deltas
+    }
+  }
+
+  // 日誌がある場合、スコア内訳を取得（獲得ゴルド/EXPの表示用）
+  let scoreBreakdown: Awaited<ReturnType<typeof calculateDayDeltasWithBreakdown>> = null
+  if (dailyLogId) {
+    scoreBreakdown = await calculateDayDeltasWithBreakdown(supabase, dailyLogId)
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <DashboardClientLayout
@@ -175,6 +191,8 @@ export default async function DashboardPage({
         todoSubtasks={todoSubtasks || []}
         userName={userProfile.name}
         isAdmin={isAdmin}
+        pendingDeltas={pendingDeltas}
+        scoreBreakdown={scoreBreakdown}
       />
     </div>
   )
