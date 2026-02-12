@@ -23,6 +23,7 @@ interface Habit {
   exp_mind: number;
   exp_spirit: number;
   display_order: number;
+  parent_habit_id?: string | null;
   is_custom: boolean;
   input_type: 'checkbox' | 'number';
   exclude_weekends: boolean;
@@ -59,6 +60,36 @@ interface HabitWithLog extends Habit {
   habitLogId: string | null;
 }
 
+/** 親習慣とその子習慣のツリー（表示用）。親は parent_habit_id == null、子は parent_habit_id === 親.id */
+function buildHabitTree(habits: HabitWithLog[]): { parent: HabitWithLog; children: HabitWithLog[] }[] {
+  const parents = habits
+    .filter((h) => !(h as HabitWithLog & { parent_habit_id?: string | null }).parent_habit_id)
+    .sort((a, b) => a.display_order - b.display_order);
+  return parents.map((parent) => {
+    const children = habits
+      .filter((h) => (h as HabitWithLog & { parent_habit_id?: string | null }).parent_habit_id === parent.id)
+      .sort((a, b) => a.display_order - b.display_order);
+    return { parent, children };
+  });
+}
+
+/** 管理モーダル用: 習慣タイプごとに「親+子」または「単体」のグループに分ける。並びは親の display_order。 */
+function buildManagementGroups(habits: Habit[], habitType: 'good' | 'bad' | 'bonus'): { root: Habit; habits: Habit[] }[] {
+  const list = habits
+    .filter((h) => h.habit_type === habitType)
+    .sort((a, b) => a.display_order - b.display_order);
+  const roots = list.filter((h) => !h.parent_habit_id);
+  return roots.map((root) => {
+    const children = list.filter((h) => h.parent_habit_id === root.id).sort((a, b) => a.display_order - b.display_order);
+    return { root, habits: [root, ...children] };
+  });
+}
+
+/** 親習慣の表示用「完了」: 親のチェック or いずれかの子のチェック */
+function isParentCompleted(parent: HabitWithLog, children: HabitWithLog[]): boolean {
+  return parent.checked || children.some((c) => c.checked);
+}
+
 interface HabitFormData {
   habit_name: string;
   description: string;
@@ -70,6 +101,18 @@ interface HabitFormData {
   input_type: 'checkbox' | 'number';
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
+  parent_habit_id: string;
+}
+
+/** モーダル内の子習慣1行（ToDoのサブタスク風） */
+interface ChildHabitRow {
+  id: string;
+  habit_name: string;
+  description: string;
+  points: number;
+  exp_body: number;
+  exp_mind: number;
+  exp_spirit: number;
 }
 
 function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false }: HabitListProps) {
@@ -91,10 +134,15 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     input_type: 'checkbox',
     exclude_weekends: false,
     exclude_from_complete: false,
+    parent_habit_id: '',
   };
   const [formData, setFormData] = useState<HabitFormData>(defaultFormData);
   /** モーダル内フォーム用。開閉時と入力時のみ更新され、他から上書きされない */
   const [modalFormData, setModalFormData] = useState<HabitFormData>(defaultFormData);
+  /** 親習慣（子習慣を設定する）モード：true のとき親は見出しのみ・子だけチェック可能 */
+  const [isParentWithChildren, setIsParentWithChildren] = useState(false);
+  /** モーダル内の子習慣リスト（サブタスク風）。id は既存なら habit.id、新規なら temp-* */
+  const [modalChildRows, setModalChildRows] = useState<ChildHabitRow[]>([]);
 
   // habitsとhabit_logsをマージ（useMemoで計算）
   const baseHabitsWithLogs = useMemo<HabitWithLog[]>(() => {
@@ -139,13 +187,19 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   // 週末除外ラベル表示
   const showWeekendExcludedLabel = (habit: HabitWithLog) => habit.exclude_weekends;
   const isWeekendOrHolidayToday = isWeekendOrHoliday(logDate);
-  // Completeボーナス対象外ラベル表示
-  const showCompExcludedLabel = (habit: HabitWithLog) => habit.exclude_from_complete;
+  // Completeボーナス対象外ラベル表示（子は親が対象外なら自分が未設定でも対象外として表示）
+  const showCompExcludedLabel = (habit: HabitWithLog, parent?: HabitWithLog) =>
+    habit.exclude_from_complete || (parent?.exclude_from_complete === true);
 
   // 良習慣、悪習慣、ボーナスに分類（フィルター適用後）
   const goodHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'good'));
   const badHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'bad'));
   const bonusHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'bonus'));
+
+  // 表示用ツリー（親→子のネスト）
+  const goodTree = useMemo(() => buildHabitTree(goodHabits), [goodHabits]);
+  const badTree = useMemo(() => buildHabitTree(badHabits), [badHabits]);
+  const bonusTree = useMemo(() => buildHabitTree(bonusHabits), [bonusHabits]);
 
   // habit_logsを更新または作成（API経由でサーバー側認証を使用）
   const updateHabitLog = async (habitId: string, isChecked: boolean, count: number) => {
@@ -285,13 +339,16 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     return { g, exp: expParts.join('｜') };
   };
 
-  // Completeボーナスのチェック状態を取得
-  const completeBonus = bonusHabits.length > 0 ? bonusHabits[0].checked : false;
+  // Completeボーナスのチェック状態を取得（親習慣の場合は親or子のいずれかで完了なら true）
+  const completeBonus =
+    bonusTree.length > 0
+      ? isParentCompleted(bonusTree[0].parent, bonusTree[0].children)
+      : false;
 
-  // Completeボーナスの切り替え
+  // Completeボーナスの切り替え（親習慣の id で toggle）
   const toggleCompleteBonus = async () => {
-    if (bonusHabits.length > 0) {
-      await toggleCheck(bonusHabits[0].id);
+    if (bonusTree.length > 0) {
+      await toggleCheck(bonusTree[0].parent.id);
     }
   };
 
@@ -304,6 +361,8 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     };
     setFormData(initial);
     setModalFormData(initial);
+    setIsParentWithChildren(false);
+    setModalChildRows([]);
     setIsModalOpen(true);
   };
 
@@ -311,6 +370,8 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingHabit(null);
+    setIsParentWithChildren(false);
+    setModalChildRows([]);
   };
 
   // ポイント設定をAIにおまかせ
@@ -363,6 +424,9 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   // 習慣編集モーダルを開く
   const handleOpenEditModal = (habit: Habit) => {
     setEditingHabit(habit);
+    const parentId = (habit as Habit & { parent_habit_id?: string | null }).parent_habit_id ?? '';
+    const children = habits.filter((h) => (h as Habit & { parent_habit_id?: string | null }).parent_habit_id === habit.id);
+    const hasChildren = children.length > 0;
     const initial = {
       habit_name: habit.habit_name,
       description: habit.description ?? '',
@@ -374,9 +438,24 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
       input_type: habit.input_type,
       exclude_weekends: habit.exclude_weekends,
       exclude_from_complete: habit.exclude_from_complete,
+      parent_habit_id: parentId,
     };
     setFormData(initial);
     setModalFormData(initial);
+    setIsParentWithChildren(hasChildren);
+    setModalChildRows(
+      hasChildren
+        ? children.sort((a, b) => a.display_order - b.display_order).map((c) => ({
+            id: c.id,
+            habit_name: c.habit_name,
+            description: c.description ?? '',
+            points: c.points,
+            exp_body: c.exp_body,
+            exp_mind: c.exp_mind,
+            exp_spirit: c.exp_spirit,
+          }))
+        : []
+    );
     setIsManagementModalOpen(false);
     setIsModalOpen(true);
   };
@@ -403,6 +482,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           input_type: 'checkbox',
           exclude_weekends: modalFormData.exclude_weekends,
           exclude_from_complete: modalFormData.exclude_from_complete,
+          parent_habit_id: modalFormData.parent_habit_id || null,
         })
         .eq('id', editingHabit.id);
 
@@ -457,33 +537,21 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     }
   };
 
-  // 習慣の並び替え（上に移動）
+  // 習慣の並び替え（上に移動）。親を動かすと子も一緒に移動する。
   const handleMoveUp = async (habit: Habit) => {
-    const currentOrder = habit.display_order;
-    if (currentOrder === 0) return;
+    const groups = buildManagementGroups(habits, habit.habit_type);
+    const groupIndex = groups.findIndex((g) => g.root.id === habit.id || g.habits.some((h) => h.id === habit.id));
+    if (groupIndex <= 0) return;
 
-    // 同じ種類の習慣を取得してソート
-    const sameTypeHabits = habits
-      .filter((h) => h.habit_type === habit.habit_type)
-      .sort((a, b) => a.display_order - b.display_order);
-
-    const currentIndex = sameTypeHabits.findIndex((h) => h.id === habit.id);
-    if (currentIndex <= 0) return;
-
-    const prevHabit = sameTypeHabits[currentIndex - 1];
+    const reordered = [...groups];
+    [reordered[groupIndex - 1], reordered[groupIndex]] = [reordered[groupIndex], reordered[groupIndex - 1]];
+    const flat = reordered.flatMap((g) => g.habits);
+    const updates = flat.map((h, i) => ({ id: h.id, display_order: i }));
 
     try {
-      // 2つの習慣のdisplay_orderを入れ替え
-      await supabase
-        .from('habits')
-        .update({ display_order: prevHabit.display_order })
-        .eq('id', habit.id);
-
-      await supabase
-        .from('habits')
-        .update({ display_order: currentOrder })
-        .eq('id', prevHabit.id);
-
+      await Promise.all(
+        updates.map((u) => supabase.from('habits').update({ display_order: u.display_order }).eq('id', u.id))
+      );
       toast.success('習慣の順序を変更しました');
       router.refresh();
     } catch (err) {
@@ -494,32 +562,21 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     }
   };
 
-  // 習慣の並び替え（下に移動）
+  // 習慣の並び替え（下に移動）。親を動かすと子も一緒に移動する。
   const handleMoveDown = async (habit: Habit) => {
-    const currentOrder = habit.display_order;
+    const groups = buildManagementGroups(habits, habit.habit_type);
+    const groupIndex = groups.findIndex((g) => g.root.id === habit.id || g.habits.some((h) => h.id === habit.id));
+    if (groupIndex < 0 || groupIndex >= groups.length - 1) return;
 
-    // 同じ種類の習慣を取得してソート
-    const sameTypeHabits = habits
-      .filter((h) => h.habit_type === habit.habit_type)
-      .sort((a, b) => a.display_order - b.display_order);
-
-    const currentIndex = sameTypeHabits.findIndex((h) => h.id === habit.id);
-    if (currentIndex >= sameTypeHabits.length - 1) return;
-
-    const nextHabit = sameTypeHabits[currentIndex + 1];
+    const reordered = [...groups];
+    [reordered[groupIndex], reordered[groupIndex + 1]] = [reordered[groupIndex + 1], reordered[groupIndex]];
+    const flat = reordered.flatMap((g) => g.habits);
+    const updates = flat.map((h, i) => ({ id: h.id, display_order: i }));
 
     try {
-      // 2つの習慣のdisplay_orderを入れ替え
-      await supabase
-        .from('habits')
-        .update({ display_order: nextHabit.display_order })
-        .eq('id', habit.id);
-
-      await supabase
-        .from('habits')
-        .update({ display_order: currentOrder })
-        .eq('id', nextHabit.id);
-
+      await Promise.all(
+        updates.map((u) => supabase.from('habits').update({ display_order: u.display_order }).eq('id', u.id))
+      );
       toast.success('習慣の順序を変更しました');
       router.refresh();
     } catch (err) {
@@ -528,6 +585,32 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         description: err instanceof Error ? err.message : '予期しないエラーが発生しました',
       });
     }
+  };
+
+  // 子習慣1行を追加（モーダル内）
+  const addModalChildRow = () => {
+    setModalChildRows((prev) => [
+      ...prev,
+      {
+        id: `temp-${Date.now()}-${prev.length}`,
+        habit_name: '',
+        description: '',
+        points: 1,
+        exp_body: 0,
+        exp_mind: 0,
+        exp_spirit: 0,
+      },
+    ]);
+  };
+
+  // 子習慣1行を削除（モーダル内。既存はAPIで削除はせず一覧から外すだけ。保存時にDELETEする）
+  const removeModalChildRow = (id: string) => {
+    setModalChildRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  // 子習慣1行を更新（モーダル内）
+  const updateModalChildRow = (id: string, patch: Partial<ChildHabitRow>) => {
+    setModalChildRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   };
 
   // 習慣を保存（新規作成または更新）
@@ -536,24 +619,175 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
       toast.error('習慣名を入力してください');
       return;
     }
-    const pointsLabel = modalFormData.habit_type === 'good' ? '加点ポイント' : modalFormData.habit_type === 'bad' ? '減点ポイント' : 'ボーナスポイント';
-    const numericFields = [
-      { label: pointsLabel, value: modalFormData.points },
-      { label: '身体EXP', value: modalFormData.exp_body },
-      { label: '頭脳EXP', value: modalFormData.exp_mind },
-      { label: '精神EXP', value: modalFormData.exp_spirit },
-    ];
-    for (const f of numericFields) {
-      if (Number.isNaN(f.value) || f.value < 0) {
-        toast.error(`${f.label}は0以上の数値で入力してください`);
+
+    if (isParentWithChildren) {
+      if (modalChildRows.length === 0) {
+        toast.error('子習慣を1件以上追加してください');
         return;
+      }
+      for (const row of modalChildRows) {
+        if (!row.habit_name.trim()) {
+          toast.error('子習慣の名前を入力してください');
+          return;
+        }
+        if (row.points < 0 || row.exp_body < 0 || row.exp_mind < 0 || row.exp_spirit < 0) {
+          toast.error('子習慣のゴルド・EXPは0以上で入力してください');
+          return;
+        }
+      }
+    } else {
+      const pointsLabel = modalFormData.habit_type === 'good' ? '加点ポイント' : modalFormData.habit_type === 'bad' ? '減点ポイント' : 'ボーナスポイント';
+      const numericFields = [
+        { label: pointsLabel, value: modalFormData.points },
+        { label: '身体EXP', value: modalFormData.exp_body },
+        { label: '頭脳EXP', value: modalFormData.exp_mind },
+        { label: '精神EXP', value: modalFormData.exp_spirit },
+      ];
+      for (const f of numericFields) {
+        if (Number.isNaN(f.value) || f.value < 0) {
+          toast.error(`${f.label}は0以上の数値で入力してください`);
+          return;
+        }
       }
     }
 
     setIsSubmitting(true);
     try {
-      if (editingHabit) {
-        // 更新（API経由でサーバー側認証を使用）
+      if (isParentWithChildren) {
+        if (editingHabit) {
+          const resParent = await fetch('/api/habits', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              habitId: editingHabit.id,
+              habit_name: modalFormData.habit_name.trim(),
+              description: modalFormData.description.trim() || null,
+              habit_type: modalFormData.habit_type,
+              points: 0,
+              exp_body: 0,
+              exp_mind: 0,
+              exp_spirit: 0,
+              input_type: 'checkbox',
+              exclude_weekends: modalFormData.exclude_weekends,
+              exclude_from_complete: modalFormData.exclude_from_complete,
+              parent_habit_id: null,
+            }),
+          });
+          if (!resParent.ok) {
+            const data = await resParent.json().catch(() => ({}));
+            throw new Error(data?.error ?? data?.details ?? '親習慣の更新に失敗しました');
+          }
+          const previousChildIds = habits.filter((h) => (h as Habit & { parent_habit_id?: string | null }).parent_habit_id === editingHabit.id).map((h) => h.id);
+          const currentIds = modalChildRows.filter((r) => !r.id.startsWith('temp-')).map((r) => r.id);
+          const toDelete = previousChildIds.filter((id) => !currentIds.includes(id));
+          for (const id of toDelete) {
+            await fetch(`/api/habits?id=${id}`, { method: 'DELETE', credentials: 'include' });
+          }
+          for (const row of modalChildRows) {
+            if (row.id.startsWith('temp-')) {
+              const res = await fetch('/api/habits', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  habit_name: row.habit_name.trim(),
+                  description: row.description?.trim() || null,
+                  habit_type: modalFormData.habit_type,
+                  points: row.points,
+                  exp_body: row.exp_body,
+                  exp_mind: row.exp_mind,
+                  exp_spirit: row.exp_spirit,
+                  input_type: 'checkbox',
+                  exclude_weekends: false,
+                  exclude_from_complete: false,
+                  parent_habit_id: editingHabit.id,
+                }),
+              });
+              if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data?.error ?? data?.details ?? '子習慣の追加に失敗しました');
+              }
+            } else {
+              const res = await fetch('/api/habits', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  habitId: row.id,
+                  habit_name: row.habit_name.trim(),
+                  description: row.description?.trim() || null,
+                  habit_type: modalFormData.habit_type,
+                  points: row.points,
+                  exp_body: row.exp_body,
+                  exp_mind: row.exp_mind,
+                  exp_spirit: row.exp_spirit,
+                  input_type: 'checkbox',
+                  exclude_weekends: false,
+                  exclude_from_complete: false,
+                  parent_habit_id: editingHabit.id,
+                }),
+              });
+              if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data?.error ?? data?.details ?? '子習慣の更新に失敗しました');
+              }
+            }
+          }
+          toast.success('習慣を更新しました');
+        } else {
+          const resParent = await fetch('/api/habits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              habit_name: modalFormData.habit_name.trim(),
+              description: modalFormData.description.trim() || null,
+              habit_type: modalFormData.habit_type,
+              points: 0,
+              exp_body: 0,
+              exp_mind: 0,
+              exp_spirit: 0,
+              input_type: 'checkbox',
+              exclude_weekends: modalFormData.exclude_weekends,
+              exclude_from_complete: modalFormData.exclude_from_complete,
+              parent_habit_id: null,
+            }),
+          });
+          if (!resParent.ok) {
+            const data = await resParent.json().catch(() => ({}));
+            throw new Error(data?.error ?? data?.details ?? '親習慣の作成に失敗しました');
+          }
+          const parentData = await resParent.json().catch(() => ({}));
+          const parentId = parentData?.habit?.id;
+          if (!parentId) throw new Error('親習慣のIDを取得できませんでした');
+          for (const row of modalChildRows) {
+            const res = await fetch('/api/habits', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                habit_name: row.habit_name.trim(),
+                description: row.description?.trim() || null,
+                habit_type: modalFormData.habit_type,
+                points: row.points,
+                exp_body: row.exp_body,
+                exp_mind: row.exp_mind,
+                exp_spirit: row.exp_spirit,
+                input_type: 'checkbox',
+                exclude_weekends: false,
+                exclude_from_complete: false,
+                parent_habit_id: parentId,
+              }),
+            });
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              throw new Error(data?.error ?? data?.details ?? '子習慣の追加に失敗しました');
+            }
+          }
+          toast.success('習慣を作成しました');
+        }
+      } else if (editingHabit) {
         const res = await fetch('/api/habits', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -570,26 +804,20 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
             input_type: 'checkbox',
             exclude_weekends: modalFormData.exclude_weekends,
             exclude_from_complete: modalFormData.exclude_from_complete,
+            parent_habit_id: modalFormData.parent_habit_id || null,
           }),
         });
-
         const data = await res.json().catch(() => ({}));
         if (res.status === 401) {
-          toast.error('ログインが必要です', {
-            description: '再度ログインしてください',
-          });
+          toast.error('ログインが必要です', { description: '再度ログインしてください' });
           return;
         }
         if (!res.ok) {
-          toast.error('習慣の更新に失敗しました', {
-            description: (data?.error ?? data?.details) || 'しばらくしてからお試しください',
-          });
+          toast.error('習慣の更新に失敗しました', { description: (data?.error ?? data?.details) || 'しばらくしてからお試しください' });
           return;
         }
-
         toast.success('習慣を更新しました');
       } else {
-        // 新規作成（API経由でサーバー側認証を使用）
         const res = await fetch('/api/habits', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -605,30 +833,22 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
             input_type: 'checkbox',
             exclude_weekends: modalFormData.exclude_weekends,
             exclude_from_complete: modalFormData.exclude_from_complete,
+            parent_habit_id: modalFormData.parent_habit_id || null,
           }),
         });
-
         const data = await res.json().catch(() => ({}));
         if (res.status === 401) {
-          toast.error('ログインが必要です', {
-            description: '再度ログインしてください',
-          });
+          toast.error('ログインが必要です', { description: '再度ログインしてください' });
           return;
         }
         if (!res.ok) {
-          toast.error('習慣の作成に失敗しました', {
-            description: (data?.error ?? data?.details) || 'しばらくしてからお試しください',
-          });
+          toast.error('習慣の作成に失敗しました', { description: (data?.error ?? data?.details) || 'しばらくしてからお試しください' });
           return;
         }
-
         toast.success('習慣を作成しました');
       }
 
-      // モーダルを閉じる
       handleCloseModal();
-
-      // ページをリフレッシュしてデータを再取得
       router.refresh();
     } catch (err) {
       console.error('予期しないエラー:', err);
@@ -662,97 +882,200 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         {isGoodHabitsExpanded && (
           <FormCard id="good-habits-content" className="p-3 sm:p-4 overflow-hidden">
           <div className="space-y-3 w-full min-w-0">
-          {goodHabits.map((habit) => (
-            <div key={habit.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
-              {/* チェックボックス */}
-              <button
-                id={`habit-${habit.id}`}
-                onClick={() => !isConfirmed && toggleCheck(habit.id)}
-                onKeyDown={(e) => {
-                  if (isConfirmed) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    toggleCheck(habit.id);
-                  }
-                }}
-                aria-label={`${habit.habit_name}を${habit.checked ? '未完了' : '完了'}にする`}
-                aria-checked={habit.checked}
-                aria-disabled={isConfirmed}
-                role="checkbox"
-                tabIndex={isConfirmed ? -1 : 0}
-                disabled={isConfirmed}
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
-                  habit.checked
-                    ? 'bg-cyan-500 border-cyan-500'
-                    : 'bg-transparent border-zinc-600 hover:border-zinc-400'
-                } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                {habit.checked && (
-                  <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path d="M5 13l4 4L19 7"></path>
-                  </svg>
+          {goodTree.map(({ parent, children }) => {
+            const parentChecked = isParentCompleted(parent, children);
+            const hasChildren = children.length > 0;
+            return (
+              <div key={parent.id} className="space-y-1">
+                {/* 親習慣行：子がいる場合は「親」ラベル＋週末除外等（チェックなし）。左端はチェックボックスと同じ幅で揃える */}
+                {hasChildren ? (
+                  <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
+                    <span className="w-5 h-5 rounded border-2 border-transparent flex items-center justify-center shrink-0" aria-hidden />
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base text-zinc-400 truncate min-w-0">
+                        {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 shrink-0">
+                      <div className="w-16" />
+                      <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]">
+                        <span className="text-zinc-500">ー</span>
+                      </div>
+                      <div className="w-[4.5rem] flex justify-end shrink-0">
+                        {showWeekendExcludedLabel(parent) && (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded ${
+                              isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
+                            }`}
+                            title="土日祝は任意（進捗に影響しません）"
+                          >
+                            週末除外
+                          </span>
+                        )}
+                      </div>
+                      <div className="w-[5.5rem] flex justify-end shrink-0">
+                        {showCompExcludedLabel(parent) && (
+                          <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">Comp対象外</span>
+                        )}
+                      </div>
+                      <div className="w-[13rem] min-w-[13rem]" />
+                    </div>
+                  </div>
+                ) : (
+                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
+                  <button
+                    id={`habit-${parent.id}`}
+                    onClick={() => !isConfirmed && toggleCheck(parent.id)}
+                    onKeyDown={(e) => {
+                      if (isConfirmed) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleCheck(parent.id);
+                      }
+                    }}
+                    aria-label={`${parent.habit_name}を${parentChecked ? '未完了' : '完了'}にする`}
+                    aria-checked={parentChecked}
+                    aria-disabled={isConfirmed}
+                    role="checkbox"
+                    tabIndex={isConfirmed ? -1 : 0}
+                    disabled={isConfirmed}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
+                      parentChecked
+                        ? 'bg-cyan-500 border-cyan-500'
+                        : 'bg-transparent border-zinc-600 hover:border-zinc-400'
+                    } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  >
+                    {parentChecked && (
+                      <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    )}
+                  </button>
+                  <label
+                    htmlFor={`habit-${parent.id}`}
+                    className={`block truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                  >
+                    {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                  </label>
+                  <div className="flex items-center justify-end gap-2 shrink-0">
+                    <div className="w-16" />
+                    <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                      <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(parent).g}</span>
+                      {getHabitPointsExpParts(parent).exp && <span className="shrink-0">｜</span>}
+                      <span className="min-w-0 truncate">{getHabitPointsExpParts(parent).exp}</span>
+                    </div>
+                    <div className="w-[4.5rem] flex justify-end shrink-0">
+                      {showWeekendExcludedLabel(parent) && (
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded ${
+                            isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
+                          }`}
+                          title="土日祝は任意（進捗に影響しません）"
+                        >
+                          週末除外
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-[5.5rem] flex justify-end shrink-0">
+                      {showCompExcludedLabel(parent) && (
+                        <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">Comp対象外</span>
+                      )}
+                    </div>
+                    <div className={`flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 text-cyan-400`} title="チェック時に加算・減算される数値">
+                      {(() => {
+                        const { g, exp } = getCheckTimeDeltaParts({ ...parent, checked: parentChecked });
+                        if (!g && !exp) return null;
+                        return (
+                          <>
+                            {g && <span className="shrink-0">{g}</span>}
+                            {g && exp && <span className="shrink-0">｜</span>}
+                            {exp && <span className="min-w-0 truncate">{exp}</span>}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
                 )}
-              </button>
-
-              {/* 習慣名｜補足説明 */}
-              <label
-                htmlFor={`habit-${habit.id}`}
-                className={`block truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${habit.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
-              >
-                {[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}
-              </label>
-
-              {/* 右側グループ: 設定ポイント → 週末除外 → Comp対象外 → チェック時の増減（列幅固定で縦揃え） */}
-              <div className="flex items-center justify-end gap-2 shrink-0">
-                <div className="w-16" />
-                {/* 1. 設定ポイント（+◯G｜身体±◯｜頭脳±◯｜精神±◯） */}
-                <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
-                  <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(habit).g}</span>
-                  {getHabitPointsExpParts(habit).exp && <span className="shrink-0">｜</span>}
-                  <span className="min-w-0 truncate">{getHabitPointsExpParts(habit).exp}</span>
-                </div>
-                {/* 2. 週末除外（固定幅で縦揃え） */}
-                <div className="w-[4.5rem] flex justify-end shrink-0">
-                  {showWeekendExcludedLabel(habit) && (
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded ${
-                        isWeekendOrHolidayToday
-                          ? 'text-cyan-300/90 bg-cyan-900/30'
-                          : 'text-zinc-500 bg-zinc-800'
-                      }`}
-                      title="土日祝は任意（進捗に影響しません）"
+                {/* 子習慣行（インデント・チェックあり） */}
+                {children.map((child) => (
+                  <div key={child.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full pl-6">
+                    <button
+                      id={`habit-${child.id}`}
+                      onClick={() => !isConfirmed && toggleCheck(child.id)}
+                      onKeyDown={(e) => {
+                        if (isConfirmed) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleCheck(child.id);
+                        }
+                      }}
+                      aria-label={`${child.habit_name}を${child.checked ? '未完了' : '完了'}にする`}
+                      aria-checked={child.checked}
+                      aria-disabled={isConfirmed}
+                      role="checkbox"
+                      tabIndex={isConfirmed ? -1 : 0}
+                      disabled={isConfirmed}
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
+                        child.checked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'
+                      } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
-                      週末除外
-                    </span>
-                  )}
-                </div>
-                {/* 3. Comp対象外（固定幅で縦揃え） */}
-                <div className="w-[5.5rem] flex justify-end shrink-0">
-                  {showCompExcludedLabel(habit) && (
-                    <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">
-                      Comp対象外
-                    </span>
-                  )}
-                </div>
-                {/* 4. チェック時の増減（±◯G｜身体±◯｜精神±◯） */}
-                <div className={`flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${
-                  habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
-                }`} title="チェック時に加算・減算される数値">
-                  {(() => {
-                    const { g, exp } = getCheckTimeDeltaParts(habit);
-                    if (!g && !exp) return null;
-                    return (
-                      <>
-                        {g && <span className="shrink-0">{g}</span>}
-                        {g && exp && <span className="shrink-0">｜</span>}
-                        {exp && <span className="min-w-0 truncate">{exp}</span>}
-                      </>
-                    );
-                  })()}
-                </div>
+                      {child.checked && (
+                        <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                          <path d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      )}
+                    </button>
+                    <label
+                      htmlFor={`habit-${child.id}`}
+                      className={`block truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                    >
+                      {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
+                    </label>
+                    <div className="flex items-center justify-end gap-2 shrink-0">
+                      <div className="w-16" />
+                      <div className="flex items-baseline gap-1 text-sm text-zinc-400 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                        <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(child).g}</span>
+                        {getHabitPointsExpParts(child).exp && <span className="shrink-0">｜</span>}
+                        <span className="min-w-0 truncate">{getHabitPointsExpParts(child).exp}</span>
+                      </div>
+                      <div className="w-[4.5rem] flex justify-end shrink-0">
+                        {showWeekendExcludedLabel(child) && (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded ${
+                              isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
+                            }`}
+                            title="土日祝は任意（進捗に影響しません）"
+                          >
+                            週末除外
+                          </span>
+                        )}
+                      </div>
+                      <div className="w-[5.5rem] flex justify-end shrink-0">
+                        {showCompExcludedLabel(child, parent) && (
+                          <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">Comp対象外</span>
+                        )}
+                      </div>
+                      <div className="flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 text-cyan-400" title="チェック時に加算・減算される数値">
+                        {(() => {
+                          const { g, exp } = getCheckTimeDeltaParts(child);
+                          if (!g && !exp) return null;
+                          return (
+                            <>
+                              {g && <span className="shrink-0">{g}</span>}
+                              {g && exp && <span className="shrink-0">｜</span>}
+                              {exp && <span className="min-w-0 truncate">{exp}</span>}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* ボタン */}
           <div className="flex gap-3 pt-2 mt-3 border-t border-zinc-800">
@@ -801,97 +1124,196 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         {isBadHabitsExpanded && (
           <FormCard id="bad-habits-content" className="p-3 sm:p-4 overflow-hidden">
           <div className="space-y-3 w-full min-w-0">
-          {badHabits.map((habit) => (
-            <div key={habit.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
-              {/* チェックボックス */}
-              <button
-                id={`habit-${habit.id}`}
-                onClick={() => !isConfirmed && toggleCheck(habit.id)}
-                onKeyDown={(e) => {
-                  if (isConfirmed) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    toggleCheck(habit.id);
-                  }
-                }}
-                aria-label={`${habit.habit_name}を${habit.checked ? '未完了' : '完了'}にする`}
-                aria-checked={habit.checked}
-                aria-disabled={isConfirmed}
-                role="checkbox"
-                tabIndex={isConfirmed ? -1 : 0}
-                disabled={isConfirmed}
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
-                  habit.checked
-                    ? 'bg-cyan-500 border-cyan-500'
-                    : 'bg-transparent border-zinc-600 hover:border-zinc-400'
-                } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                {habit.checked && (
-                  <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path d="M5 13l4 4L19 7"></path>
-                  </svg>
+          {badTree.map(({ parent, children }) => {
+            const parentChecked = isParentCompleted(parent, children);
+            const hasChildren = children.length > 0;
+            return (
+              <div key={parent.id} className="space-y-1">
+                {hasChildren ? (
+                  <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
+                    <span className="w-5 h-5 rounded border-2 border-transparent flex items-center justify-center shrink-0" aria-hidden />
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-base text-zinc-400 truncate min-w-0">
+                        {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-2 shrink-0">
+                      <div className="w-16" />
+                      <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]">
+                        <span className="text-zinc-500">ー</span>
+                      </div>
+                      <div className="w-[4.5rem] flex justify-end shrink-0">
+                        {showWeekendExcludedLabel(parent) && (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded ${
+                              isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
+                            }`}
+                            title="土日祝は任意（進捗に影響しません）"
+                          >
+                            週末除外
+                          </span>
+                        )}
+                      </div>
+                      <div className="w-[5.5rem] flex justify-end shrink-0">
+                        {showCompExcludedLabel(parent) && (
+                          <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">Comp対象外</span>
+                        )}
+                      </div>
+                      <div className="w-[13rem] min-w-[13rem]" />
+                    </div>
+                  </div>
+                ) : (
+                <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
+                  <button
+                    id={`habit-${parent.id}`}
+                    onClick={() => !isConfirmed && toggleCheck(parent.id)}
+                    onKeyDown={(e) => {
+                      if (isConfirmed) return;
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleCheck(parent.id);
+                      }
+                    }}
+                    aria-label={`${parent.habit_name}を${parentChecked ? '未完了' : '完了'}にする`}
+                    aria-checked={parentChecked}
+                    aria-disabled={isConfirmed}
+                    role="checkbox"
+                    tabIndex={isConfirmed ? -1 : 0}
+                    disabled={isConfirmed}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
+                      parentChecked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'
+                    } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  >
+                    {parentChecked && (
+                      <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path d="M5 13l4 4L19 7"></path>
+                      </svg>
+                    )}
+                  </button>
+                  <label
+                    htmlFor={`habit-${parent.id}`}
+                    className={`block cursor-pointer truncate min-w-0 ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                  >
+                    {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                  </label>
+                  <div className="flex items-center justify-end gap-2 shrink-0">
+                    <div className="w-16" />
+                    <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                      <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(parent).g}</span>
+                      {getHabitPointsExpParts(parent).exp && <span className="shrink-0">｜</span>}
+                      <span className="min-w-0 truncate">{getHabitPointsExpParts(parent).exp}</span>
+                    </div>
+                    <div className="w-[4.5rem] flex justify-end shrink-0">
+                      {showWeekendExcludedLabel(parent) && (
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded ${
+                            isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
+                          }`}
+                          title="土日祝は任意（進捗に影響しません）"
+                        >
+                          週末除外
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-[5.5rem] flex justify-end shrink-0">
+                      {showCompExcludedLabel(parent) && (
+                        <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">Comp対象外</span>
+                      )}
+                    </div>
+                    <div className={`flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${parentChecked ? 'text-red-400' : 'text-cyan-400'}`} title="チェック時に加算・減算される数値">
+                      {(() => {
+                        const { g, exp } = getCheckTimeDeltaParts({ ...parent, checked: parentChecked });
+                        if (!g && !exp) return null;
+                        return (
+                          <>
+                            {g && <span className="shrink-0">{g}</span>}
+                            {g && exp && <span className="shrink-0">｜</span>}
+                            {exp && <span className="min-w-0 truncate">{exp}</span>}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
                 )}
-              </button>
-
-              {/* 習慣名｜補足説明 */}
-              <label
-                htmlFor={`habit-${habit.id}`}
-                className={`block cursor-pointer truncate min-w-0 ${habit.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
-              >
-                {[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}
-              </label>
-
-              {/* 右側グループ: 設定ポイント → 週末除外 → Comp対象外 → チェック時の増減（列幅固定で縦揃え） */}
-              <div className="flex items-center justify-end gap-2 shrink-0">
-                <div className="w-16" />
-                {/* 1. 設定ポイント（+◯G｜身体±◯｜頭脳±◯｜精神±◯） */}
-                <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
-                  <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(habit).g}</span>
-                  {getHabitPointsExpParts(habit).exp && <span className="shrink-0">｜</span>}
-                  <span className="min-w-0 truncate">{getHabitPointsExpParts(habit).exp}</span>
-                </div>
-                {/* 2. 週末除外 */}
-                <div className="w-[4.5rem] flex justify-end shrink-0">
-                  {showWeekendExcludedLabel(habit) && (
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded ${
-                        isWeekendOrHolidayToday
-                          ? 'text-cyan-300/90 bg-cyan-900/30'
-                          : 'text-zinc-500 bg-zinc-800'
-                      }`}
-                      title="土日祝は任意（進捗に影響しません）"
+                {children.map((child) => (
+                  <div key={child.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full pl-6">
+                    <button
+                      id={`habit-${child.id}`}
+                      onClick={() => !isConfirmed && toggleCheck(child.id)}
+                      onKeyDown={(e) => {
+                        if (isConfirmed) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleCheck(child.id);
+                        }
+                      }}
+                      aria-label={`${child.habit_name}を${child.checked ? '未完了' : '完了'}にする`}
+                      aria-checked={child.checked}
+                      aria-disabled={isConfirmed}
+                      role="checkbox"
+                      tabIndex={isConfirmed ? -1 : 0}
+                      disabled={isConfirmed}
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
+                        child.checked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'
+                      } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
-                      週末除外
-                    </span>
-                  )}
-                </div>
-                {/* 3. Comp対象外 */}
-                <div className="w-[5.5rem] flex justify-end shrink-0">
-                  {showCompExcludedLabel(habit) && (
-                    <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">
-                      Comp対象外
-                    </span>
-                  )}
-                </div>
-                {/* 4. チェック時の増減（±◯G｜身体±◯｜精神±◯） */}
-                <div className={`flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${
-                  habit.habit_type === 'bad' && habit.checked ? 'text-red-400' : 'text-cyan-400'
-                }`} title="チェック時に加算・減算される数値">
-                  {(() => {
-                    const { g, exp } = getCheckTimeDeltaParts(habit);
-                    if (!g && !exp) return null;
-                    return (
-                      <>
-                        {g && <span className="shrink-0">{g}</span>}
-                        {g && exp && <span className="shrink-0">｜</span>}
-                        {exp && <span className="min-w-0 truncate">{exp}</span>}
-                      </>
-                    );
-                  })()}
-                </div>
+                      {child.checked && (
+                        <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                          <path d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      )}
+                    </button>
+                    <label
+                      htmlFor={`habit-${child.id}`}
+                      className={`block cursor-pointer truncate min-w-0 ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                    >
+                      {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
+                    </label>
+                    <div className="flex items-center justify-end gap-2 shrink-0">
+                      <div className="w-16" />
+                      <div className="flex items-baseline gap-1 text-sm text-zinc-400 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                        <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(child).g}</span>
+                        {getHabitPointsExpParts(child).exp && <span className="shrink-0">｜</span>}
+                        <span className="min-w-0 truncate">{getHabitPointsExpParts(child).exp}</span>
+                      </div>
+                      <div className="w-[4.5rem] flex justify-end shrink-0">
+                        {showWeekendExcludedLabel(child) && (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded ${
+                              isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
+                            }`}
+                            title="土日祝は任意（進捗に影響しません）"
+                          >
+                            週末除外
+                          </span>
+                        )}
+                      </div>
+                      <div className="w-[5.5rem] flex justify-end shrink-0">
+                        {showCompExcludedLabel(child, parent) && (
+                          <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">Comp対象外</span>
+                        )}
+                      </div>
+                      <div className={`flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${child.checked ? 'text-red-400' : 'text-cyan-400'}`} title="チェック時に加算・減算される数値">
+                        {(() => {
+                          const { g, exp } = getCheckTimeDeltaParts(child);
+                          if (!g && !exp) return null;
+                          return (
+                            <>
+                              {g && <span className="shrink-0">{g}</span>}
+                              {g && exp && <span className="shrink-0">｜</span>}
+                              {exp && <span className="min-w-0 truncate">{exp}</span>}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* ボタン */}
           <div className="flex gap-3 pt-2 mt-3 border-t border-zinc-800">
@@ -921,7 +1343,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
       </div>
 
       {/* ボーナス */}
-      {bonusHabits.length > 0 && (
+      {bonusTree.length > 0 && (
         <div>
           <button
             onClick={() => setIsBonusExpanded(!isBonusExpanded)}
@@ -940,89 +1362,198 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           </button>
           {isBonusExpanded && (
             <FormCard id="bonus-content" className="p-3 sm:p-4">
-            <div className="flex items-center gap-2 text-base">
-              {/* チェックボックス */}
-              <button
-                id={`bonus-${bonusHabits[0].id}`}
-                onClick={() => !isConfirmed && toggleCompleteBonus()}
-                onKeyDown={(e) => {
-                  if (isConfirmed) return;
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    toggleCompleteBonus();
-                  }
-                }}
-                aria-label={`${bonusHabits[0].habit_name}を${completeBonus ? '未完了' : '完了'}にする`}
-                aria-checked={completeBonus}
-                aria-disabled={isConfirmed}
-                role="checkbox"
-                tabIndex={isConfirmed ? -1 : 0}
-                disabled={isConfirmed}
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
-                  completeBonus
-                    ? 'bg-cyan-500 border-cyan-500'
-                    : 'bg-transparent border-zinc-600 hover:border-zinc-400'
-                } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
-              >
-                {completeBonus && (
-                  <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path d="M5 13l4 4L19 7"></path>
-                  </svg>
-                )}
-              </button>
-
-              {/* 習慣名｜補足説明 */}
-              <label
-                htmlFor={`bonus-${bonusHabits[0].id}`}
-                className={`flex-1 cursor-pointer ${completeBonus ? 'text-zinc-100' : 'text-zinc-400'}`}
-              >
-                {[bonusHabits[0].habit_name, bonusHabits[0].description?.trim()].filter(Boolean).join('｜')}
-              </label>
-
-              {/* スペーサー（列揃え） */}
-              <div className="w-16" />
-
-              {/* 1. 設定ポイント（+◯G｜身体±◯｜頭脳±◯｜精神±◯） */}
-              <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
-                <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(bonusHabits[0]).g}</span>
-                {getHabitPointsExpParts(bonusHabits[0]).exp && <span className="shrink-0">｜</span>}
-                <span className="min-w-0 truncate">{getHabitPointsExpParts(bonusHabits[0]).exp}</span>
-              </div>
-              {/* 2. 週末除外 */}
-              <div className="w-[4.5rem] flex justify-end shrink-0">
-                {showWeekendExcludedLabel(bonusHabits[0]) && (
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded ${
-                      isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
-                    }`}
-                    title="土日祝は任意（進捗に影響しません）"
-                  >
-                    週末除外
-                  </span>
-                )}
-              </div>
-              {/* 3. Comp対象外 */}
-              <div className="w-[5.5rem] flex justify-end shrink-0">
-                {showCompExcludedLabel(bonusHabits[0]) && (
-                  <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">
-                    Comp対象外
-                  </span>
-                )}
-              </div>
-              {/* 4. チェック時の増減（ゴルド・EXPすべて・幅に余裕） */}
-              <div className="flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 text-cyan-400" title="チェック時に加算・減算される数値">
-                {(() => {
-                  const { g, exp } = getCheckTimeDeltaParts(bonusHabits[0]);
-                  if (!g && !exp) return null;
-                  return (
-                    <>
-                      {g && <span className="shrink-0">{g}</span>}
-                      {g && exp && <span className="shrink-0">｜</span>}
-                      {exp && <span className="min-w-0 truncate">{exp}</span>}
-                    </>
-                  );
-                })()}
-              </div>
+            <div className="space-y-3 w-full min-w-0">
+            {bonusTree.map(({ parent, children }) => {
+              const parentChecked = isParentCompleted(parent, children);
+              const isFirstBonus = bonusTree[0].parent.id === parent.id;
+              const hasChildren = children.length > 0;
+              return (
+                <div key={parent.id} className="space-y-1">
+                  {hasChildren ? (
+                    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
+                      <span className="w-5 h-5 rounded border-2 border-transparent flex items-center justify-center shrink-0" aria-hidden />
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base text-zinc-400 truncate min-w-0">
+                          {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                        </span>
+                        <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
+                      </div>
+                      <div className="flex items-center justify-end gap-2 shrink-0">
+                        <div className="w-16" />
+                        <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]">
+                          <span className="text-zinc-500">ー</span>
+                        </div>
+                        <div className="w-[4.5rem] flex justify-end shrink-0">
+                          {showWeekendExcludedLabel(parent) && (
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded ${
+                                isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
+                              }`}
+                              title="土日祝は任意（進捗に影響しません）"
+                            >
+                              週末除外
+                            </span>
+                          )}
+                        </div>
+                        <div className="w-[5.5rem] flex justify-end shrink-0">
+                          {showCompExcludedLabel(parent) && (
+                            <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">Comp対象外</span>
+                          )}
+                        </div>
+                        <div className="w-[13rem] min-w-[13rem]" />
+                      </div>
+                    </div>
+                  ) : (
+                  <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
+                    <button
+                      id={isFirstBonus ? `bonus-${parent.id}` : `habit-${parent.id}`}
+                      onClick={() => !isConfirmed && (isFirstBonus ? toggleCompleteBonus() : toggleCheck(parent.id))}
+                      onKeyDown={(e) => {
+                        if (isConfirmed) return;
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          isFirstBonus ? toggleCompleteBonus() : toggleCheck(parent.id);
+                        }
+                      }}
+                      aria-label={`${parent.habit_name}を${parentChecked ? '未完了' : '完了'}にする`}
+                      aria-checked={parentChecked}
+                      aria-disabled={isConfirmed}
+                      role="checkbox"
+                      tabIndex={isConfirmed ? -1 : 0}
+                      disabled={isConfirmed}
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
+                        parentChecked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'
+                      } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                    >
+                      {parentChecked && (
+                        <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                          <path d="M5 13l4 4L19 7"></path>
+                        </svg>
+                      )}
+                    </button>
+                    <label
+                      htmlFor={isFirstBonus ? `bonus-${parent.id}` : `habit-${parent.id}`}
+                      className={`block truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                    >
+                      {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                    </label>
+                    <div className="flex items-center justify-end gap-2 shrink-0">
+                      <div className="w-16" />
+                      <div className="flex items-baseline gap-1 text-sm text-zinc-200 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                        <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(parent).g}</span>
+                        {getHabitPointsExpParts(parent).exp && <span className="shrink-0">｜</span>}
+                        <span className="min-w-0 truncate">{getHabitPointsExpParts(parent).exp}</span>
+                      </div>
+                      <div className="w-[4.5rem] flex justify-end shrink-0">
+                        {showWeekendExcludedLabel(parent) && (
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded ${
+                              isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
+                            }`}
+                            title="土日祝は任意（進捗に影響しません）"
+                          >
+                            週末除外
+                          </span>
+                        )}
+                      </div>
+                      <div className="w-[5.5rem] flex justify-end shrink-0">
+                        {showCompExcludedLabel(parent) && (
+                          <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">Comp対象外</span>
+                        )}
+                      </div>
+                      <div className="flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 text-cyan-400" title="チェック時に加算・減算される数値">
+                        {(() => {
+                          const { g, exp } = getCheckTimeDeltaParts({ ...parent, checked: parentChecked });
+                          if (!g && !exp) return null;
+                          return (
+                            <>
+                              {g && <span className="shrink-0">{g}</span>}
+                              {g && exp && <span className="shrink-0">｜</span>}
+                              {exp && <span className="min-w-0 truncate">{exp}</span>}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+                  )}
+                  {children.map((child) => (
+                    <div key={child.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full pl-6">
+                      <button
+                        id={`habit-${child.id}`}
+                        onClick={() => !isConfirmed && toggleCheck(child.id)}
+                        onKeyDown={(e) => {
+                          if (isConfirmed) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleCheck(child.id);
+                          }
+                        }}
+                        aria-label={`${child.habit_name}を${child.checked ? '未完了' : '完了'}にする`}
+                        aria-checked={child.checked}
+                        aria-disabled={isConfirmed}
+                        role="checkbox"
+                        tabIndex={isConfirmed ? -1 : 0}
+                        disabled={isConfirmed}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${
+                          child.checked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'
+                        } ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                      >
+                        {child.checked && (
+                          <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                            <path d="M5 13l4 4L19 7"></path>
+                          </svg>
+                        )}
+                      </button>
+                      <label
+                        htmlFor={`habit-${child.id}`}
+                        className={`block truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                      >
+                        {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
+                      </label>
+                      <div className="flex items-center justify-end gap-2 shrink-0">
+                        <div className="w-16" />
+                        <div className="flex items-baseline gap-1 text-sm text-zinc-400 whitespace-nowrap w-[11rem] min-w-[11rem]" title="ゴルド・EXPの加減算設定">
+                          <span className="shrink-0">（{getHabitPointsExpParts(parent).g}）</span>
+                          {getHabitPointsExpParts(parent).exp && <span className="shrink-0">｜</span>}
+                          <span className="min-w-0 truncate">{getHabitPointsExpParts(parent).exp && `（${getHabitPointsExpParts(parent).exp}）`}</span>
+                        </div>
+                        <div className="w-[4.5rem] flex justify-end shrink-0">
+                          {showWeekendExcludedLabel(child) && (
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded ${
+                                isWeekendOrHolidayToday ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800'
+                              }`}
+                              title="土日祝は任意（進捗に影響しません）"
+                            >
+                              週末除外
+                            </span>
+                          )}
+                        </div>
+                        <div className="w-[5.5rem] flex justify-end shrink-0">
+                          {showCompExcludedLabel(child, parent) && (
+                            <span className="text-xs px-2 py-0.5 rounded text-zinc-500 bg-zinc-800" title="Completeボーナス対象外">Comp対象外</span>
+                          )}
+                        </div>
+                        <div className="flex items-baseline gap-1 text-lg font-medium whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 text-cyan-400" title="チェック時に加算・減算される数値">
+                          {(() => {
+                            const { g, exp } = getCheckTimeDeltaParts(child);
+                            if (!g && !exp) return null;
+                            return (
+                              <>
+                                {g && <span className="shrink-0">{g}</span>}
+                                {g && exp && <span className="shrink-0">｜</span>}
+                                {exp && <span className="min-w-0 truncate">{exp}</span>}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
             </div>
             </FormCard>
           )}
@@ -1088,8 +1619,126 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               />
             </div>
 
+            {/* 親習慣（子習慣を設定する）スイッチ：ON だと親は見出しのみ・子だけチェック可能（ToDoのサブタスク風） */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isParentWithChildren}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setIsParentWithChildren(on);
+                    if (on) {
+                      setModalFormData((prev) => ({ ...prev, parent_habit_id: '' }));
+                      if (modalChildRows.length === 0) addModalChildRow();
+                    } else {
+                      setModalChildRows([]);
+                    }
+                  }}
+                  className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-700 rounded focus:ring-cyan-500"
+                />
+                <span className="text-zinc-300">親習慣（子習慣を設定する）</span>
+              </label>
+              <p className="text-xs text-zinc-500">
+                ONにすると、親は見出しのみ表示され、子習慣だけチェックできます。各子習慣ごとにゴルド・EXPを設定できます。
+              </p>
+            </div>
+
+            {/* 子習慣リスト（親習慣ありのときのみ。ToDoのサブタスク風） */}
+            {isParentWithChildren && (
+              <div className="space-y-3 p-3 bg-zinc-800/50 border border-zinc-700 rounded-lg">
+                <FormLabel className="text-zinc-300">子習慣</FormLabel>
+                <div className="space-y-2">
+                  {modalChildRows.map((row) => (
+                    <div
+                      key={row.id}
+                      className="space-y-2 p-2 bg-zinc-800 rounded border border-zinc-700"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Input
+                          type="text"
+                          value={row.habit_name}
+                          onChange={(e) => updateModalChildRow(row.id, { habit_name: e.target.value })}
+                          placeholder="子習慣名"
+                          className="flex-1 min-w-[8rem] bg-zinc-900 border-zinc-700 text-zinc-100 text-sm"
+                        />
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-zinc-500 shrink-0">G</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={row.points}
+                            onChange={(e) => updateModalChildRow(row.id, { points: parseInt(e.target.value) || 0 })}
+                            className="w-14 bg-zinc-900 border-zinc-700 text-zinc-100 text-sm"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-zinc-500 shrink-0">身体</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={row.exp_body}
+                            onChange={(e) => updateModalChildRow(row.id, { exp_body: parseInt(e.target.value) || 0 })}
+                            className="w-12 bg-zinc-900 border-zinc-700 text-zinc-100 text-sm"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-zinc-500 shrink-0">頭脳</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={row.exp_mind}
+                            onChange={(e) => updateModalChildRow(row.id, { exp_mind: parseInt(e.target.value) || 0 })}
+                            className="w-12 bg-zinc-900 border-zinc-700 text-zinc-100 text-sm"
+                          />
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-zinc-500 shrink-0">精神</span>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={row.exp_spirit}
+                            onChange={(e) => updateModalChildRow(row.id, { exp_spirit: parseInt(e.target.value) || 0 })}
+                            className="w-12 bg-zinc-900 border-zinc-700 text-zinc-100 text-sm"
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeModalChildRow(row.id)}
+                          className="text-xs text-red-400 hover:text-red-300 shrink-0 h-auto py-1"
+                        >
+                          削除
+                        </Button>
+                      </div>
+                      <textarea
+                        value={row.description}
+                        onChange={(e) => updateModalChildRow(row.id, { description: e.target.value })}
+                        placeholder="補足説明（任意）"
+                        rows={2}
+                        className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-zinc-100 text-sm placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-y min-h-[4rem]"
+                      />
+                    </div>
+                  ))}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addModalChildRow}
+                  className="bg-zinc-800 border-zinc-600 text-cyan-400 hover:bg-zinc-700"
+                >
+                  + 子習慣を追加
+                </Button>
+              </div>
+            )}
+
             {/* 入力タイプは当面チェックリストのみのため選択肢なし（常に checkbox） */}
 
+            {/* ポイント・EXP（子習慣ありのときは親にはつけないので非表示） */}
+            {!isParentWithChildren && (
+            <>
             {/* ポイント設定をAIにおまかせ */}
             <div className="mb-3">
               <Button
@@ -1159,8 +1808,10 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                 />
               </div>
             </FormCard>
+            </>
+            )}
 
-            {/* オプション設定 */}
+            {/* オプション設定（子習慣ありのときも親の週末除外・Comp対象外は有効） */}
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <input
@@ -1214,69 +1865,67 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         maxWidth="2xl"
       >
         <div className="space-y-6">
-          {/* 良習慣 */}
+          {/* 良習慣（親→子のツリー、親の↑↓でグループごと移動） */}
           <div>
             <h4 className="text-base font-medium text-cyan-400 mb-3">良習慣</h4>
             <div className="space-y-2">
-              {habits
-                .filter((h) => h.habit_type === 'good')
-                .sort((a, b) => a.display_order - b.display_order)
-                .map((habit, index, arr) => (
-                  <div
-                    key={habit.id}
-                    className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg"
-                  >
+              {buildManagementGroups(habits, 'good').map((group, groupIndex, arr) => (
+                <div key={group.root.id} className="space-y-1">
+                  {/* 親行 */}
+                  <div className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
                     <div className="flex items-center gap-2 flex-1">
-                      <span className="text-base text-zinc-500 w-8">{index + 1}</span>
-                      <span className="flex-1 text-base text-zinc-100">{[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}</span>
+                      <span className="text-base text-zinc-500 w-8">{groupIndex + 1}</span>
+                      <span className="flex-1 text-base text-zinc-100">{[group.root.habit_name, group.root.description?.trim()].filter(Boolean).join('｜')}</span>
+                      {group.habits.length > 1 && <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>}
                       <span className="text-base text-zinc-400">
-                        {habit.points}G / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
+                        {group.habits.length > 1 ? 'ー' : `${group.root.points}G / ${group.root.exp_body + group.root.exp_mind + group.root.exp_spirit}ex`}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Button
-                        onClick={() => handleMoveUp(habit)}
+                        onClick={() => handleMoveUp(group.root)}
                         variant="ghost"
                         size="sm"
-                        disabled={index === 0}
-                        aria-label={`${habit.habit_name}を上に移動する`}
+                        disabled={groupIndex === 0}
+                        aria-label={`${group.root.habit_name}を上に移動する`}
                         className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300"
                       >
                         ↑
                       </Button>
                       <Button
-                        onClick={() => handleMoveDown(habit)}
+                        onClick={() => handleMoveDown(group.root)}
                         variant="ghost"
                         size="sm"
-                        disabled={index === arr.length - 1}
-                        aria-label={`${habit.habit_name}を下に移動する`}
+                        disabled={groupIndex === arr.length - 1}
+                        aria-label={`${group.root.habit_name}を下に移動する`}
                         className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300"
                       >
                         ↓
                       </Button>
-                      <Button
-                        onClick={() => handleOpenEditModal(habit)}
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`${habit.habit_name}を編集する`}
-                        className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300"
-                      >
-                        編集
-                      </Button>
-                      {habit.is_custom && (
-                        <Button
-                          onClick={() => handleDeleteHabit(habit)}
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`${habit.habit_name}を削除する`}
-                          className="h-7 px-2 text-base text-red-400 hover:text-red-300"
-                        >
-                          削除
-                        </Button>
+                      <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                      {group.root.is_custom && (
+                        <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>
                       )}
                     </div>
                   </div>
-                ))}
+                  {/* 子行（インデント、↑↓なし） */}
+                  {group.habits.slice(1).map((child) => (
+                    <div key={child.id} className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg ml-6">
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-base text-zinc-500 w-8" aria-hidden>-</span>
+                        <span className="flex-1 text-base text-zinc-100">{[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}</span>
+                        <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                        {child.is_custom && (
+                          <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1284,65 +1933,39 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           <div>
             <h4 className="text-base font-medium text-red-400 mb-3">悪習慣</h4>
             <div className="space-y-2">
-              {habits
-                .filter((h) => h.habit_type === 'bad')
-                .sort((a, b) => a.display_order - b.display_order)
-                .map((habit, index, arr) => (
-                  <div
-                    key={habit.id}
-                    className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg"
-                  >
+              {buildManagementGroups(habits, 'bad').map((group, groupIndex, arr) => (
+                <div key={group.root.id} className="space-y-1">
+                  <div className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
                     <div className="flex items-center gap-2 flex-1">
-                      <span className="text-base text-zinc-500 w-8">{index + 1}</span>
-                      <span className="flex-1 text-base text-zinc-100">{[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}</span>
+                      <span className="text-base text-zinc-500 w-8">{groupIndex + 1}</span>
+                      <span className="flex-1 text-base text-zinc-100">{[group.root.habit_name, group.root.description?.trim()].filter(Boolean).join('｜')}</span>
+                      {group.habits.length > 1 && <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>}
                       <span className="text-base text-zinc-400">
-                        {habit.points}G / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
+                        {group.habits.length > 1 ? 'ー' : `${group.root.points}G / ${group.root.exp_body + group.root.exp_mind + group.root.exp_spirit}ex`}
                       </span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button
-                        onClick={() => handleMoveUp(habit)}
-                        variant="ghost"
-                        size="sm"
-                        disabled={index === 0}
-                        aria-label={`${habit.habit_name}を上に移動する`}
-                        className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300"
-                      >
-                        ↑
-                      </Button>
-                      <Button
-                        onClick={() => handleMoveDown(habit)}
-                        variant="ghost"
-                        size="sm"
-                        disabled={index === arr.length - 1}
-                        aria-label={`${habit.habit_name}を下に移動する`}
-                        className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300"
-                      >
-                        ↓
-                      </Button>
-                      <Button
-                        onClick={() => handleOpenEditModal(habit)}
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`${habit.habit_name}を編集する`}
-                        className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300"
-                      >
-                        編集
-                      </Button>
-                      {habit.is_custom && (
-                        <Button
-                          onClick={() => handleDeleteHabit(habit)}
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`${habit.habit_name}を削除する`}
-                          className="h-7 px-2 text-base text-red-400 hover:text-red-300"
-                        >
-                          削除
-                        </Button>
-                      )}
+                      <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
+                      <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
+                      <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                      {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
                     </div>
                   </div>
-                ))}
+                  {group.habits.slice(1).map((child) => (
+                    <div key={child.id} className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg ml-6">
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-base text-zinc-500 w-8" aria-hidden>-</span>
+                        <span className="flex-1 text-base text-zinc-100">{[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}</span>
+                        <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                        {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -1351,65 +1974,39 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
             <div>
               <h4 className="text-base font-medium text-yellow-400 mb-3">ボーナス</h4>
               <div className="space-y-2">
-                {habits
-                  .filter((h) => h.habit_type === 'bonus')
-                  .sort((a, b) => a.display_order - b.display_order)
-                  .map((habit, index, arr) => (
-                    <div
-                      key={habit.id}
-                      className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg"
-                    >
+                {buildManagementGroups(habits, 'bonus').map((group, groupIndex, arr) => (
+                  <div key={group.root.id} className="space-y-1">
+                    <div className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
                       <div className="flex items-center gap-2 flex-1">
-                        <span className="text-base text-zinc-500 w-8">{index + 1}</span>
-                        <span className="flex-1 text-base text-zinc-100">{[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}</span>
+                        <span className="text-base text-zinc-500 w-8">{groupIndex + 1}</span>
+                        <span className="flex-1 text-base text-zinc-100">{[group.root.habit_name, group.root.description?.trim()].filter(Boolean).join('｜')}</span>
+                        {group.habits.length > 1 && <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>}
                         <span className="text-base text-zinc-400">
-                          {habit.points}G / {habit.exp_body + habit.exp_mind + habit.exp_spirit}ex
+                          {group.habits.length > 1 ? 'ー' : `${group.root.points}G / ${group.root.exp_body + group.root.exp_mind + group.root.exp_spirit}ex`}
                         </span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <Button
-                          onClick={() => handleMoveUp(habit)}
-                          variant="ghost"
-                          size="sm"
-                          disabled={index === 0}
-                          aria-label={`${habit.habit_name}を上に移動する`}
-                          className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300"
-                        >
-                          ↑
-                        </Button>
-                        <Button
-                          onClick={() => handleMoveDown(habit)}
-                          variant="ghost"
-                          size="sm"
-                          disabled={index === arr.length - 1}
-                          aria-label={`${habit.habit_name}を下に移動する`}
-                          className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300"
-                        >
-                          ↓
-                        </Button>
-                        <Button
-                          onClick={() => handleOpenEditModal(habit)}
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`${habit.habit_name}を編集する`}
-                          className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300"
-                        >
-                          編集
-                        </Button>
-                        {habit.is_custom && (
-                          <Button
-                            onClick={() => handleDeleteHabit(habit)}
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`${habit.habit_name}を削除する`}
-                            className="h-7 px-2 text-base text-red-400 hover:text-red-300"
-                          >
-                            削除
-                          </Button>
-                        )}
+                        <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
+                        <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
+                        <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                        {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
                       </div>
                     </div>
-                  ))}
+                    {group.habits.slice(1).map((child) => (
+                      <div key={child.id} className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg ml-6">
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="text-base text-zinc-500 w-8" aria-hidden>-</span>
+                          <span className="flex-1 text-base text-zinc-100">{[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}</span>
+                          <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                          {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             </div>
           )}

@@ -36,6 +36,8 @@ export interface Habit {
   exp_spirit: number;
   /** 表示順序（小さい順に表示） */
   display_order: number;
+  /** 親習慣ID（子習慣の場合のみ。1階層のみ対応） */
+  parent_habit_id?: string | null;
   /** カスタム習慣かどうか（ユーザーが作成した習慣） */
   is_custom: boolean;
   /** 入力タイプ: 'checkbox'=チェックボックス, 'number'=数値入力 */

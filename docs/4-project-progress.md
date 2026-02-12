@@ -297,6 +297,7 @@
 - 属性ラベル: EXP_ATTRIBUTE_LABELS を「体→身体」「頭→頭脳」「心→精神」に変更（lib/types.ts）
 - サブタスク三角マークのサイズ調整・サブタスクありのToDoはデフォルト展開（ToDoサマリー・カンバン）
 - 子習慣ネスト機能: Planモードで実装計画を策定（親は見出しのみ・子のみチェック）。99-cursor-manual に Plan 保存先・.cursor 統一のメモを追記し改行ルール適用。ワークスペースを web-app に変更し .cursor を web-app に統一
+- 親習慣インデントずれのバグ解析を一旦中止: 日誌の習慣リストで「親習慣のテキストがチェック付き行より右にずれて見える」件について Debug モードで計測（getBoundingClientRect で列・名前左端を送信）。ログでは親/通常で nameStartDiff・nameInnerDiff は 0 で一致していたが視覚的ずれが残るため解析を保留。計装（ref・useEffect・data-debug-*）は削除してコミット
 
 #### 決定事項
 

@@ -41,6 +41,7 @@ export async function POST(request: NextRequest) {
       input_type,
       exclude_weekends,
       exclude_from_complete,
+      parent_habit_id,
     } = body;
 
     // バリデーション
@@ -90,6 +91,29 @@ export async function POST(request: NextRequest) {
     const descValue = typeof description === 'string' && description.trim() ? description.trim() : null;
     if (descValue !== null) {
       insertPayload.description = descValue;
+    }
+    if (parent_habit_id != null && parent_habit_id !== '') {
+      const uuidValidation = validateUUID(parent_habit_id, '親習慣ID');
+      if (!uuidValidation.valid) {
+        return NextResponse.json(
+          { error: uuidValidation.error },
+          { status: 400 }
+        );
+      }
+      const { data: parentHabit } = await supabase
+        .from('habits')
+        .select('id, user_id')
+        .eq('id', parent_habit_id)
+        .single();
+      if (!parentHabit || parentHabit.user_id !== user.id) {
+        return NextResponse.json(
+          { error: '親習慣が見つからないか、自分の習慣のみ指定できます' },
+          { status: 400 }
+        );
+      }
+      insertPayload.parent_habit_id = parent_habit_id;
+    } else {
+      insertPayload.parent_habit_id = null;
     }
 
     const { data: newHabit, error: insertError } = await supabase
@@ -142,6 +166,7 @@ export async function PUT(request: NextRequest) {
       input_type,
       exclude_weekends,
       exclude_from_complete,
+      parent_habit_id,
     } = body;
 
     // バリデーション
@@ -199,6 +224,37 @@ export async function PUT(request: NextRequest) {
     const descValue = typeof description === 'string' && description.trim() ? description.trim() : null;
     if (descValue !== null) {
       updatePayload.description = descValue;
+    }
+    if (parent_habit_id !== undefined) {
+      if (parent_habit_id != null && parent_habit_id !== '') {
+        const uuidValidation = validateUUID(parent_habit_id, '親習慣ID');
+        if (!uuidValidation.valid) {
+          return NextResponse.json(
+            { error: uuidValidation.error },
+            { status: 400 }
+          );
+        }
+        if (parent_habit_id === habitId) {
+          return NextResponse.json(
+            { error: '自分自身を親に指定できません' },
+            { status: 400 }
+          );
+        }
+        const { data: parentHabit } = await supabase
+          .from('habits')
+          .select('id, user_id')
+          .eq('id', parent_habit_id)
+          .single();
+        if (!parentHabit || parentHabit.user_id !== user.id) {
+          return NextResponse.json(
+            { error: '親習慣が見つからないか、自分の習慣のみ指定できます' },
+            { status: 400 }
+          );
+        }
+        updatePayload.parent_habit_id = parent_habit_id;
+      } else {
+        updatePayload.parent_habit_id = null;
+      }
     }
 
     const { error: updateError } = await supabase

@@ -76,7 +76,7 @@ export async function calculateDayDeltas(
   const logDate = dailyLog.log_date as string;
   const dailyLogRecord = dailyLog as Record<string, unknown>;
 
-  // 2. 習慣ログ + 習慣マスタ でデルタ加算
+  // 2. 習慣ログ + 習慣マスタ でデルタ加算（各習慣のチェックごとにその習慣のゴルド/EXPを加算。親は見出しのみでチェックされないため子のみ加算）
   const { data: habitLogs } = await supabase
     .from('habit_logs')
     .select('habit_id, is_checked, count')
@@ -87,7 +87,7 @@ export async function calculateDayDeltas(
     const { data: habits } = await supabase
       .from('habits')
       .select('id, habit_type, points, exp_body, exp_mind, exp_spirit, input_type, exclude_weekends')
-      .in('id', habitIds);
+      .in('id', [...new Set(habitIds)]);
 
     const habitMap = new Map((habits || []).map((h) => [h.id, h]));
     const isWeekend = isWeekendOrHoliday(logDate);
@@ -95,13 +95,10 @@ export async function calculateDayDeltas(
     for (const log of habitLogs) {
       const habit = habitMap.get(log.habit_id);
       if (!habit || !log.is_checked) continue;
-
       const count = habit.input_type === 'number' ? (log.count ?? 0) : 1;
       if (count <= 0) continue;
-
       const badExcluded = habit.habit_type === 'bad' && habit.exclude_weekends === true && isWeekend;
       if (badExcluded) continue;
-
       const sign = habit.habit_type === 'bad' ? -1 : 1;
       deltas.points_delta += sign * (habit.points ?? 0) * count;
       deltas.exp_body_delta += sign * (habit.exp_body ?? 0) * count;
@@ -188,14 +185,14 @@ export async function calculateDayDeltasWithBreakdown(
   const logDate = dailyLog.log_date as string;
   const dailyLogRecord = dailyLog as Record<string, unknown>;
 
-  // 1. 習慣ログ（良習慣・悪習慣を分けて集計）
+  // 1. 習慣ログ（各習慣のチェックごとにその習慣のゴルド/EXPを加算）
   const { data: habitLogs } = await supabase
     .from('habit_logs')
     .select('habit_id, is_checked, count')
     .eq('daily_log_id', dailyLogId);
 
   if (habitLogs && habitLogs.length > 0) {
-    const habitIds = habitLogs.map((h) => h.habit_id);
+    const habitIds = [...new Set(habitLogs.map((h) => h.habit_id))];
     const { data: habits } = await supabase
       .from('habits')
       .select('id, habit_type, points, exp_body, exp_mind, exp_spirit, input_type, exclude_weekends')
@@ -207,19 +204,15 @@ export async function calculateDayDeltasWithBreakdown(
     for (const log of habitLogs) {
       const habit = habitMap.get(log.habit_id);
       if (!habit || !log.is_checked) continue;
-
       const count = habit.input_type === 'number' ? (log.count ?? 0) : 1;
       if (count <= 0) continue;
-
       const badExcluded = habit.habit_type === 'bad' && habit.exclude_weekends === true && isWeekend;
       if (badExcluded) continue;
-
       const sign = habit.habit_type === 'bad' ? -1 : 1;
       const pts = sign * (habit.points ?? 0) * count;
       const eb = sign * (habit.exp_body ?? 0) * count;
       const em = sign * (habit.exp_mind ?? 0) * count;
       const es = sign * (habit.exp_spirit ?? 0) * count;
-
       const target = habit.habit_type === 'bad' ? breakdown.habits_bad : breakdown.habits_good;
       target.points_delta += pts;
       target.exp_body_delta += eb;

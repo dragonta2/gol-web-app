@@ -52,6 +52,22 @@
 
 ### 260211-水
 
+#### 親習慣インデントずれのバグ解析を一旦中止
+
+**経緯・実施内容:**
+
+- 日誌の習慣リストで「親習慣のテキストが、チェックリスト付きの行と同じスタート位置まで左に詰めて」という指摘が続いていた。親習慣行はチェックボックスをスペーサー（span w-5 h-5）で代用し、grid-cols-[auto_1fr_auto] で通常行と揃えているが、見た目で右にずれて見えるとのこと。
+- Debug モードで仮説（H1: 1列目幅差、H2: グリッド左マージン、H3: 名前列開始差、H4: 名前内側要素差、H5: ラッパー余白）を立て、habit-list.tsx に計装を追加。親行・通常行のグリッドに ref を付け、useEffect 内で getBoundingClientRect により「1列目幅」「2列目（名前）の left」「名前内側要素の left」を計測し、デバッグ用エンドポイントへ POST。goodTree の初期化順で ReferenceError が出たため、useEffect を goodTree 定義の直後に移動して解消。
+- ログ結果: parentCol0Width / normalCol0Width はともに 21.25、parentGridLeft / normalGridLeft は 358.5、nameStartDiff および nameInnerDiff は 0。計測上は親行と通常行の名前列・名前テキスト左端は一致していた。一方でユーザーからは「まだ右にずれて見える」「Issue reproduced」と複数回報告あり。
+- 未証明の見た目調整（grid-cols を 20px 固定に変更、親名 span に block 追加、通常行に min-w-0 追加）は行ったが、ログで仮説は否定されているため、それらの変更は戻し、計測対象を「行ごとの rowSnapshots（data-debug-row-type / data-debug-order 付与）」に広げる計装を一時追加した。その後、バグ解析を一旦やめる指示があり、計装（parentRowGridRef / normalRowGridRef、useEffect、data-debug-row-type、data-debug-order）をすべて削除。useRef の import も削除。
+- 進捗メモ: 4-project-progress.md（簡潔）と 5-dev-log.md（本節・詳細）に「親習慣インデントずれのバグ解析を一旦中止」を記載。
+
+**変更ファイル:**
+- gol-web/app/dashboard/habit-list.tsx: デバッグ用 ref・useEffect・data 属性を削除、import から useRef を削除
+- docs/4-project-progress.md, docs/5-dev-log.md: 上記経緯を追記
+
+---
+
 #### 権利消費整合性・獲得スコア表示・総評見出し・AI文字数制限
 
 **実施内容（詳細）:**

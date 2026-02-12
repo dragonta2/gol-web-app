@@ -491,7 +491,7 @@ export default function TodosSettingsPage() {
                   {/* 期限（ヘッダーと同じダークカレンダーで選択） */}
                   <DatePickerField
                     id="due_date"
-                    label="期限（任意）"
+                    label="期限"
                     value={formData.due_date}
                     onChange={(value) => setFormData({ ...formData, due_date: value })}
                     optional

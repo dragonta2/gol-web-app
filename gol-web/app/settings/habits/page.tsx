@@ -21,6 +21,7 @@ interface Habit {
   exp_mind: number;
   exp_spirit: number;
   display_order: number;
+  parent_habit_id?: string | null;
   is_custom: boolean;
   input_type: 'checkbox' | 'number';
   exclude_weekends: boolean;
@@ -28,6 +29,19 @@ interface Habit {
   description?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+/** 親→子のツリー構築（親は parent_habit_id == null、子は parent_habit_id === 親.id） */
+function buildHabitTree(habits: Habit[]): { parent: Habit; children: Habit[] }[] {
+  const parents = habits
+    .filter((h) => !h.parent_habit_id)
+    .sort((a, b) => a.display_order - b.display_order);
+  return parents.map((parent) => {
+    const children = habits
+      .filter((h) => h.parent_habit_id === parent.id)
+      .sort((a, b) => a.display_order - b.display_order);
+    return { parent, children };
+  });
 }
 
 export default function HabitsSettingsPage() {
@@ -50,6 +64,7 @@ export default function HabitsSettingsPage() {
     input_type: 'checkbox' as 'checkbox' | 'number',
     exclude_weekends: false,
     exclude_from_complete: false,
+    parent_habit_id: '' as string,
   });
 
   // 習慣一覧を取得
@@ -95,6 +110,7 @@ export default function HabitsSettingsPage() {
       input_type: 'checkbox',
       exclude_weekends: false,
       exclude_from_complete: false,
+      parent_habit_id: '',
     });
     setEditingHabit(null);
   };
@@ -107,10 +123,12 @@ export default function HabitsSettingsPage() {
     }
 
     try {
+      const payload = { ...formData };
+      if (!payload.parent_habit_id) (payload as Record<string, unknown>).parent_habit_id = null;
       const response = await fetch('/api/habits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
@@ -137,13 +155,12 @@ export default function HabitsSettingsPage() {
     }
 
     try {
+      const payload = { habitId: editingHabit.id, ...formData };
+      if (!(payload as Record<string, unknown>).parent_habit_id) (payload as Record<string, unknown>).parent_habit_id = null;
       const response = await fetch('/api/habits', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          habitId: editingHabit.id,
-          ...formData,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
@@ -206,35 +223,49 @@ export default function HabitsSettingsPage() {
       input_type: 'checkbox',
       exclude_weekends: habit.exclude_weekends,
       exclude_from_complete: habit.exclude_from_complete,
+      parent_habit_id: habit.parent_habit_id ?? '',
     });
     setIsDialogOpen(true);
   };
 
-  // 習慣を種類別に分類
+  // 習慣を種類別に分類し、表示用ツリーを構築
   const goodHabits = habits.filter(h => h.habit_type === 'good');
   const badHabits = habits.filter(h => h.habit_type === 'bad');
   const bonusHabits = habits.filter(h => h.habit_type === 'bonus');
+  const goodTree = buildHabitTree(goodHabits);
+  const badTree = buildHabitTree(badHabits);
+  const bonusTree = buildHabitTree(bonusHabits);
 
-  // 習慣カードコンポーネント
-  const HabitCard = ({ habit }: { habit: Habit }) => (
-    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 flex items-start justify-between gap-4">
+  // 習慣カードコンポーネント（子の場合はインデント。親で子を持つ場合はラベルとゴルド/EXPを「ー」表示）
+  const HabitCard = ({ habit, isChild = false, hasChildren = false }: { habit: Habit; isChild?: boolean; hasChildren?: boolean }) => (
+    <div className={`bg-zinc-800 border border-zinc-700 rounded-lg p-4 flex items-start justify-between gap-4 ${isChild ? 'ml-6' : ''}`}>
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-2">
           <GripVertical className="w-4 h-4 text-zinc-500" />
           <h3 className="text-lg font-medium text-zinc-100">{[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}</h3>
+          {hasChildren && (
+            <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>
+          )}
           {!habit.is_custom && (
             <span className="text-xs px-2 py-0.5 bg-zinc-700 text-zinc-400 rounded">デフォルト</span>
           )}
         </div>
         <div className="text-sm text-zinc-400 space-y-1">
-          <div>ゴルド: {habit.points > 0 ? '+' : ''}{habit.points}G</div>
-          {habit.habit_type === 'good' && (
-            <div>
-              EXP: 身体 + {habit.exp_body} / 頭脳 + {habit.exp_mind} / 精神 + {habit.exp_spirit}
-            </div>
+          {hasChildren ? (
+            <div>ゴルド / EXP: ー</div>
+          ) : (
+            <>
+              <div>ゴルド: {habit.points > 0 ? '+' : ''}{habit.points}G</div>
+              {habit.habit_type === 'good' && (
+                <div>
+                  EXP: 身体 + {habit.exp_body} / 頭脳 + {habit.exp_mind} / 精神 + {habit.exp_spirit}
+                </div>
+              )}
+            </>
           )}
           {habit.exclude_weekends && <div>土日除外: 有効</div>}
           {habit.exclude_from_complete && <div>完了除外: 有効</div>}
+          {isChild && <div className="text-zinc-500">子習慣（親の報酬で1回のみ加算）</div>}
         </div>
       </div>
       <div className="flex gap-2">
@@ -325,7 +356,7 @@ export default function HabitsSettingsPage() {
                           type="radio"
                           value="good"
                           checked={formData.habit_type === 'good'}
-                          onChange={(e) => setFormData({ ...formData, habit_type: 'good' as const })}
+                          onChange={(e) => setFormData({ ...formData, habit_type: 'good' as const, parent_habit_id: '' })}
                           className="w-4 h-4 text-cyan-600"
                         />
                         <span className="text-zinc-300">良習慣</span>
@@ -335,7 +366,7 @@ export default function HabitsSettingsPage() {
                           type="radio"
                           value="bad"
                           checked={formData.habit_type === 'bad'}
-                          onChange={(e) => setFormData({ ...formData, habit_type: 'bad' as const })}
+                          onChange={(e) => setFormData({ ...formData, habit_type: 'bad' as const, parent_habit_id: '' })}
                           className="w-4 h-4 text-cyan-600"
                         />
                         <span className="text-zinc-300">悪習慣</span>
@@ -345,7 +376,7 @@ export default function HabitsSettingsPage() {
                           type="radio"
                           value="bonus"
                           checked={formData.habit_type === 'bonus'}
-                          onChange={(e) => setFormData({ ...formData, habit_type: 'bonus' as const })}
+                          onChange={(e) => setFormData({ ...formData, habit_type: 'bonus' as const, parent_habit_id: '' })}
                           className="w-4 h-4 text-cyan-600"
                         />
                         <span className="text-zinc-300">ボーナス</span>
@@ -468,8 +499,13 @@ export default function HabitsSettingsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {goodHabits.map((habit) => (
-                    <HabitCard key={habit.id} habit={habit} />
+                  {goodTree.map(({ parent, children }) => (
+                    <div key={parent.id} className="space-y-2">
+                      <HabitCard habit={parent} hasChildren={children.length > 0} />
+                      {children.map((child) => (
+                        <HabitCard key={child.id} habit={child} isChild />
+                      ))}
+                    </div>
                   ))}
                 </div>
               )}
@@ -488,8 +524,13 @@ export default function HabitsSettingsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {badHabits.map((habit) => (
-                    <HabitCard key={habit.id} habit={habit} />
+                  {badTree.map(({ parent, children }) => (
+                    <div key={parent.id} className="space-y-2">
+                      <HabitCard habit={parent} hasChildren={children.length > 0} />
+                      {children.map((child) => (
+                        <HabitCard key={child.id} habit={child} isChild />
+                      ))}
+                    </div>
                   ))}
                 </div>
               )}
@@ -508,8 +549,13 @@ export default function HabitsSettingsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {bonusHabits.map((habit) => (
-                    <HabitCard key={habit.id} habit={habit} />
+                  {bonusTree.map(({ parent, children }) => (
+                    <div key={parent.id} className="space-y-2">
+                      <HabitCard habit={parent} hasChildren={children.length > 0} />
+                      {children.map((child) => (
+                        <HabitCard key={child.id} habit={child} isChild />
+                      ))}
+                    </div>
                   ))}
                 </div>
               )}
