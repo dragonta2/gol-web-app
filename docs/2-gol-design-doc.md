@@ -684,23 +684,23 @@ https://trello.com/
 
 **案C: コードで2種類固定の実装手順（ユーザーは選択のみ）**
 
-1. **定数定義**  
-   - `lib/ai/story-worlds.ts` などで、世界観ID（`dq` / `ghost`）ごとのプロンプト文言・システムメッセージを定数として定義する。  
+1. **定数定義**
+   - `lib/ai/story-worlds.ts` などで、世界観ID（`dq` / `ghost`）ごとのプロンプト文言・システムメッセージを定数として定義する。
    - 例: ドラゴンクエスト風・ゴースト・オブ・ヨウテイ風の2種類。
 
-2. **設定画面の変更**  
-   - 「物語の世界観」を自由入力テキストから、**2択（ラジオまたはセレクト）** に変更する。  
+2. **設定画面の変更**
+   - 「物語の世界観」を自由入力テキストから、**2択（ラジオまたはセレクト）** に変更する。
    - 選択値を `localStorage`（例: `gol-story-world`）に保存。値は `dq` または `ghost`。
 
-3. **API の変更**  
-   - `POST /api/ai/story` のリクエストボディに `storyWorldId`（`dq` | `ghost`）を受け取る。  
+3. **API の変更**
+   - `POST /api/ai/story` のリクエストボディに `storyWorldId`（`dq` | `ghost`）を受け取る。
    - 未指定時は既定（例: `dq`）を使う。
 
-4. **プロンプト生成の変更**  
-   - `createStoryPrompt` に `storyWorldId` を渡す。  
+4. **プロンプト生成の変更**
+   - `createStoryPrompt` に `storyWorldId` を渡す。
    - 世界観IDに応じて、定数からシステムメッセージ／プロンプト末尾の指示を組み立てる。
 
-5. **日誌フォームの変更**  
+5. **日誌フォームの変更**
    - あらすじ生成時に、設定画面で保存した `storyWorldId`（localStorage から取得）を `POST /api/ai/story` に含めて送る。
 ```
 

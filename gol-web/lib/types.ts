@@ -135,6 +135,8 @@ export interface DailyLog {
   ai_condition_body: number | null;
   /** AI判定: 気分スコア（0-100） */
   ai_condition_mood: number | null;
+  /** AI判定: 総評（判定理由） */
+  ai_reasoning: string | null;
   /** AI判定: 獲得ポイント */
   ai_points_earned: number | null;
   /** AI判定: 獲得身体EXP */

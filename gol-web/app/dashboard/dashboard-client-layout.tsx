@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CalendarDialogProvider } from '@/contexts/calendar-dialog-context';
 import CollapsibleDashboardHeader from './collapsible-dashboard-header';
 import DashboardTabs from './dashboard-tabs';
 import type { DashboardHeaderProfile } from './collapsible-dashboard-header';
@@ -34,7 +35,7 @@ export default function DashboardClientLayout({
     : '';
 
   return (
-    <>
+    <CalendarDialogProvider>
       <CollapsibleDashboardHeader
         userProfile={userProfile}
         selectedDate={selectedDate}
@@ -48,6 +49,6 @@ export default function DashboardClientLayout({
           onActiveTabChange={setActiveTab}
         />
       </div>
-    </>
+    </CalendarDialogProvider>
   );
 }

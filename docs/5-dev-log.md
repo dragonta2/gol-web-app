@@ -50,6 +50,33 @@
 
 ## 2602 --------------
 
+### 260213-金
+
+#### AI判定総評永続化・獲得スコアUI・親習慣週末除外Comp
+
+**実施内容（詳細）:**
+
+- **AI判定の総評の永続表示**
+  - daily_logs.ai_reasoning カラムを追加（docs/sql-snippet/add-ai-reasoning-to-daily-logs.sql）。型定義（lib/types.ts）に ai_reasoning を追加。app/api/ai/batch/route.ts で reasoning を DB に保存。journal-form.tsx で dailyLog から reasoning を読み込み・state に同期し、ページ遷移・確定後も総評が残るようにした。
+
+- **獲得スコア UI の調整**
+  - 下段サマリー内のラベル（総加算ゴルド・総減算ゴルド・今回の獲得ゴルド・総加算EXP・総減算EXP・今回の獲得EXP）を text-zinc-400 から text-zinc-300 に変更（上段ラベルと同じ明るさに）。
+  - 値のフォントサイズを 17px に統一。EXP 行を text-sm から text-base に。「今回の獲得ゴルド」「今回の獲得EXP」を 18px・font-bold に。
+  - 悪習慣は 0 でも常に「-」を表示（例: -0G）。ExpWithIcons で全 0 のときは null を返し非表示に。ゴルドと EXP の間隔を gap-x-[15px] に変更。
+
+- **親習慣の週末除外・Comp対象外**
+  - 親習慣行（hasChildren）から「週末除外」「Comp対象外」ボタンを削除。親習慣編集モーダルでは該当オプションを disabled にし、注釈「親習慣には週末除外・Comp対象外は設定できません。子習慣で個別に設定してください。」をシアンで表示。
+
+- **習慣リスト・モーダル**
+  - ゴルド・EXP の加減算設定値を text-zinc-100 に変更。週末除外の注釈を「週末を除外する」と同じ色に合わせた。親習慣時はチェックボックスを薄くし、注釈をシアンで強調。
+
+**変更・追加ファイル:**
+- gol-web: app/api/ai/batch/route.ts, app/dashboard/journal-form.tsx, app/dashboard/habit-list.tsx, lib/types.ts, components/exp-with-icons.tsx, collapsible-dashboard-header.tsx, dashboard-client-layout.tsx, components/date-selector.tsx, contexts/calendar-dialog-context.tsx
+- docs: sql-snippet/add-ai-reasoning-to-daily-logs.sql（新規）, 2-gol-design-doc.md, 4-project-progress.md, 5-dev-log.md
+- .cursor/plans/: 親行左詰めインデント修正、週末除外comp対象外hover表示 の plan
+
+---
+
 ### 260212-木
 
 #### 子習慣まわりUI・ToDo期限ラベル

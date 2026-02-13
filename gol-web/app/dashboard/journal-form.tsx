@@ -23,6 +23,7 @@ import {
   isValidPersonalityTypeId,
 } from '@/lib/ai/personality-types';
 import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp, Settings, Check, Unlock } from 'lucide-react';
+import { ExpWithIcons } from '@/components/exp-with-icons';
 
 interface Right {
   id: string;
@@ -238,13 +239,13 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     setRights(initialValues.rights);
   }, [initialValues.rights.length, dailyLog?.id, rightsList.length]);
 
-  // AI判定結果
+  // AI判定結果（総評は dailyLog.ai_reasoning から永続化されており、ページ遷移・確定後も表示）
   const [aiJudgmentResult, setAIJudgmentResult] = useState<AIJudgmentResult | null>(
     dailyLog && dailyLog.ai_condition_body !== null && dailyLog.ai_condition_mood !== null
       ? {
           condition_body: dailyLog.ai_condition_body,
           condition_mood: dailyLog.ai_condition_mood,
-          reasoning: '',
+          reasoning: dailyLog.ai_reasoning ?? '',
         }
       : null
   );
@@ -259,6 +260,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   const [aiStoryFuture, setAIStoryFuture] = useState<string | null>(dailyLog?.ai_story_future ?? null);
   // 一括生成直後は router.refresh で渡る dailyLog がまだ古いことがあるため、その1回は上書きしない
   const skipNextAiStorySyncRef = useRef(false);
+  const skipNextAiJudgmentSyncRef = useRef(false);
 
   // 日誌が変わったらあらすじを同期（一括生成直後はスキップ）
   useEffect(() => {
@@ -269,6 +271,32 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     setAIStoryPast(dailyLog?.ai_story_past ?? null);
     setAIStoryFuture(dailyLog?.ai_story_future ?? null);
   }, [dailyLog?.id, dailyLog?.ai_story_past, dailyLog?.ai_story_future]);
+
+  // 日誌が変わったらAI判定結果（総評含む）を同期。ページ遷移・確定後も永続表示するため dailyLog から復元
+  useEffect(() => {
+    if (skipNextAiJudgmentSyncRef.current) {
+      skipNextAiJudgmentSyncRef.current = false;
+      return;
+    }
+    if (
+      dailyLog &&
+      dailyLog.ai_condition_body !== null &&
+      dailyLog.ai_condition_mood !== null
+    ) {
+      setAIJudgmentResult({
+        condition_body: dailyLog.ai_condition_body,
+        condition_mood: dailyLog.ai_condition_mood,
+        reasoning: dailyLog.ai_reasoning ?? '',
+      });
+    } else {
+      setAIJudgmentResult(null);
+    }
+  }, [
+    dailyLog?.id,
+    dailyLog?.ai_condition_body,
+    dailyLog?.ai_condition_mood,
+    dailyLog?.ai_reasoning,
+  ]);
 
   // 権利の回数更新（上限なし・使用単位は自由記述のため）
   const updateRightCount = (rightId: string, newCount: number) => {
@@ -453,6 +481,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         reasoning: data.reasoning ?? '',
       });
       skipNextAiStorySyncRef.current = true;
+      skipNextAiJudgmentSyncRef.current = true;
       setAIStoryPast(data.storyPast ?? null);
       setAIStoryFuture(data.storyFuture ?? null);
       setAIAdvice(data.advice ?? null);
@@ -752,53 +781,80 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           return (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-2">
             <h3 className="text-lg font-medium text-cyan-400">獲得スコア</h3>
-            <div className="text-base space-y-1.5 text-zinc-300">
-              <div>ToDo: <span className={`font-medium ${scoreBreakdown.todo.points_delta >= 0 ? 'text-green-400' : 'text-red-400'}`}>{scoreBreakdown.todo.points_delta >= 0 ? '+' : '-'} {Math.abs(scoreBreakdown.todo.points_delta)}G</span>
-                {(() => { const expStr = [['身体', scoreBreakdown.todo.exp_body_delta], ['頭脳', scoreBreakdown.todo.exp_mind_delta], ['精神', scoreBreakdown.todo.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label} ${(val as number) >= 0 ? '+' : '-'} ${Math.abs(val as number)}`).join('｜'); return expStr ? `｜${expStr}` : ''; })()}
+            <div className="text-base space-y-2 text-zinc-300">
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="shrink-0">ToDo:</span>
+                <span className="inline-flex flex-wrap items-center gap-x-[15px] gap-y-0.5 text-[17px]">
+                  <span className={`font-medium shrink-0 ${scoreBreakdown.todo.points_delta >= 0 ? 'text-green-400' : 'text-red-400'}`}>{scoreBreakdown.todo.points_delta >= 0 ? '+' : '-'} {Math.abs(scoreBreakdown.todo.points_delta)}G</span>
+                  <ExpWithIcons body={scoreBreakdown.todo.exp_body_delta} mind={scoreBreakdown.todo.exp_mind_delta} spirit={scoreBreakdown.todo.exp_spirit_delta} signed />
+                </span>
               </div>
-              <div>良習慣: <span className="text-green-400 font-medium">+ {scoreBreakdown.habits_good.points_delta}G</span>
-                {(() => { const expStr = [['身体', scoreBreakdown.habits_good.exp_body_delta], ['頭脳', scoreBreakdown.habits_good.exp_mind_delta], ['精神', scoreBreakdown.habits_good.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label} + ${val}`).join('｜'); return expStr ? `｜${expStr}` : ''; })()}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="shrink-0">良習慣:</span>
+                <span className="inline-flex flex-wrap items-center gap-x-[15px] gap-y-0.5 text-[17px]">
+                  <span className="text-green-400 font-medium shrink-0">+ {scoreBreakdown.habits_good.points_delta}G</span>
+                  <ExpWithIcons body={scoreBreakdown.habits_good.exp_body_delta} mind={scoreBreakdown.habits_good.exp_mind_delta} spirit={scoreBreakdown.habits_good.exp_spirit_delta} />
+                </span>
               </div>
-              <div>AI判定: <span className="text-purple-400 font-medium">+ {scoreBreakdown.ai.points_delta}G</span>
-                {(() => { const expStr = [['身体', scoreBreakdown.ai.exp_body_delta], ['頭脳', scoreBreakdown.ai.exp_mind_delta], ['精神', scoreBreakdown.ai.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label} + ${val}`).join('｜'); return expStr ? `｜${expStr}` : ''; })()}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="shrink-0">AI判定:</span>
+                <span className="inline-flex flex-wrap items-center gap-x-[15px] gap-y-0.5 text-[17px]">
+                  <span className="text-purple-400 font-medium shrink-0">+ {scoreBreakdown.ai.points_delta}G</span>
+                  <ExpWithIcons body={scoreBreakdown.ai.exp_body_delta} mind={scoreBreakdown.ai.exp_mind_delta} spirit={scoreBreakdown.ai.exp_spirit_delta} />
+                </span>
               </div>
-              <div>悪習慣（マイナス）: <span className="text-red-400 font-medium">{scoreBreakdown.habits_bad.points_delta >= 0 ? '+' : '-'} {Math.abs(scoreBreakdown.habits_bad.points_delta)}G</span>
-                {(() => { const expStr = [['身体', scoreBreakdown.habits_bad.exp_body_delta], ['頭脳', scoreBreakdown.habits_bad.exp_mind_delta], ['精神', scoreBreakdown.habits_bad.exp_spirit_delta]].filter(([, v]) => v !== 0).map(([label, val]) => `${label} ${(val as number) < 0 ? '-' : '+'} ${Math.abs(val as number)}`).join('｜'); return expStr ? `｜${expStr}` : ''; })()}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="shrink-0">悪習慣（マイナス）:</span>
+                <span className="inline-flex flex-wrap items-center gap-x-[15px] gap-y-0.5 text-[17px]">
+                  <span className="text-red-400 font-medium shrink-0">- {Math.abs(scoreBreakdown.habits_bad.points_delta)}G</span>
+                  <ExpWithIcons body={scoreBreakdown.habits_bad.exp_body_delta} mind={scoreBreakdown.habits_bad.exp_mind_delta} spirit={scoreBreakdown.habits_bad.exp_spirit_delta} signed />
+                </span>
               </div>
-              <div>権利消費（マイナス）: <span className="text-orange-400 font-medium">- {totalPoints}G</span></div>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="shrink-0">権利消費（マイナス）:</span>
+                <span className="text-[17px]">
+                  <span className="text-orange-400 font-medium">- {totalPoints}G</span>
+                </span>
+              </div>
             </div>
             {/* 総加算 − 総減算 = 今回の獲得 */}
             <div className="pt-3 mt-3 border-t border-zinc-600 text-base space-y-1.5">
               <div className="text-zinc-300">
-                <span className="text-zinc-400">総加算ゴルド</span>
+                <span className="text-zinc-300">総加算ゴルド</span>
                 <span className="text-green-400 font-medium mx-1">+ {pointsAdd}G</span>
                 <span className="text-zinc-500 mx-1">−</span>
-                <span className="text-zinc-400">総減算ゴルド</span>
+                <span className="text-zinc-300">総減算ゴルド</span>
                 <span className="text-red-400 font-medium mx-1">- {pointsSub}G</span>
                 <span className="text-zinc-500 mx-1">=</span>
-                <span className="text-zinc-400">今回の獲得ゴルド</span>
-                <span className={`font-medium ml-1 ${adjustedTotalPoints >= 0 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {adjustedTotalPoints >= 0 ? '+' : '-'} {Math.abs(adjustedTotalPoints)}G
+                <span className="inline-flex items-center text-[18px]">
+                  <span className="text-zinc-300 font-bold">今回の獲得ゴルド</span>
+                  <span className={`font-bold ml-1 ${adjustedTotalPoints >= 0 ? 'text-yellow-400' : 'text-red-400'}`}>
+                    {adjustedTotalPoints >= 0 ? '+' : '-'} {Math.abs(adjustedTotalPoints)}G
+                  </span>
                 </span>
               </div>
               {hasAnyExp && (
-                <div className="text-zinc-300 text-sm">
-                  <span className="text-zinc-400">総加算EXP</span>
+                <div className="text-zinc-300 text-base flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-zinc-300 shrink-0">総加算EXP</span>
                   <span className="text-cyan-400">
-                    {[['身体', expBodyAdd], ['頭脳', expMindAdd], ['精神', expSpiritAdd]].filter(([, v]) => v !== 0).map(([l, v]) => `${l} + ${v}`).join('｜') || ' 0'}
+                    <ExpWithIcons body={expBodyAdd} mind={expMindAdd} spirit={expSpiritAdd} />
                   </span>
-                  <span className="text-zinc-500 mx-1">−</span>
-                  <span className="text-zinc-400">総減算EXP</span>
+                  <span className="text-zinc-500 shrink-0">−</span>
+                  <span className="text-zinc-300 shrink-0">総減算EXP</span>
                   <span className="text-cyan-400">
-                    {[['身体', expBodySub], ['頭脳', expMindSub], ['精神', expSpiritSub]].filter(([, v]) => v !== 0).map(([l, v]) => `${l} - ${v}`).join('｜') || ' 0'}
+                    <ExpWithIcons body={expBodySub} mind={expMindSub} spirit={expSpiritSub} minus />
                   </span>
-                  <span className="text-zinc-500 mx-1">=</span>
-                  <span className="text-zinc-400">今回の獲得EXP</span>
-                  <span className="text-cyan-400 ml-1">
-                    {['身体', '頭脳', '精神'].map((label, i) => {
-                      const vals = [scoreBreakdown.total.exp_body_delta, scoreBreakdown.total.exp_mind_delta, scoreBreakdown.total.exp_spirit_delta];
-                      return `${label} ${vals[i] >= 0 ? '+' : '-'} ${Math.abs(vals[i])}`;
-                    }).join('｜')}
+                  <span className="text-zinc-500 shrink-0">=</span>
+                  <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[18px] font-bold shrink-0">
+                    <span className="text-zinc-300">今回の獲得EXP</span>
+                    <span className="text-cyan-400">
+                      <ExpWithIcons
+                        body={scoreBreakdown.total.exp_body_delta}
+                        mind={scoreBreakdown.total.exp_mind_delta}
+                        spirit={scoreBreakdown.total.exp_spirit_delta}
+                        signed
+                      />
+                    </span>
                   </span>
                 </div>
               )}

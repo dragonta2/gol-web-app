@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useCalendarDialog } from "@/contexts/calendar-dialog-context"
 import {
   Trophy,
   Coins,
@@ -44,8 +45,14 @@ export default function CollapsibleDashboardHeader({
   screenName,
   pendingDeltas,
 }: CollapsibleDashboardHeaderProps) {
+  const { openCalendar } = useCalendarDialog() ?? { openCalendar: () => {} }
   // タイトルバー（ヘッダー）は常に展開して表示。折りたたみ状態は保存するが、次回表示時は展開で開始する。
   const [collapsed, setCollapsed] = useState(false)
+
+  const handleDateClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    openCalendar()
+  }
 
   const toggle = () => {
     setCollapsed((prev) => {
@@ -68,6 +75,12 @@ export default function CollapsibleDashboardHeader({
       })()
     : ""
 
+  const getTodayJST = () =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
+      new Date()
+    )
+  const isToday = selectedDate === getTodayJST()
+
   return (
     <header className="sticky top-0 z-50 bg-zinc-900 border-b border-zinc-800 shadow-lg">
       {/* 折り畳みトグル（常に表示する1行）。テキストは展開時コンテンツの左端（緑線位置）から開始 */}
@@ -79,19 +92,51 @@ export default function CollapsibleDashboardHeader({
         aria-label={collapsed ? "ヘッダーを展開" : "ヘッダーを折り畳む"}
       >
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-2">
-          <span className="text-lg sm:text-xl font-bold text-white truncate min-w-0">
+          <span className="text-[20px] sm:text-[22px] font-bold text-white truncate min-w-0 flex items-baseline gap-2 flex-wrap">
             {screenName ? (
               <>
                 <span className="text-white">{screenName}</span>
                 {collapsed && (
                   <>
                     <span className="text-zinc-500 mx-2">｜</span>
-                    <span>{dateLabel}</span>
+                    <button
+                      type="button"
+                      onClick={handleDateClick}
+                      className="text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 rounded"
+                      aria-label="日付を選ぶ"
+                    >
+                      {dateLabel}
+                    </button>
+                    {isToday && (
+                      <span
+                        className="inline-flex items-center justify-center leading-none px-2 py-1 rounded text-xs font-semibold bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shrink-0 -translate-y-[2px]"
+                        aria-label="本日"
+                      >
+                        <span className="translate-y-[1px]">本日</span>
+                      </span>
+                    )}
                   </>
                 )}
               </>
             ) : (
-              dateLabel
+              <>
+                <button
+                  type="button"
+                  onClick={handleDateClick}
+                  className="text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 rounded"
+                  aria-label="日付を選ぶ"
+                >
+                  {dateLabel}
+                </button>
+                {isToday && (
+                  <span
+                    className="inline-flex items-center justify-center leading-none px-2 py-1 rounded text-xs font-semibold bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shrink-0 -translate-y-[2px]"
+                    aria-label="本日"
+                  >
+                    <span className="translate-y-[1px]">本日</span>
+                  </span>
+                )}
+              </>
             )}
           </span>
           <span className="shrink-0 flex items-center gap-1 text-white">
@@ -159,9 +204,24 @@ export default function CollapsibleDashboardHeader({
 
             <div className="flex items-center justify-between gap-4">
               {selectedDate && (
-                <p className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
-                  {dateLabel}
-                </p>
+                <div className="flex items-baseline gap-2">
+                  <button
+                    type="button"
+                    onClick={handleDateClick}
+                    className="text-[22px] sm:text-[26px] lg:text-[32px] font-bold text-white text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 rounded"
+                    aria-label="日付を選ぶ"
+                  >
+                    {dateLabel}
+                  </button>
+                  {isToday && (
+                    <span
+                      className="inline-flex items-center justify-center leading-none px-2 py-1 rounded text-xs font-semibold bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 -translate-y-[2px]"
+                      aria-label="本日"
+                    >
+                      <span className="translate-y-[1px]">本日</span>
+                    </span>
+                  )}
+                </div>
               )}
               <div className="flex items-center gap-3 sm:gap-6 text-lg sm:text-xl ml-auto">
                 <div className="flex items-center gap-1 sm:gap-2">

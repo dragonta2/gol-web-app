@@ -282,6 +282,7 @@ export async function POST(request: NextRequest) {
       .update({
         ai_condition_body: conditionBody,
         ai_condition_mood: conditionMood,
+        ai_reasoning: judgmentResult.reasoning ?? null,
         ai_points_earned: points,
         ai_exp_body: exp_body,
         ai_exp_mind: exp_mind,
