@@ -16,24 +16,27 @@ export function ExpWithIcons({
   signed?: boolean;
   minus?: boolean;
 }) {
-  const items: { icon: React.ReactNode; val: number; label: string }[] = [];
+  const items: { icon: React.ReactNode; val: number; label: string; colorClass: string }[] = [];
   if (body !== 0)
     items.push({
       icon: <Dumbbell className="w-3.5 h-3.5 inline-block shrink-0" aria-hidden />,
       val: body,
       label: '身体',
+      colorClass: 'text-exp-body',
     });
   if (mind !== 0)
     items.push({
       icon: <Brain className="w-3.5 h-3.5 inline-block shrink-0" aria-hidden />,
       val: mind,
       label: '頭脳',
+      colorClass: 'text-exp-intelligence',
     });
   if (spirit !== 0)
     items.push({
       icon: <Sparkles className="w-3.5 h-3.5 inline-block shrink-0" aria-hidden />,
       val: spirit,
       label: '精神',
+      colorClass: 'text-exp-mind',
     });
   if (items.length === 0) return null;
   const signStr = (val: number) =>
@@ -44,10 +47,10 @@ export function ExpWithIcons({
       role="list"
       aria-label="EXP内訳"
     >
-      {items.map(({ icon, val, label }) => (
+      {items.map(({ icon, val, label, colorClass }) => (
         <span
           key={label}
-          className="inline-flex items-center gap-0.5 shrink-0"
+          className={`inline-flex items-center gap-0.5 shrink-0 ${colorClass}`}
           role="listitem"
         >
           {icon}

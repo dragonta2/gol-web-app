@@ -75,6 +75,11 @@
 - docs: sql-snippet/add-ai-reasoning-to-daily-logs.sql（新規）, 2-gol-design-doc.md, 4-project-progress.md, 5-dev-log.md
 - .cursor/plans/: 親行左詰めインデント修正、週末除外comp対象外hover表示 の plan
 
+**同日・習慣リストレイアウト・設定まわり:**
+- 習慣リスト: 週末除外・Comp対象外の2列を右に寄せるため、2つの div を `flex items-center shrink-0 ml-3` のラッパーで囲む（良・悪・ボーナスの親行・子行の6箇所）。右ブロック全体に min-w-[42rem]（親行のみの行は min-w-[31rem]）を付け、習慣リストのラッパーに overflow-x-auto を追加して加減算表示が落ちないようにした。ゴルド・EXP のポイント部分の幅を w-[11rem] から w-[14rem] に統一（全9箇所）。右ブロック min-w を 39rem→42rem、親行 28rem→31rem に合わせて更新。
+- 確定後画面で週末除外・Comp対象外が常時表示されてしまう問題: 確定時につけていた `opacity-60` が `opacity-0 group-hover:opacity-100` を上書きしていたため、確定時は `cursor-not-allowed` のみにし opacity-60 を削除。オフ時はホバー時のみ表示されるようにした。
+- 設定画面: 「物語の世界観」のラジオでゴースト・オブ・ヨウテイ風を上・ドラゴンクエスト風を下に並び替え。管理者用「世界観の詳細設定」内の「ゴースト・オブ・ヨウテイ風の設定」「ドラゴンクエスト風の設定」の折りたたみブロックも同順に並び替え。ニックネーム欄の注釈を「オフのときは、各世界観のデフォルト名（篤、もょもと）がアドバイスやあらすじに使われます。」に変更（account-settings-client.tsx）。
+
 ---
 
 ### 260212-木

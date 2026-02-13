@@ -281,7 +281,7 @@ export default function TodosSettingsPage() {
             <>
               {todo.sp_points > 0 && <div>ゴルド: + {todo.sp_points}G</div>}
               {(todo.sp_exp_body + todo.sp_exp_mind + todo.sp_exp_spirit) > 0 && (
-                <div>EXP: 身体 + {todo.sp_exp_body} / 頭脳 + {todo.sp_exp_mind} / 精神 + {todo.sp_exp_spirit}</div>
+                <div>EXP: <span className="text-exp-body">身体 + {todo.sp_exp_body}</span> / <span className="text-exp-intelligence">頭脳 + {todo.sp_exp_mind}</span> / <span className="text-exp-mind">精神 + {todo.sp_exp_spirit}</span></div>
               )}
             </>
           )}
@@ -445,7 +445,7 @@ export default function TodosSettingsPage() {
                       })}
                     </div>
                     <p className="text-sm text-zinc-500 mt-1">
-                      ［報酬］{formData.sp_points}Gold / 身体 + {formData.sp_exp_body} 頭脳 + {formData.sp_exp_mind} 精神 + {formData.sp_exp_spirit}
+                      ［報酬］<span className="text-gold">{formData.sp_points}GOLD</span> / <span className="text-exp-body">身体 + {formData.sp_exp_body}</span> <span className="text-exp-intelligence">頭脳 + {formData.sp_exp_mind}</span> <span className="text-exp-mind">精神 + {formData.sp_exp_spirit}</span>
                     </p>
                   </div>
 

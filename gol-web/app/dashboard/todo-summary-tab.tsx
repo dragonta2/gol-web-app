@@ -21,7 +21,7 @@ import { FormInput, FormLabel } from "@/components/ui/form-input"
 import { DatePickerField } from "@/components/date-picker-field"
 import { FormCard } from "@/components/ui/form-card"
 import { toast } from "sonner"
-import { ClipboardList, Edit, Search } from "lucide-react"
+import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles } from "lucide-react"
 import {
   DndContext,
   DragEndEvent,
@@ -1030,32 +1030,37 @@ export default function TodoSummaryTab({
           )}
         </div>
 
-        {/* 2＆3. 報酬・期限（日誌カードと同じ space-y-1 text-base の1ブロック） */}
+        {/* 2＆3. 報酬・期限（日誌カードと同じ space-y-1 text-base。アイコンとテーマカラー） */}
         <div className="space-y-1 text-base text-white">
           {(reward.points > 0 ||
             reward.exp_body > 0 ||
             reward.exp_mind > 0 ||
             reward.exp_spirit > 0) && (
-            <div className="text-white">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-semibold">
               <span className="text-white">報酬</span>
-              {" ｜ "}
-              {reward.points > 0 && <>{reward.points}Gold</>}
-              {(reward.exp_body > 0 ||
-                reward.exp_mind > 0 ||
-                reward.exp_spirit > 0) && (
-                <span className={reward.points > 0 ? " ml-1" : ""}>
-                  {reward.exp_body > 0 && <>身体 + {reward.exp_body}</>}
-                  {reward.exp_mind > 0 && (
-                    <>
-                      {reward.exp_body > 0 ? " " : ""}頭脳 + {reward.exp_mind}
-                    </>
-                  )}
-                  {reward.exp_spirit > 0 && (
-                    <>
-                      {reward.exp_mind > 0 || reward.exp_body > 0 ? " " : ""}
-                      精神 + {reward.exp_spirit}
-                    </>
-                  )}
+              <span className="text-zinc-500">｜</span>
+              {reward.points > 0 && (
+                <span className="inline-flex items-center gap-1 text-gold">
+                  <Coins className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                  <span>{reward.points}G</span>
+                </span>
+              )}
+              {reward.exp_body > 0 && (
+                <span className={`inline-flex items-center gap-0.5 text-exp-body ${reward.points > 0 ? 'ml-[8px]' : ''}`}>
+                  <Dumbbell className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                  <span>+ {reward.exp_body}</span>
+                </span>
+              )}
+              {reward.exp_mind > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-exp-intelligence">
+                  <Brain className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                  <span>+ {reward.exp_mind}</span>
+                </span>
+              )}
+              {reward.exp_spirit > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-exp-mind">
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                  <span>+ {reward.exp_spirit}</span>
                 </span>
               )}
             </div>
@@ -1590,9 +1595,8 @@ export default function TodoSummaryTab({
               )
             })}
           </div>
-          <p className="text-sm text-zinc-500 mt-1">
-            報酬: {formData.sp_points}Gold / 身体 + {formData.sp_exp_body} 頭脳 +
-            {formData.sp_exp_mind} 精神 + {formData.sp_exp_spirit}
+          <p className="text-sm text-zinc-500 mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            報酬: <span className="text-gold">{formData.sp_points}GOLD</span> / <span className="text-exp-body">身体 + {formData.sp_exp_body}</span> <span className="text-exp-intelligence">頭脳 + {formData.sp_exp_mind}</span> <span className="text-exp-mind">精神 + {formData.sp_exp_spirit}</span>
           </p>
         </FormCard>
 

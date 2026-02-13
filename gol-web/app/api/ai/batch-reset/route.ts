@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
     const validation = validateUUID(dailyLogId, '日誌ID');
     if (!validation.valid) {
-      return NextResponse.json({ error: validation.errors[0] }, { status: 400 });
+      return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
     const supabase = await createClient();

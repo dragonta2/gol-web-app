@@ -468,7 +468,7 @@ export default function AccountSettingsClient({
               </span>
             </label>
             <p className="text-xs text-zinc-500">
-              オフのときは、各世界観のデフォルト名（例：辰彦・勇者）がアドバイスやあらすじに使われます。
+              オフのときは、各世界観のデフォルト名（篤、もょもと）がアドバイスやあらすじに使われます。
             </p>
             <Button
               type="submit"
@@ -657,20 +657,6 @@ export default function AccountSettingsClient({
                   <input
                     type="radio"
                     name="storyWorld"
-                    value="dq"
-                    checked={storyWorldId === "dq"}
-                    onChange={() => setStoryWorldId("dq")}
-                    className="w-4 h-4 text-cyan-500"
-                  />
-                  <span className="text-zinc-100">ドラゴンクエスト風</span>
-                  <span className="text-sm text-zinc-500">
-                    勇者と魔王のファンタジーRPG
-                  </span>
-                </label>
-                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-zinc-600 transition-colors">
-                  <input
-                    type="radio"
-                    name="storyWorld"
                     value="ghost"
                     checked={storyWorldId === "ghost"}
                     onChange={() => setStoryWorldId("ghost")}
@@ -681,6 +667,20 @@ export default function AccountSettingsClient({
                   </span>
                   <span className="text-sm text-zinc-500">
                     北の大地の和風・武芸者物語
+                  </span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-zinc-800/50 border border-zinc-700 hover:border-zinc-600 transition-colors">
+                  <input
+                    type="radio"
+                    name="storyWorld"
+                    value="dq"
+                    checked={storyWorldId === "dq"}
+                    onChange={() => setStoryWorldId("dq")}
+                    className="w-4 h-4 text-cyan-500"
+                  />
+                  <span className="text-zinc-100">ドラゴンクエスト風</span>
+                  <span className="text-sm text-zinc-500">
+                    勇者と魔王のファンタジーRPG
                   </span>
                 </label>
               </div>
@@ -726,29 +726,6 @@ export default function AccountSettingsClient({
                   <div className="mb-6">
                     <button
                       type="button"
-                      onClick={() => setDqExpanded(!dqExpanded)}
-                      className="flex items-center justify-between w-full py-2 text-left text-zinc-200 hover:text-zinc-100"
-                    >
-                      <span>{dqConfig.displayName} の設定</span>
-                      {dqExpanded ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
-                    {dqExpanded && (
-                      <AdminWorldConfigForm
-                        config={dqConfig}
-                        onConfigChange={setDqConfig}
-                        onSave={() => handleSaveWorldConfig("dq", dqConfig)}
-                        saving={worldConfigSaving}
-                      />
-                    )}
-                  </div>
-
-                  <div>
-                    <button
-                      type="button"
                       onClick={() => setGhostExpanded(!ghostExpanded)}
                       className="flex items-center justify-between w-full py-2 text-left text-zinc-200 hover:text-zinc-100"
                     >
@@ -764,6 +741,29 @@ export default function AccountSettingsClient({
                         config={ghostConfig}
                         onConfigChange={setGhostConfig}
                         onSave={() => handleSaveWorldConfig("ghost", ghostConfig)}
+                        saving={worldConfigSaving}
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setDqExpanded(!dqExpanded)}
+                      className="flex items-center justify-between w-full py-2 text-left text-zinc-200 hover:text-zinc-100"
+                    >
+                      <span>{dqConfig.displayName} の設定</span>
+                      {dqExpanded ? (
+                        <ChevronUp className="w-4 h-4" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4" />
+                      )}
+                    </button>
+                    {dqExpanded && (
+                      <AdminWorldConfigForm
+                        config={dqConfig}
+                        onConfigChange={setDqConfig}
+                        onSave={() => handleSaveWorldConfig("dq", dqConfig)}
                         saving={worldConfigSaving}
                       />
                     )}

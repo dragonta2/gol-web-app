@@ -196,9 +196,10 @@ export default function CollapsibleDashboardHeader({
                 <RankNameDisplay level={userProfile.level} />
               </span>
               <span className="text-zinc-500">|</span>
-              <span className="flex items-center gap-1 font-semibold text-yellow-400">
-                <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
-                {userProfile.points}G
+              <span className="flex items-baseline gap-1 font-semibold text-gold">
+                <Coins className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 self-center" />
+                <span className="text-[25px] sm:text-[27px] leading-none">{userProfile.points}</span>
+                <span className="text-[15px] sm:text-[17px] leading-none translate-y-[2px]">GOLD</span>
               </span>
             </div>
 
@@ -223,45 +224,39 @@ export default function CollapsibleDashboardHeader({
                   )}
                 </div>
               )}
-              <div className="flex items-center gap-3 sm:gap-6 text-lg sm:text-xl ml-auto">
-                <div className="flex items-center gap-1 sm:gap-2">
+              <div className="flex items-center gap-3 sm:gap-6 text-lg sm:text-xl font-semibold ml-auto">
+                <div className="flex items-center gap-1 sm:gap-2 text-exp-body">
                   <Dumbbell className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>身体:</span>
-                  <span className="font-semibold text-cyan-400">
-                    {userProfile.exp.body}
-                  </span>
+                  <span>{userProfile.exp.body}</span>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2">
+                <div className="flex items-center gap-1 sm:gap-2 text-exp-intelligence">
                   <Brain className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>頭脳:</span>
-                  <span className="font-semibold text-cyan-400">
-                    {userProfile.exp.intellect}
-                  </span>
+                  <span>{userProfile.exp.intellect}</span>
                 </div>
-                <div className="flex items-center gap-1 sm:gap-2">
+                <div className="flex items-center gap-1 sm:gap-2 text-exp-mind">
                   <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>精神:</span>
-                  <span className="font-semibold text-cyan-400">
-                    {userProfile.exp.mind}
-                  </span>
+                  <span>{userProfile.exp.mind}</span>
                 </div>
               </div>
             </div>
 
             {pendingDeltas && (
-              <div className="text-sm text-cyan-300/90 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5" role="status" aria-label="未確定スコア">
-                <span className="font-medium">未確定:</span>
+              <div className="text-sm text-zinc-400 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5" role="status" aria-label="未確定スコア">
+                <span className="font-medium text-zinc-400">未確定:</span>
                 {pendingDeltas.points_delta !== 0 && (
                   <span>{pendingDeltas.points_delta >= 0 ? '+' : '-'} {Math.abs(pendingDeltas.points_delta)}G</span>
                 )}
                 {pendingDeltas.exp_body_delta !== 0 && (
-                  <span>身体 {pendingDeltas.exp_body_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_body_delta)}</span>
+                  <span className="text-exp-body">身体 {pendingDeltas.exp_body_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_body_delta)}</span>
                 )}
                 {pendingDeltas.exp_mind_delta !== 0 && (
-                  <span>頭脳 {pendingDeltas.exp_mind_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_mind_delta)}</span>
+                  <span className="text-exp-intelligence">頭脳 {pendingDeltas.exp_mind_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_mind_delta)}</span>
                 )}
                 {pendingDeltas.exp_spirit_delta !== 0 && (
-                  <span>精神 {pendingDeltas.exp_spirit_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_spirit_delta)}</span>
+                  <span className="text-exp-mind">精神 {pendingDeltas.exp_spirit_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_spirit_delta)}</span>
                 )}
               </div>
             )}

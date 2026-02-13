@@ -19,7 +19,7 @@ import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, DIFFICULTY_MULTIPLIERS } from '@/
 import { Button } from '@/components/ui/button';
 import { FormLabel } from '@/components/ui/form-input';
 import { FormCard } from '@/components/ui/form-card';
-import { ClipboardList, ChevronDown, ChevronUp, Edit, Plus } from 'lucide-react';
+import { ClipboardList, ChevronDown, ChevronUp, Edit, Plus, Coins, Dumbbell, Brain, Sparkles } from 'lucide-react';
 
 // ドラッグ可能なカードコンポーネント
 type Reward = { points: number; exp_body: number; exp_mind: number; exp_spirit: number };
@@ -86,19 +86,39 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
         </div>
       </div>
 
-      {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと） */}
+      {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと）・アイコンとテーマカラー */}
       <div className="space-y-1 text-base text-white">
         {hasReward && (
-          <div className="text-white">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-semibold">
             <span className="text-white">報酬</span>
-            {' ｜ '}
-            {reward.points > 0 && <>{reward.points}Gold</>}
-            {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
-              <span className={reward.points > 0 ? ' ml-1' : ''}>
-                {reward.exp_body > 0 && <>身体 + {reward.exp_body}</>}
-                {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳 + {reward.exp_mind}</>}
-                {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神 + {reward.exp_spirit}</>}
+            <span className="text-zinc-500">｜</span>
+            {reward.points > 0 && (
+              <span className="inline-flex items-center gap-1 text-gold">
+                <Coins className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                <span>{reward.points}G</span>
               </span>
+            )}
+            {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
+              <>
+                {reward.exp_body > 0 && (
+                  <span className={`inline-flex items-center gap-0.5 text-exp-body ${reward.points > 0 ? 'ml-[8px]' : ''}`}>
+                    <Dumbbell className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                    <span>+ {reward.exp_body}</span>
+                  </span>
+                )}
+                {reward.exp_mind > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-exp-intelligence">
+                    <Brain className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                    <span>+ {reward.exp_mind}</span>
+                  </span>
+                )}
+                {reward.exp_spirit > 0 && (
+                  <span className="inline-flex items-center gap-0.5 text-exp-mind">
+                    <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                    <span>+ {reward.exp_spirit}</span>
+                  </span>
+                )}
+              </>
             )}
           </div>
         )}
@@ -222,18 +242,34 @@ function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
           </div>
         </div>
       </div>
-      {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと） */}
+      {/* 2. 報酬（ラベル表示）｜ Gold と EXP（種類ごと）・アイコンとテーマカラー */}
       <div className="space-y-1 text-base text-white">
         {hasReward && (
-          <div className="text-white">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-semibold">
             <span className="text-white">報酬</span>
-            {' ｜ '}
-            {reward.points > 0 && <>{reward.points}Gold</>}
-            {(reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0) && (
-              <span className={reward.points > 0 ? ' ml-1' : ''}>
-                {reward.exp_body > 0 && <>身体 + {reward.exp_body}</>}
-                {reward.exp_mind > 0 && <>{reward.exp_body > 0 ? ' ' : ''}頭脳 + {reward.exp_mind}</>}
-                {reward.exp_spirit > 0 && <>{reward.exp_mind > 0 || reward.exp_body > 0 ? ' ' : ''}精神 + {reward.exp_spirit}</>}
+            <span className="text-zinc-500">｜</span>
+            {reward.points > 0 && (
+              <span className="inline-flex items-center gap-1 text-gold">
+                <Coins className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                <span>{reward.points}G</span>
+              </span>
+            )}
+            {reward.exp_body > 0 && (
+              <span className={`inline-flex items-center gap-0.5 text-exp-body ${reward.points > 0 ? 'ml-[8px]' : ''}`}>
+                <Dumbbell className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                <span>+ {reward.exp_body}</span>
+              </span>
+            )}
+            {reward.exp_mind > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-exp-intelligence">
+                <Brain className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                <span>+ {reward.exp_mind}</span>
+              </span>
+            )}
+            {reward.exp_spirit > 0 && (
+              <span className="inline-flex items-center gap-0.5 text-exp-mind">
+                <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                <span>+ {reward.exp_spirit}</span>
               </span>
             )}
           </div>
@@ -1299,13 +1335,29 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
                     const r = calculateReward(activeTodo);
                     const hasR = r.points > 0 || r.exp_body > 0 || r.exp_mind > 0 || r.exp_spirit > 0;
                     return hasR && (
-                      <div className="text-white">
-                        {r.points > 0 && <>{r.points}G</>}
-                        {(r.exp_body > 0 || r.exp_mind > 0 || r.exp_spirit > 0) && (
-                          <span className={r.points > 0 ? ' ml-2' : ''}>
-                            {r.exp_body > 0 && <>身体 + {r.exp_body}</>}
-                            {r.exp_mind > 0 && <>{r.exp_body > 0 ? ' ' : ''}頭脳 + {r.exp_mind}</>}
-                            {r.exp_spirit > 0 && <>{r.exp_mind > 0 || r.exp_body > 0 ? ' ' : ''}精神 + {r.exp_spirit}</>}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-semibold">
+                        {r.points > 0 && (
+                          <span className="inline-flex items-center gap-1 text-gold">
+                            <Coins className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                            <span>{r.points}G</span>
+                          </span>
+                        )}
+                        {r.exp_body > 0 && (
+                          <span className={`inline-flex items-center gap-0.5 text-exp-body ${r.points > 0 ? 'ml-[8px]' : ''}`}>
+                            <Dumbbell className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                            <span>+ {r.exp_body}</span>
+                          </span>
+                        )}
+                        {r.exp_mind > 0 && (
+                          <span className="inline-flex items-center gap-0.5 text-exp-intelligence">
+                            <Brain className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                            <span>+ {r.exp_mind}</span>
+                          </span>
+                        )}
+                        {r.exp_spirit > 0 && (
+                          <span className="inline-flex items-center gap-0.5 text-exp-mind">
+                            <Sparkles className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                            <span>+ {r.exp_spirit}</span>
                           </span>
                         )}
                       </div>

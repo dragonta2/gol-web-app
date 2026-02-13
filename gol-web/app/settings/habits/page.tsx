@@ -258,7 +258,7 @@ export default function HabitsSettingsPage() {
               <div>ゴルド: {habit.points > 0 ? '+' : ''}{habit.points}G</div>
               {habit.habit_type === 'good' && (
                 <div>
-                  EXP: 身体 + {habit.exp_body} / 頭脳 + {habit.exp_mind} / 精神 + {habit.exp_spirit}
+                  <span>EXP: <span className="text-exp-body">身体 + {habit.exp_body}</span> / <span className="text-exp-intelligence">頭脳 + {habit.exp_mind}</span> / <span className="text-exp-mind">精神 + {habit.exp_spirit}</span></span>
                 </div>
               )}
             </>
@@ -400,7 +400,7 @@ export default function HabitsSettingsPage() {
                   {formData.habit_type === 'good' && (
                     <>
                       <div>
-                        <Label htmlFor="exp_body" className="text-zinc-300">身体EXP</Label>
+                        <Label htmlFor="exp_body" className="text-exp-body">身体EXP</Label>
                         <Input
                           id="exp_body"
                           type="number"
@@ -410,7 +410,7 @@ export default function HabitsSettingsPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="exp_mind" className="text-zinc-300">頭脳EXP</Label>
+                        <Label htmlFor="exp_mind" className="text-exp-intelligence">頭脳EXP</Label>
                         <Input
                           id="exp_mind"
                           type="number"
@@ -420,7 +420,7 @@ export default function HabitsSettingsPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="exp_spirit" className="text-zinc-300">精神EXP</Label>
+                        <Label htmlFor="exp_spirit" className="text-exp-mind">精神EXP</Label>
                         <Input
                           id="exp_spirit"
                           type="number"

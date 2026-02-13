@@ -52,6 +52,12 @@
   --color-foreground: hsl(var(--foreground));
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* 身体・頭脳・精神のテーマカラー（画面トーンに合わせた明度・彩度） */
+  --color-exp-body: #c97b7b;
+  --color-exp-intelligence: #64b5f6;
+  --color-exp-mind: #66bb6a;
+  /* GOLD（ヘッダー内の表記と同じ黄色） */
+  --color-gold: #facc15;
 }
 
 body {

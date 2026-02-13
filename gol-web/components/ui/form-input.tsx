@@ -47,16 +47,17 @@ interface FormInputSmallProps extends React.ComponentProps<typeof Input> {
   label?: string;
   required?: boolean;
   error?: string;
+  labelClassName?: string;
 }
 
 export const FormInputSmall = React.forwardRef<HTMLInputElement, FormInputSmallProps>(
-  ({ label, required, error, className, id, ...props }, ref) => {
+  ({ label, required, error, className, id, labelClassName, ...props }, ref) => {
     const inputId = id || `input-small-${Math.random().toString(36).slice(2, 11)}`;
 
     return (
       <div className="space-y-1">
         {label && (
-          <Label htmlFor={inputId} className="text-xs text-zinc-400">
+          <Label htmlFor={inputId} className={cn('text-xs text-zinc-400', labelClassName)}>
             {label}
             {required && <span className="text-red-400 ml-1">*</span>}
           </Label>

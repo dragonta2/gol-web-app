@@ -146,24 +146,24 @@ export default async function MypagePage() {
           </div>
           <div className="space-y-3 pt-2 border-t border-zinc-800">
             <div className="flex flex-wrap gap-4 text-lg">
-              <div className="flex items-center gap-1.5">
-                <Dumbbell className="w-5 h-5 text-cyan-400 shrink-0" />
-                <span className="text-zinc-400">身体</span>
-                <span className="text-cyan-400 font-semibold">
+              <div className="flex items-center gap-1.5 text-exp-body">
+                <Dumbbell className="w-5 h-5 shrink-0" />
+                <span>身体</span>
+                <span className="font-semibold">
                   {userProfile.exp.body}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Brain className="w-5 h-5 text-cyan-400 shrink-0" />
-                <span className="text-zinc-400">頭脳</span>
-                <span className="text-cyan-400 font-semibold">
+              <div className="flex items-center gap-1.5 text-exp-intelligence">
+                <Brain className="w-5 h-5 shrink-0" />
+                <span>頭脳</span>
+                <span className="font-semibold">
                   {userProfile.exp.intellect}
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <Sparkles className="w-5 h-5 text-cyan-400 shrink-0" />
-                <span className="text-zinc-400">精神</span>
-                <span className="text-cyan-400 font-semibold">
+              <div className="flex items-center gap-1.5 text-exp-mind">
+                <Sparkles className="w-5 h-5 shrink-0" />
+                <span>精神</span>
+                <span className="font-semibold">
                   {userProfile.exp.mind}
                 </span>
               </div>
@@ -184,20 +184,20 @@ export default async function MypagePage() {
               </p>
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-zinc-800 rounded-lg p-3">
-                  <div className="text-zinc-500 text-lg mb-1">身体</div>
-                  <div className="text-cyan-400 font-semibold text-lg">
+                  <div className="text-exp-body text-lg mb-1">身体</div>
+                  <div className="text-exp-body font-semibold text-lg">
                     あと {expToNext.body}
                   </div>
                 </div>
                 <div className="bg-zinc-800 rounded-lg p-3">
-                  <div className="text-zinc-500 text-lg mb-1">頭脳</div>
-                  <div className="text-cyan-400 font-semibold text-lg">
+                  <div className="text-exp-intelligence text-lg mb-1">頭脳</div>
+                  <div className="text-exp-intelligence font-semibold text-lg">
                     あと {expToNext.intellect}
                   </div>
                 </div>
                 <div className="bg-zinc-800 rounded-lg p-3">
-                  <div className="text-zinc-500 text-lg mb-1">精神</div>
-                  <div className="text-cyan-400 font-semibold text-lg">
+                  <div className="text-exp-mind text-lg mb-1">精神</div>
+                  <div className="text-exp-mind font-semibold text-lg">
                     あと {expToNext.spirit}
                   </div>
                 </div>
