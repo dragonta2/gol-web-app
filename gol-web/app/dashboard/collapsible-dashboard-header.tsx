@@ -12,6 +12,7 @@ import {
   User,
   ChevronDown,
   ChevronUp,
+  Megaphone,
 } from "lucide-react"
 import LogoutButton from "./logout-button"
 import FontSizeControl from "@/components/font-size-control"
@@ -174,6 +175,14 @@ export default function CollapsibleDashboardHeader({
               </h1>
               <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                 <FontSizeControl />
+                <Link
+                  href="/announcements"
+                  className="flex-1 sm:flex-none px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded transition-colors text-center flex items-center justify-center gap-1.5"
+                  title="お知らせ"
+                >
+                  <Megaphone className="w-4 h-4" />
+                  <span>お知らせ</span>
+                </Link>
                 <Link
                   href="/mypage"
                   className="flex-1 sm:flex-none px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded transition-colors text-center flex items-center justify-center gap-1.5"

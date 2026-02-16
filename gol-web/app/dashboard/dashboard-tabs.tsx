@@ -7,6 +7,7 @@ import JournalForm from "./journal-form"
 import JournalImpressionSections from "./journal-impression-sections"
 import TodoSummaryTab from "./todo-summary-tab"
 import JournalList from "@/components/journal-list"
+import { AnnouncementsContent } from "@/components/announcements-content"
 import type { DashboardTabsProps } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import DateSelector from "@/components/date-selector"
@@ -14,6 +15,7 @@ import {
   Home,
   ClipboardList,
   BarChart3,
+  Megaphone,
   Sparkles,
   ChevronDown,
   ChevronUp,
@@ -26,7 +28,7 @@ import {
 // 統計タブを動的インポート（コード分割・パフォーマンス最適化）
 const StatsTab = lazy(() => import("./stats-tab"))
 
-type TabType = "journal" | "todo-summary" | "stats"
+type TabType = "journal" | "todo-summary" | "stats" | "announcements"
 
 export interface DashboardTabsOwnProps extends DashboardTabsProps {
   /** 親で制御する場合の現在タブ */
@@ -47,6 +49,7 @@ export default function DashboardTabs({
   selectedDate,
   userName,
   isAdmin,
+  canManageAnnouncements = false,
   scoreBreakdown,
   activeTab: controlledActiveTab,
   onActiveTabChange,
@@ -177,6 +180,28 @@ export default function DashboardTabs({
           <BarChart3 className="w-4 h-4 mr-1" />
           統計
           {activeTab === "stats" && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"
+              aria-hidden="true"
+            ></div>
+          )}
+        </Button>
+        <Button
+          onClick={() => setActiveTab("announcements")}
+          variant="ghost"
+          role="tab"
+          aria-selected={activeTab === "announcements"}
+          aria-controls="tabpanel-announcements"
+          id="tab-announcements"
+          className={`pb-3 px-3 sm:px-4 text-base sm:text-lg font-medium transition-colors relative h-auto rounded-none whitespace-nowrap focus:outline-none focus:ring-0 focus-visible:ring-0 border-0 hover:border-0 ${
+            activeTab === "announcements"
+              ? "text-cyan-400"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <Megaphone className="w-4 h-4 mr-1" />
+          お知らせ
+          {activeTab === "announcements" && (
             <div
               className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"
               aria-hidden="true"
@@ -377,6 +402,17 @@ export default function DashboardTabs({
             >
               <StatsTab />
             </Suspense>
+          </div>
+        )}
+
+        {activeTab === "announcements" && (
+          <div
+            id="tabpanel-announcements"
+            role="tabpanel"
+            aria-labelledby="tab-announcements"
+            className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg"
+          >
+            <AnnouncementsContent canManageAnnouncements={canManageAnnouncements} />
           </div>
         )}
       </div>

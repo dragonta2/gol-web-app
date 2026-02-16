@@ -474,49 +474,28 @@ USING (
 -- 4. 初期データ挿入関数
 -- ========================================
 
--- 新規ユーザー作成時にデフォルト習慣を挿入する関数
+-- 新規ユーザー作成時にデフォルト習慣を挿入する関数（ゲームスタート時: 良習慣1・悪習慣1）
 CREATE OR REPLACE FUNCTION create_default_habits_for_user(user_id UUID)
 RETURNS VOID AS $$
 BEGIN
   INSERT INTO habits (user_id, habit_name, habit_type, points, exp_body, exp_mind, exp_spirit, display_order, input_type, exclude_from_complete) VALUES
-  -- 良習慣
-  (user_id, 'GOLリストを記述｜ログインボーナス', 'good', 1, 0, 1, 1, 1, 'checkbox', false),
-  (user_id, '起床｜7時までに', 'good', 1, 1, 0, 1, 2, 'checkbox', false),
-  (user_id, 'ベッドメイキング', 'good', 1, 0, 0, 1, 3, 'checkbox', false),
-  (user_id, '習慣実践に投稿', 'good', 1, 0, 1, 0, 4, 'checkbox', true),
-  (user_id, '早朝メモ書き部に参加', 'good', 1, 0, 1, 0, 5, 'checkbox', true),
-  (user_id, '懸垂｜10回 or ディップス｜10回', 'good', 1, 2, 0, 0, 6, 'checkbox', false),
-  (user_id, 'ももあげクランチ｜25回 or L字腹筋｜30秒', 'good', 1, 2, 0, 0, 7, 'checkbox', false),
-  (user_id, '逆立ち｜30秒', 'good', 1, 1, 0, 0, 8, 'checkbox', true),
-  (user_id, '起床後すぐの冷水シャワー', 'good', 1, 1, 0, 1, 9, 'checkbox', true),
-  (user_id, '冷水シャワー｜2分', 'good', 1, 1, 0, 1, 10, 'checkbox', false),
-  (user_id, 'ウンパニ｜顔体操｜3回', 'good', 1, 0, 0, 1, 11, 'checkbox', false),
-  (user_id, '体重測定', 'good', 1, 0, 0, 0, 12, 'checkbox', false),
-  (user_id, 'ダンス練習｜5分以上', 'good', 1, 1, 0, 0, 13, 'checkbox', true),
-  (user_id, '瞑想｜3分以上', 'good', 1, 0, 0, 2, 14, 'checkbox', false),
-  (user_id, 'アファメーション｜3分間', 'good', 1, 0, 0, 2, 15, 'checkbox', true),
-  (user_id, 'ラン｜実施ポイント', 'good', 1, 2, 0, 1, 16, 'checkbox', false),
-  (user_id, 'ラン｜距離', 'good', 1, 1, 0, 0, 17, 'number', true),
-  (user_id, '散歩｜実施ポイント', 'good', 1, 1, 0, 1, 18, 'checkbox', false),
-  (user_id, '散歩｜距離', 'good', 1, 1, 0, 0, 19, 'number', true),
-  (user_id, 'ジムに行った', 'good', 1, 3, 0, 0, 20, 'checkbox', false),
-  (user_id, '清掃', 'good', 1, 0, 0, 1, 21, 'checkbox', true),
-  (user_id, '洗濯', 'good', 1, 0, 0, 0, 22, 'checkbox', true),
-  (user_id, '夕食｜1時間30分以内', 'good', 1, 1, 0, 1, 23, 'checkbox', true),
-  (user_id, '湯船につかる', 'good', 1, 1, 0, 1, 24, 'checkbox', false),
-  (user_id, 'ベッドで眠った', 'good', 1, 0, 0, 1, 25, 'checkbox', false),
-  (user_id, '就寝｜0時までに', 'good', 1, 0, 0, 2, 26, 'checkbox', false),
-  
-  -- 悪習慣
-  (user_id, '無目的なYouTube視聴（30分以上）しない', 'bad', 1, 0, 0, 1, 101, 'checkbox', false),
-  (user_id, 'お酒を飲まなかった', 'bad', 1, 1, 0, 1, 102, 'checkbox', false),
-  (user_id, '昼食を食べなかった', 'bad', 1, 1, 0, 0, 103, 'checkbox', false),
-  (user_id, '夕食後にお菓子類を食べなかった', 'bad', 1, 1, 0, 1, 104, 'checkbox', false),
-  (user_id, 'ソファで寝転がってしまわなかった', 'bad', 1, 0, 0, 1, 105, 'checkbox', false),
-  (user_id, 'ソファで眠ってしまわなかった', 'bad', 1, 0, 0, 1, 106, 'checkbox', false),
-  
-  -- ボーナス
-  (user_id, 'Completeボーナス', 'bonus', 3, 1, 1, 1, 201, 'checkbox', false);
+  (user_id, '早起きする｜8時まで', 'good', 1, 0, 0, 0, 1, 'checkbox', false),
+  (user_id, '無目的なYouTube視聴', 'bad', 1, 0, 0, 0, 2, 'checkbox', false);
+END;
+$$ LANGUAGE plpgsql;
+
+-- 新規ユーザー作成時にデフォルトToDoを1件＋サブタスク1件挿入する関数
+CREATE OR REPLACE FUNCTION create_default_todos_for_user(user_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  tid UUID;
+BEGIN
+  INSERT INTO todos (user_id, task_name, status, due_date, display_order)
+  VALUES (user_id, 'テストタスク', 'active', '2026-12-31'::date, 0)
+  RETURNING id INTO tid;
+
+  INSERT INTO todo_subtasks (todo_id, subtask_name, display_order)
+  VALUES (tid, 'サブタスク サンプル', 0);
 END;
 $$ LANGUAGE plpgsql;
 

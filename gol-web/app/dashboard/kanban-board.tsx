@@ -1102,15 +1102,9 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
         </h2>
         <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 text-center">
           <p className="text-zinc-400 mb-2">ToDoタスクがまだ登録されていません</p>
-          <p className="text-base text-zinc-500 mb-4">
-            タスクを追加する機能は今後実装予定です
+          <p className="text-base text-zinc-500">
+            設定またはToDoサマリータブからタスクを追加できます。
           </p>
-          <a
-            href="/test-todos"
-            className="inline-block bg-cyan-600 hover:bg-cyan-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-base"
-          >
-            🧪 テストデータを挿入
-          </a>
         </div>
       </div>
     );

@@ -23,16 +23,9 @@ export { RIGHT_COLUMNS_BY_INDEX };
 
 const LEGACY_CODES = ['A', 'B', 'C', 'D', 'E', 'F', 'O', 'U', 'X'] as const;
 
-const DEFAULT_RIGHTS: RightItem[] = [
-  { code: 'A', name: 'TVゲーム2時間', points: 5, unit: '2時間' },
-  { code: 'B', name: 'お酒4杯まで', points: 4, unit: '4杯まで' },
-  { code: 'C', name: '食事時動画1時間毎', points: 1, unit: '1時間毎' },
-  { code: 'D', name: '睡眠導入剤', points: 0, unit: '1回' },
-  { code: 'E', name: '朝食 or 昼食を食べる', points: 3, unit: '1回' },
-  { code: 'F', name: 'EMKF', points: 10, unit: '1回' },
-  { code: 'O', name: 'ON (PLN以外)', points: 5, unit: '1回' },
-  { code: 'U', name: '宇都宮ダンス', points: 1, unit: '1回' },
-  { code: 'X', name: 'PLN動画 & ON 1時間', points: 10, unit: '1時間' },
+/** 権利未設定時のフォールバック（新規ユーザーは権利Aのみ。設定画面で追加可能） */
+const NEW_USER_DEFAULT_RIGHTS: RightItem[] = [
+  { code: 'A', name: 'TVゲームをやる (2時間)', points: 5, unit: '1回あたり' },
 ];
 
 function toRightsArray(config: unknown): RightItem[] {
@@ -87,7 +80,7 @@ export async function GET() {
       rights = toRightsArray(raw);
     }
     if (rights.length === 0) {
-      rights = [...DEFAULT_RIGHTS];
+      rights = [...NEW_USER_DEFAULT_RIGHTS];
     }
 
     return NextResponse.json({ rights });

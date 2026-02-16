@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import DashboardClientLayout from "./dashboard-client-layout"
 import { syncProfileLevel } from "@/lib/sync-profile-level"
 import { calculateDayDeltas, calculateDayDeltasWithBreakdown } from "@/lib/score-calculator"
+import { canManageAnnouncements as canManageAnnouncementsFn } from "@/lib/announcements"
 
 interface DashboardPageProps {
   searchParams: Promise<{ date?: string }>
@@ -47,6 +48,7 @@ export default async function DashboardPage({
     ? process.env.NEXT_PUBLIC_ADMIN_EMAILS.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
     : []
   const isAdmin = profile?.is_admin === true || (email ? adminEmails.includes(email.toLowerCase()) : false)
+  const canManageAnnouncements = canManageAnnouncementsFn(email || undefined, isAdmin)
 
   // profilesが存在しない場合（新規ユーザーなど）はデフォルト値を使用
   const userProfile = profile
@@ -192,6 +194,7 @@ export default async function DashboardPage({
         todoSubtasks={todoSubtasks || []}
         userName={userProfile.name}
         isAdmin={isAdmin}
+        canManageAnnouncements={canManageAnnouncements}
         pendingDeltas={pendingDeltas}
         scoreBreakdown={scoreBreakdown}
       />

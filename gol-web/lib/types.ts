@@ -427,6 +427,8 @@ export interface DashboardTabsProps {
   userName?: string;
   /** 管理者またはテストアカウント（再生成回数リセットボタン表示用） */
   isAdmin?: boolean;
+  /** お知らせの追加・設定ができるアカウントか（管理・テスト用2件＋isAdmin） */
+  canManageAnnouncements?: boolean;
   /** 1日分のスコア内訳（ToDo・習慣・AI・権利ごと）。確定表示用 */
   scoreBreakdown?: ScoreBreakdown | null;
 }

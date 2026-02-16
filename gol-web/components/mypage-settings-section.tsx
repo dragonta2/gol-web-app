@@ -14,8 +14,10 @@ import {
   ClipboardList,
   Settings as SettingsIcon,
   Download,
+  Upload,
   FileJson,
   FileSpreadsheet,
+  Megaphone,
 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -27,6 +29,12 @@ export function MypageSettingsSection() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [confirmText, setConfirmText] = useState("")
   const [isExporting, setIsExporting] = useState(false)
+  const [isImporting, setIsImporting] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importResult, setImportResult] = useState<{
+    inserted: Record<string, number>
+    error?: string
+  } | null>(null)
 
   const handleExportJson = async () => {
     setIsExporting(true)
@@ -89,6 +97,43 @@ export function MypageSettingsSection() {
       alert(e instanceof Error ? e.message : "エクスポートに失敗しました")
     } finally {
       setIsExporting(false)
+    }
+  }
+
+  const handleImportJson = async () => {
+    if (!importFile) {
+      alert("JSONファイルを選択してください")
+      return
+    }
+    setIsImporting(true)
+    setImportResult(null)
+    try {
+      const text = await importFile.text()
+      const data = JSON.parse(text) as unknown
+      const res = await fetch("/api/user/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
+      const result = await res.json()
+      if (!res.ok) {
+        setImportResult({
+          inserted: {},
+          error: result.error ?? result.details ?? "インポートに失敗しました",
+        })
+        return
+      }
+      setImportResult({ inserted: result.inserted ?? {} })
+      setImportFile(null)
+      const input = document.getElementById("import-json-input") as HTMLInputElement
+      if (input) input.value = ""
+    } catch (e) {
+      console.error(e)
+      const msg =
+        e instanceof Error ? e.message : "ファイルの読み込みに失敗しました"
+      setImportResult({ inserted: {}, error: msg })
+    } finally {
+      setIsImporting(false)
     }
   }
 
@@ -188,6 +233,19 @@ export function MypageSettingsSection() {
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link href="/announcements">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
+              <div className="flex items-center gap-3 mb-2">
+                <Megaphone className="w-6 h-6 text-cyan-400" />
+                <h3 className="text-base font-semibold text-zinc-100">
+                  お知らせ
+                </h3>
+              </div>
+              <p className="text-sm text-zinc-400">
+                日付・件名でお知らせを表示・追加
+              </p>
+            </div>
+          </Link>
           <Link href="/settings/habits">
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
@@ -259,6 +317,85 @@ export function MypageSettingsSection() {
             </div>
             {isExporting && (
               <p className="text-xs text-zinc-500 mt-2">準備中...</p>
+            )}
+          </div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Upload className="w-6 h-6 text-cyan-400" />
+              <h3 className="text-base font-semibold text-zinc-100">
+                データのインポート
+              </h3>
+            </div>
+            <p className="text-sm text-zinc-400 mb-4">
+              エクスポートしたJSONを取り込みます。同じ日付の日誌はスキップされます。
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                id="import-json-input"
+                type="file"
+                accept=".json,application/json"
+                className="text-sm text-zinc-300 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-zinc-700 file:text-zinc-200 file:text-sm"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  setImportFile(f ?? null)
+                  setImportResult(null)
+                }}
+              />
+              <Button
+                onClick={handleImportJson}
+                disabled={isImporting || !importFile}
+                variant="outline"
+                size="sm"
+                className="bg-zinc-800 border-zinc-700 hover:bg-zinc-700 text-zinc-200"
+              >
+                <Upload className="w-3.5 h-3.5 mr-1.5" />
+                {isImporting ? "取り込み中..." : "インポート実行"}
+              </Button>
+            </div>
+            {importResult && (
+              <div className="mt-4 p-3 rounded-lg bg-zinc-800 border border-zinc-700 text-sm">
+                {importResult.error ? (
+                  <p className="text-red-400">{importResult.error}</p>
+                ) : (
+                  <div className="text-zinc-300">
+                    <p className="font-medium text-cyan-400 mb-2">取り込み完了</p>
+                    <ul className="space-y-1">
+                      {importResult.inserted.habits != null && (
+                        <li>習慣: {importResult.inserted.habits} 件</li>
+                      )}
+                      {importResult.inserted.todos != null && (
+                        <li>ToDo: {importResult.inserted.todos} 件</li>
+                      )}
+                      {importResult.inserted.dailyLogs != null && (
+                        <li>日誌: {importResult.inserted.dailyLogs} 件</li>
+                      )}
+                      {importResult.inserted.skippedDailyLogs != null &&
+                        importResult.inserted.skippedDailyLogs > 0 && (
+                          <li className="text-zinc-500">
+                            日誌（同日のためスキップ）:{" "}
+                            {importResult.inserted.skippedDailyLogs} 件
+                          </li>
+                        )}
+                      {importResult.inserted.habitLogs != null &&
+                        importResult.inserted.habitLogs > 0 && (
+                          <li>習慣記録: {importResult.inserted.habitLogs} 件</li>
+                        )}
+                      {importResult.inserted.todoLogs != null &&
+                        importResult.inserted.todoLogs > 0 && (
+                          <li>ToDo記録: {importResult.inserted.todoLogs} 件</li>
+                        )}
+                      {importResult.inserted.todoSubtasks != null &&
+                        importResult.inserted.todoSubtasks > 0 && (
+                          <li>サブタスク: {importResult.inserted.todoSubtasks} 件</li>
+                        )}
+                      {importResult.inserted.rankChangeLogs != null &&
+                        importResult.inserted.rankChangeLogs > 0 && (
+                          <li>ランク変更履歴: {importResult.inserted.rankChangeLogs} 件</li>
+                        )}
+                    </ul>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

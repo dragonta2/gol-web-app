@@ -1,0 +1,12 @@
+{
+  "name": "web-app",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev --prefix gol-web",
+    "build": "npm run build --prefix gol-web",
+    "start": "npm run start --prefix gol-web",
+    "test": "npm run test --prefix gol-web",
+    "test:e2e": "npm run test:e2e --prefix gol-web",
+    "lint": "npm run lint --prefix gol-web"
+  }
+}
