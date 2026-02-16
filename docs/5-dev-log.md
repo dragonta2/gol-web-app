@@ -50,6 +50,37 @@
 
 ## 2602 --------------
 
+### 260216-月
+
+#### ローディング・アイコン統一・見出し・本日の利用ゴルド・進捗表（作業終了前）
+
+**実施内容（詳細）:**
+
+- **ローディング表示**
+  - Next.js の loading.tsx 規約で `app/loading.tsx`・`app/dashboard/loading.tsx`・`app/mypage/loading.tsx` を追加（画面中央にシアン円形スピナー）。カレンダー日付変更時は calendar-dialog-context で `navigatingToDate` を立て、同じスピナーを fixed オーバーレイで表示。URL の date が遷移先と一致したらクリア。
+
+- **アイコン統一**
+  - キャラ名: collapsible-dashboard-header の Trophy → Swords。マイページプロフィール見出し: mypage/page.tsx の Trophy → Swords。
+  - 今日の習慣実行: dashboard-tabs の Sparkles → ListChecks（精神と被らないよう）。良習慣見出しに CheckCircle（habit-list）、悪習慣見出しに AlertCircle（設定の習慣管理と同一）。本日の利用ゴルド: journal-form の Gift に text-gold。マイページ習慣管理: mypage-settings-section の Sparkles → ListChecks。
+
+- **見出し**
+  - 今日の習慣実行／良習慣／悪習慣の文言を「今日の習慣実行」「良習慣」「悪習慣」に。フォントサイズを日誌・感想と同じ text-xl sm:text-2xl に。今日の習慣実行・良習慣・悪習慣を font-semibold に。ToDoリスト見出し（kanban-board）を text-xl sm:text-2xl font-medium に統一。
+
+- **本日の利用ゴルド**
+  - 権利一覧を ul/li にし、各 li の先頭に「-」の span を追加（list-disc は li に flex を付けると表示されないため明示的マークに）。
+
+- **進捗表**
+  - 4-project-progress.md: Phase 5 の「統計・分析機能の実装」を [x] に。進捗を 5/5 完了（100%）・6/6 完了（100%）に。同日実施内容に上記を追記し次回予定を「今日はここで終了」に。
+
+- **お知らせ日付用 SQL**
+  - docs/sql-snippet/update-announcement-notice-date.sql を新規作成（notice_date を 2025/11/23-木 に UPDATE）。
+
+**変更・追加ファイル:**
+- gol-web: app/loading.tsx, app/dashboard/loading.tsx, app/mypage/loading.tsx, app/dashboard/collapsible-dashboard-header.tsx, app/dashboard/dashboard-client-layout.tsx, app/dashboard/dashboard-tabs.tsx, app/dashboard/habit-list.tsx, app/dashboard/journal-form.tsx, app/dashboard/kanban-board.tsx, app/mypage/page.tsx, components/mypage-settings-section.tsx, contexts/calendar-dialog-context.tsx
+- docs: sql-snippet/update-announcement-notice-date.sql（新規）, 4-project-progress.md, 5-dev-log.md
+
+---
+
 ### 260213-金
 
 #### AI判定総評永続化・獲得スコアUI・親習慣週末除外Comp

@@ -73,7 +73,7 @@
 
 ## 進行チェックリスト --------------​
 
-**進捗: 4/6 完了（67%）**（Phase 5 の大項目ベース）
+**進捗: 6/6 完了（100%）**
 
 ### Phase 1 実装チェックリスト
 
@@ -200,7 +200,7 @@
 
 ### Phase 5 実装チェックリスト
 
-**進捗: 1/6 完了（17%）**
+**進捗: 5/5 完了（100%）**
 
 - [x] エラーハンドリング・バリデーション強化
   - [x] フォームバリデーションの実装（クライアント側・サーバー側） `251227-土`
@@ -239,7 +239,7 @@
   - [x] コード分割・動的インポートの実装 `260117-土`
   - [x] データベースクエリの最適化 `260117-土`
 
-- [ ] 統計・分析機能の実装
+- [x] 統計・分析機能の実装
   - [x] 進捗ダッシュボード（週間・月間統計） `260116-金`
   - [x] 習慣の達成率グラフ `260116-金`
   - [x] ポイント・EXPの推移グラフ `260116-金`
@@ -263,8 +263,8 @@
   - [x] パフォーマンステスト（ビルド成功確認・手順書に記載） `260216-月`
   - [x] デプロイ手順書の作成（docs/5-deploy-guide.md） `260216-月`
 
+### **以下実装中止**
 
-**以下実装中止**
 - [ ] MD版との同期機能実装
   - [ ] MD → Web 同期機能（Markdownファイルからデータベースへ）
   - [ ] Web → MD 同期機能（データベースからMarkdownファイルへ）
@@ -291,6 +291,13 @@
 - テスト実装（4-project-progress.md の「テスト実装」チェックリストを実施）
   - E2Eテスト: Playwright を導入。`playwright.config.ts`、`e2e/smoke.spec.ts`（トップ・ログインページのスモーク）を追加。`npm run test:e2e` で実行。Vitest から E2E を除外（`vitest.config.mjs` の exclude に `e2e` を追加）
   - データベース操作のテスト: `/api/announcements` の GET/POST をモックでテスト。`app/api/announcements/__tests__/route.test.ts` を追加（未認証401、認証済み一覧200、POST は403/400/200）
+- UI・進捗まわり（同日・作業終了前）
+  - ローディング表示: `app/loading.tsx`・`app/dashboard/loading.tsx`・`app/mypage/loading.tsx` を追加。カレンダー日付変更時にスピナー表示（calendar-dialog-context で navigatingToDate 時に同一スピナーをオーバーレイ）
+  - アイコン統一: キャラ名・マイページプロフィールを Trophy → Swords。今日の習慣実行を Sparkles → ListChecks。良習慣見出しに CheckCircle、悪習慣見出しに AlertCircle。本日の利用ゴルドの Gift を text-gold。マイページ習慣管理を Sparkles → ListChecks
+  - 見出し: 今日の習慣実行／良習慣／悪習慣の文言・フォントサイズ（日誌・感想と同一）・semibold。ToDoリスト見出しを日誌・感想と同じ text-xl sm:text-2xl font-medium に
+  - 本日の利用ゴルド: 権利一覧にリストマーク「-」を先頭に表示（ul/li＋明示的「-」span）
+  - 進捗表: Phase 5 の「統計・分析機能の実装」を完了に。進捗を 5/5 完了（100%）・6/6 完了（100%）に更新
+  - お知らせ日付用 SQL: `docs/sql-snippet/update-announcement-notice-date.sql` を追加（notice_date を 2025/11/23-木 に更新）
 
 #### 決定事項
 
@@ -298,7 +305,7 @@
 
 #### 次回予定
 
-- 特になし
+- 今日はここで終了
 
 ---
 
