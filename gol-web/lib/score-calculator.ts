@@ -69,7 +69,7 @@ export async function calculateDayDeltas(
     .eq('id', dailyLogId)
     .single();
 
-  if (logError || !dailyLog) {
+  if (logError || !dailyLog || !('log_date' in dailyLog)) {
     return null;
   }
 
@@ -123,16 +123,16 @@ export async function calculateDayDeltas(
   }
 
   // 4. AI判定分を加算
-  deltas.points_delta += dailyLog.ai_points_earned ?? 0;
-  deltas.exp_body_delta += dailyLog.ai_exp_body ?? 0;
-  deltas.exp_mind_delta += dailyLog.ai_exp_mind ?? 0;
-  deltas.exp_spirit_delta += dailyLog.ai_exp_spirit ?? 0;
+  deltas.points_delta += Number(dailyLogRecord['ai_points_earned']) || 0;
+  deltas.exp_body_delta += Number(dailyLogRecord['ai_exp_body']) || 0;
+  deltas.exp_mind_delta += Number(dailyLogRecord['ai_exp_mind']) || 0;
+  deltas.exp_spirit_delta += Number(dailyLogRecord['ai_exp_spirit']) || 0;
 
   // 5. 権利消費（利用ゴルド）を減算: daily_log の right_*_count と権利設定の points が必要
   const { data: profile } = await supabase
     .from('profiles')
     .select('rights_config')
-    .eq('id', dailyLog.user_id)
+    .eq('id', dailyLogRecord['user_id'])
     .single();
 
   const rightsPoints = parseRightsPoints(profile?.rights_config);
@@ -178,7 +178,7 @@ export async function calculateDayDeltasWithBreakdown(
     .eq('id', dailyLogId)
     .single();
 
-  if (logError || !dailyLog) {
+  if (logError || !dailyLog || !('log_date' in dailyLog)) {
     return null;
   }
 
@@ -237,16 +237,16 @@ export async function calculateDayDeltasWithBreakdown(
   }
 
   // 3. AI判定分
-  breakdown.ai.points_delta = dailyLog.ai_points_earned ?? 0;
-  breakdown.ai.exp_body_delta = dailyLog.ai_exp_body ?? 0;
-  breakdown.ai.exp_mind_delta = dailyLog.ai_exp_mind ?? 0;
-  breakdown.ai.exp_spirit_delta = dailyLog.ai_exp_spirit ?? 0;
+  breakdown.ai.points_delta = Number(dailyLogRecord['ai_points_earned']) || 0;
+  breakdown.ai.exp_body_delta = Number(dailyLogRecord['ai_exp_body']) || 0;
+  breakdown.ai.exp_mind_delta = Number(dailyLogRecord['ai_exp_mind']) || 0;
+  breakdown.ai.exp_spirit_delta = Number(dailyLogRecord['ai_exp_spirit']) || 0;
 
   // 4. 権利消費（インデックスで rights_config とカラムを対応。配列順＝表示順）
   const { data: profile } = await supabase
     .from('profiles')
     .select('rights_config')
-    .eq('id', dailyLog.user_id)
+    .eq('id', dailyLogRecord['user_id'])
     .single();
 
   const rightsPoints = parseRightsPoints(profile?.rights_config);
