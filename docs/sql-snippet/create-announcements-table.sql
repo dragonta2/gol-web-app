@@ -58,5 +58,5 @@ USING (
 
 -- 初回データ（テーブルが空のときのみ1件挿入）
 INSERT INTO announcements (notice_date, subject, display_order)
-SELECT '2026/02/16-月', 'GOL Web版 制作中です！！', 0
+SELECT '2026/02/16-月', 'Gamification Of Life（GOL） Web版 ただいま制作中です！！！', 0
 WHERE NOT EXISTS (SELECT 1 FROM announcements LIMIT 1);

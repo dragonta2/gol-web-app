@@ -12,7 +12,6 @@ import {
   User,
   ChevronDown,
   ChevronUp,
-  Megaphone,
 } from "lucide-react"
 import LogoutButton from "./logout-button"
 import FontSizeControl from "@/components/font-size-control"
@@ -176,14 +175,6 @@ export default function CollapsibleDashboardHeader({
               <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
                 <FontSizeControl />
                 <Link
-                  href="/announcements"
-                  className="flex-1 sm:flex-none px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded transition-colors text-center flex items-center justify-center gap-1.5"
-                  title="お知らせ"
-                >
-                  <Megaphone className="w-4 h-4" />
-                  <span>お知らせ</span>
-                </Link>
-                <Link
                   href="/mypage"
                   className="flex-1 sm:flex-none px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm rounded transition-colors text-center flex items-center justify-center gap-1.5"
                   title="マイページ"
@@ -253,7 +244,7 @@ export default function CollapsibleDashboardHeader({
             </div>
 
             {pendingDeltas && (
-              <div className="text-sm text-zinc-400 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5" role="status" aria-label="未確定スコア">
+              <div className="text-sm text-zinc-400 mt-[15px] flex flex-wrap items-center gap-x-3 gap-y-0.5" role="status" aria-label="未確定スコア">
                 <span className="font-medium text-zinc-400">未確定:</span>
                 {pendingDeltas.points_delta !== 0 && (
                   <span>{pendingDeltas.points_delta >= 0 ? '+' : '-'} {Math.abs(pendingDeltas.points_delta)}G</span>
