@@ -1096,7 +1096,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
   if (todos.length === 0) {
     return (
       <div className="mb-8">
-        <h2 className="text-xl font-semibold text-zinc-100 mb-4 flex items-center gap-2">
+        <h2 className="text-xl sm:text-2xl font-medium text-zinc-100 mb-4 flex items-center gap-2">
           <ClipboardList className="w-5 h-5" />
           <span>ToDoリスト</span>
         </h2>
@@ -1115,7 +1115,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     return (
       <div className="mb-8">
         <div className="w-full text-left mb-4 flex items-center justify-between gap-2">
-          <h2 className="text-xl font-semibold text-zinc-100 flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-medium text-zinc-100 flex items-center gap-2">
             <ClipboardList className="w-5 h-5" />
             <span>ToDoリスト</span>
           </h2>
@@ -1136,7 +1136,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
         aria-expanded={isExpanded}
         aria-controls="kanban-board-content"
       >
-        <h2 className="text-xl font-semibold text-zinc-100 flex items-center gap-2">
+        <h2 className="text-xl sm:text-2xl font-medium text-zinc-100 flex items-center gap-2">
           <ClipboardList className="w-5 h-5" />
           <span>ToDoリスト</span>
           {isUpdating && (

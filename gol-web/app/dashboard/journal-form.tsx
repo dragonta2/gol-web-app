@@ -556,7 +556,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             aria-controls="rights-content"
           >
             <h3 className="text-xl sm:text-2xl font-medium text-zinc-200 flex items-center gap-2">
-              <Gift className="w-7 h-7 sm:w-8 sm:h-8" />
+              <Gift className="w-7 h-7 sm:w-8 sm:h-8 text-gold" />
               <span>本日の利用ゴルド</span>
             </h3>
             {isRightsExpanded ? (
@@ -567,8 +567,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           </button>
           {isRightsExpanded && (
             <div id="rights-content" className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 space-y-3">
+              <ul className="list-none space-y-3 pl-0">
               {rights.map((right) => (
-                <div key={right.id} className="flex items-center gap-3 text-base">
+                <li key={right.id} className="flex items-center gap-2 text-base">
+                  <span className="text-zinc-400 shrink-0" aria-hidden>-</span>
                   {/* 権利名・使用単位 */}
                   <span className={`flex-1 min-w-0 ${right.count > 0 ? 'text-zinc-50' : 'text-zinc-300'}`}>
                     権利{right.code}｜{right.name}
@@ -592,8 +594,9 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                     disabled={!isEditable}
                     className="w-16 px-2 py-1 bg-zinc-800 border-zinc-600 text-zinc-50 text-center text-base focus:border-red-500 disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
                   />
-                </div>
+                </li>
               ))}
+              </ul>
 
               {/* 合計ポイント */}
               {totalPoints > 0 && (

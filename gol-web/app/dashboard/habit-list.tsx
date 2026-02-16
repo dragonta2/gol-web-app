@@ -10,7 +10,7 @@ import { Modal } from '@/components/ui/modal';
 import { FormInput, FormInputSmall, FormLabel } from '@/components/ui/form-input';
 import { FormCard, FormCardContent } from '@/components/ui/form-card';
 import { toast } from 'sonner';
-import { Settings, Edit, ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
+import { Settings, Edit, ChevronDown, ChevronUp, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
 import { ExpWithIcons } from '@/components/exp-with-icons';
 import { isWeekendOrHoliday } from '@/lib/date-utils';
 
@@ -907,8 +907,9 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           aria-expanded={isGoodHabitsExpanded}
           aria-controls="good-habits-content"
         >
-          <h3 className="text-base sm:text-lg font-medium text-zinc-300">
-            良習慣実行（やった場合にチェック）
+          <h3 className="text-base sm:text-lg font-semibold text-zinc-300 flex items-center gap-2">
+            <CheckCircle className="w-5 h-5 text-cyan-400 shrink-0" aria-hidden />
+            良習慣
           </h3>
           {isGoodHabitsExpanded ? (
             <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
@@ -1155,8 +1156,9 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           aria-expanded={isBadHabitsExpanded}
           aria-controls="bad-habits-content"
         >
-          <h3 className="text-base sm:text-lg font-medium text-zinc-300">
-            悪習慣（やってしまった場合にチェック）
+          <h3 className="text-base sm:text-lg font-semibold text-zinc-300 flex items-center gap-2">
+            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" aria-hidden />
+            悪習慣
           </h3>
           {isBadHabitsExpanded ? (
             <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />

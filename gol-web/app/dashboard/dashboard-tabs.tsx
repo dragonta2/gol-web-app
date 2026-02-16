@@ -16,7 +16,7 @@ import {
   ClipboardList,
   BarChart3,
   Megaphone,
-  Sparkles,
+  ListChecks,
   ChevronDown,
   ChevronUp,
   Maximize2,
@@ -311,9 +311,9 @@ export default function DashboardTabs({
                 aria-expanded={isHabitsExpanded}
                 aria-controls="habits-content"
               >
-                <h2 className="text-2xl sm:text-3xl font-semibold text-cyan-400 flex items-center gap-2">
-                  <Sparkles className="w-6 h-6 sm:w-7 sm:h-7" />
-                  <span>今日の習慣</span>
+                <h2 className="text-xl sm:text-2xl font-semibold text-cyan-400 flex items-center gap-2">
+                  <ListChecks className="w-6 h-6 sm:w-7 sm:h-7" />
+                  <span>今日の習慣実行</span>
                 </h2>
                 {isHabitsExpanded ? (
                   <ChevronUp className="w-6 h-6 text-zinc-400 flex-shrink-0" />

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import {
-  Trophy,
+  Swords,
   Coins,
   ArrowLeft,
   Dumbbell,
@@ -105,7 +105,7 @@ export default async function MypagePage() {
         {/* プロフィールサマリー */}
         <section className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mb-6">
           <h2 className="text-base font-semibold text-zinc-300 mb-4 flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-cyan-400" />
+            <Swords className="w-5 h-5 text-cyan-400" />
             プロフィール
           </h2>
           <div className="flex items-start gap-6 mb-4">

@@ -10,7 +10,7 @@ import {
   Key,
   Bot,
   BookOpen,
-  Sparkles,
+  ListChecks,
   ClipboardList,
   Settings as SettingsIcon,
   Download,
@@ -249,7 +249,7 @@ export function MypageSettingsSection() {
           <Link href="/settings/habits">
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
-                <Sparkles className="w-6 h-6 text-cyan-400" />
+                <ListChecks className="w-6 h-6 text-cyan-400" />
                 <h3 className="text-base font-semibold text-zinc-100">
                   習慣管理
                 </h3>

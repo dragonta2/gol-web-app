@@ -42,6 +42,7 @@ export default function DashboardClientLayout({
         userProfile={userProfile}
         selectedDate={selectedDate}
         screenName={screenName}
+        activeTab={activeTab}
         pendingDeltas={pendingDeltas ?? undefined}
       />
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">

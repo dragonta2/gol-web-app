@@ -28,6 +28,8 @@ export function CalendarDialogProvider({ children }: { children: React.ReactNode
     dateParam ? new Date(dateParam) : new Date()
   );
   const [open, setOpen] = useState(false);
+  /** カレンダーで日付変更して遷移中の場合、その日付（yyyy-MM-dd）。同じスピナー表示用 */
+  const [navigatingToDate, setNavigatingToDate] = useState<string | null>(null);
 
   useEffect(() => {
     const newDateParam = searchParams.get('date');
@@ -41,18 +43,26 @@ export function CalendarDialogProvider({ children }: { children: React.ReactNode
     }
   }, [searchParams]);
 
+  /** URLのdateが遷移先と一致したらスピナーを消す */
+  useEffect(() => {
+    if (!navigatingToDate) return;
+    if (searchParams.get('date') === navigatingToDate) {
+      setNavigatingToDate(null);
+    }
+  }, [navigatingToDate, searchParams]);
+
   const handleDateSelect = useCallback(
     (date: Date | undefined) => {
       if (!date) return;
 
       setSelectedDate(date);
       const dateString = format(date, 'yyyy-MM-dd');
+      setNavigatingToDate(dateString);
+      setOpen(false);
 
       const params = new URLSearchParams(searchParams.toString());
       params.set('date', dateString);
       router.push(`/dashboard?${params.toString()}`);
-
-      setOpen(false);
     },
     [router, searchParams]
   );
@@ -68,6 +78,15 @@ export function CalendarDialogProvider({ children }: { children: React.ReactNode
   return (
     <CalendarDialogContext.Provider value={{ openCalendar }}>
       {children}
+      {navigatingToDate && (
+        <div className="fixed inset-0 z-50 min-h-screen bg-zinc-950 flex items-center justify-center" aria-busy>
+          <div
+            className="animate-spin rounded-full h-10 w-10 border-2 border-cyan-400 border-t-transparent"
+            aria-hidden
+          />
+          <span className="sr-only">読み込み中</span>
+        </div>
+      )}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           className="max-w-[90vw] w-full sm:max-w-4xl bg-zinc-900 border-zinc-700 p-8"

@@ -4,7 +4,6 @@ import { useState } from "react"
 import Link from "next/link"
 import { useCalendarDialog } from "@/contexts/calendar-dialog-context"
 import {
-  Trophy,
   Coins,
   Dumbbell,
   Brain,
@@ -12,6 +11,11 @@ import {
   User,
   ChevronDown,
   ChevronUp,
+  Home,
+  ClipboardList,
+  BarChart3,
+  Megaphone,
+  Swords,
 } from "lucide-react"
 import LogoutButton from "./logout-button"
 import FontSizeControl from "@/components/font-size-control"
@@ -35,16 +39,27 @@ interface CollapsibleDashboardHeaderProps {
   selectedDate: string
   /** 現在開いている画面名（日誌 / ToDoサマリー / 統計） */
   screenName?: string
+  /** 現在のタブ（画面名の左に同じアイコンを表示するため） */
+  activeTab?: "journal" | "todo-summary" | "stats" | "announcements"
   /** 未確定の日誌がある日の仮スコア（確定時に反映されるデルタ） */
   pendingDeltas?: DayDeltas | null
 }
+
+const TAB_ICONS = {
+  journal: Home,
+  "todo-summary": ClipboardList,
+  stats: BarChart3,
+  announcements: Megaphone,
+} as const
 
 export default function CollapsibleDashboardHeader({
   userProfile,
   selectedDate,
   screenName,
+  activeTab,
   pendingDeltas,
 }: CollapsibleDashboardHeaderProps) {
+  const TabIcon = activeTab ? TAB_ICONS[activeTab] : null
   const { openCalendar } = useCalendarDialog() ?? { openCalendar: () => {} }
   // タイトルバー（ヘッダー）は常に展開して表示。折りたたみ状態は保存するが、次回表示時は展開で開始する。
   const [collapsed, setCollapsed] = useState(false)
@@ -92,9 +107,12 @@ export default function CollapsibleDashboardHeader({
         aria-label={collapsed ? "ヘッダーを展開" : "ヘッダーを折り畳む"}
       >
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-2">
-          <span className="text-[20px] sm:text-[22px] font-bold text-white truncate min-w-0 flex items-baseline gap-2 flex-wrap">
+          <span className="text-[20px] sm:text-[22px] font-bold text-white truncate min-w-0 flex items-center gap-2 flex-wrap">
             {screenName ? (
               <>
+                {TabIcon && (
+                  <TabIcon className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-white -translate-y-px" aria-hidden />
+                )}
                 <span className="text-white">{screenName}</span>
                 {collapsed && (
                   <>
@@ -169,7 +187,7 @@ export default function CollapsibleDashboardHeader({
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
               <h1 className="text-xl sm:text-2xl font-bold text-cyan-400 flex items-center gap-2">
-                <Trophy className="w-5 h-5 sm:w-6 sm:h-6" />
+                <Swords className="w-5 h-5 sm:w-6 sm:h-6" />
                 <span>{userProfile.name}</span>
               </h1>
               <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
