@@ -50,6 +50,26 @@
 
 ## 2602 --------------
 
+### 260217-火
+
+#### アバターディレクトリ gy 対応・あらすじ2行ごと空行
+
+**実施内容（詳細）:**
+
+- **アバター画像ディレクトリ名**
+  - public のヨウテイ用を ghost → yotei → gy に変更。`rank-avatar.tsx` の `getAvatarSrc` で `mode === "ghost"` のときディレクトリを `"gy"` に（`const dir = mode === "ghost" ? "gy" : mode`）。コメント・avatar.md の配置先を `avatars/gy/icon`, `avatars/gy/full` に更新。
+
+- **あらすじ・アドバイス表示の2行ごと空行**
+  - 「これまでの冒険」「これからの冒険」「辛口コーチングアドバイス」の3箇所で、表示時に2行ごとに空行を挿入するルールを追加。
+  - `lib/utils.ts`: `insertBlankLineEveryTwoLines(text)` を追加。`text.split('\n')` で行に分割し、2行ずつブロックにして `\n\n` で結合。
+  - `journal-form.tsx`: `renderAiText(text, options?: { blankEveryTwoLines?: boolean })` の第二引数を追加。`blankEveryTwoLines` が true のとき `applyAiTextLineBreaks` の後に `insertBlankLineEveryTwoLines` を適用。上記3箇所で `renderAiText(..., { blankEveryTwoLines: true })` を指定。
+
+**変更・追加ファイル:**
+- gol-web: lib/utils.ts, components/rank-avatar.tsx, app/dashboard/journal-form.tsx
+- docs: for-request-md-file/avatar.md, 4-project-progress.md, 5-dev-log.md
+
+---
+
 ### 260216-月
 
 #### ローディング・アイコン統一・見出し・本日の利用ゴルド・進捗表（作業終了前）

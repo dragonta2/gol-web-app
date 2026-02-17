@@ -14,7 +14,7 @@ import { fetchWithRetry } from '@/lib/api-retry';
 import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 import type { DailyLog } from '@/lib/types';
 import type { ScoreBreakdown } from '@/lib/score-calculator';
-import { applyAiTextLineBreaks } from '@/lib/utils';
+import { applyAiTextLineBreaks, insertBlankLineEveryTwoLines } from '@/lib/utils';
 import {
   STORAGE_AI_PERSONALITY_TYPE,
   STORAGE_AI_STRICT_COACH_ENABLED,
@@ -175,9 +175,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       .trim();
   };
 
-  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド） */
-  const renderAiText = (text: string) => {
-    const formatted = applyAiTextLineBreaks(text);
+  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines: 2行ごとに空行（これまでの冒険・これからの冒険・アドバイス用） */
+  const renderAiText = (text: string, options?: { blankEveryTwoLines?: boolean }) => {
+    let formatted = applyAiTextLineBreaks(text);
+    if (options?.blankEveryTwoLines) formatted = insertBlankLineEveryTwoLines(formatted);
     if (!userName) return formatted;
     const parts = formatted.split(userName);
     if (parts.length <= 1) return formatted;
@@ -881,7 +882,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                 </div>
               ) : aiStoryPast ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryPast)}</p>
+                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryPast, { blankEveryTwoLines: true })}</p>
                 </div>
               ) : (
                 <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
@@ -893,7 +894,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               <p className="text-sm font-medium text-white mb-1">これからの冒険</p>
               {aiStoryFuture ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(stripFutureAdventureHeading(aiStoryFuture))}</p>
+                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(stripFutureAdventureHeading(aiStoryFuture), { blankEveryTwoLines: true })}</p>
                 </div>
               ) : (
                 <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
@@ -915,7 +916,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             </div>
           ) : aiAdvice ? (
             <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-              <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice)}</p>
+              <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true })}</p>
             </div>
           ) : (
             <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">

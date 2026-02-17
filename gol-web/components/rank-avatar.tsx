@@ -18,8 +18,8 @@ const AVATAR_EXTS = ["png", "jpg", "svg"] as const
 
 /**
  * アバター画像のパス（avatar.md 準拠）
- * 配置: public/avatars/{mode}/{variant}/{name}.{jpg|png|svg}
- * - ghost/icon/yo1-i, ghost/full/yo1
+ * 配置: public/avatars/{dir}/{variant}/{name}.{jpg|png|svg}
+ * - gy/icon/i-yo1, gy/full/yo1
  * - dq/icon/dq1-i, dq/full/dq1
  */
 function getAvatarSrc(
@@ -32,8 +32,14 @@ function getAvatarSrc(
   const ext = AVATAR_EXTS[Math.min(extIndex, AVATAR_EXTS.length - 1)]
   const variantDir = variant === "icon" ? "icon" : "full"
   const prefix = mode === "ghost" ? "yo" : "dq"
-  const name = variant === "icon" ? `${prefix}${lv}-i` : `${prefix}${lv}`
-  return `/avatars/${mode}/${variantDir}/${name}.${ext}`
+  const name =
+    variant === "icon"
+      ? mode === "ghost"
+        ? `i-yo${lv}`
+        : `${prefix}${lv}-i`
+      : `${prefix}${lv}`
+  const dir = mode === "ghost" ? "gy" : mode
+  return `/avatars/${dir}/${variantDir}/${name}.${ext}`
 }
 
 interface RankAvatarProps {

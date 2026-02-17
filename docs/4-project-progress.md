@@ -284,6 +284,23 @@
 
 ## 2602 --------------
 
+### 260217-火
+
+#### 実施内容
+
+- アバター画像ディレクトリ名を ghost → yotei → gy に変更。`rank-avatar.tsx` でパスを `gy` に、`avatar.md` の配置先・フォルダ構成を gy に更新
+- 日誌あらすじ・アドバイス表示: これまでの冒険・これからの冒険・辛口コーチングアドバイスの3箇所で、2行ごとに空行を挿入するルールを追加。`lib/utils.ts` に `insertBlankLineEveryTwoLines` を追加、`journal-form.tsx` の `renderAiText` に `blankEveryTwoLines` オプションを追加し該当3箇所で有効化
+
+#### 決定事項
+
+- 特になし
+
+#### 次回予定
+
+- 未定
+
+---
+
 ### 260216-月
 
 #### 実施内容
@@ -492,7 +509,7 @@
 **ランク・アバター対応:**
 - ランクシステム（Lv1–10、ヨウテイ/ドラクエモード別ランク名、EXP閾値）の実装
 - RankAvatar コンポーネント追加（モード別・icon/full、png→jpg→svg フォールバック）
-- アバター画像の命名・配置: yo1-i, yo1, dq1-i, dq1 形式、avatars/{ghost|dq}/{icon|full}/ に配置
+- アバター画像の命名・配置: ghost アイコンは i-yo1～i-yo10、全身は yo1～yo10。dq は dq1-i, dq1 形式。avatars/{ghost|dq}/{icon|full}/ に配置
 - 日誌画面: アバター160px、固形背景・角丸R小さめ、Lv｜ランク名｜ゴルドを名前の下に配置
 - マイページ: アバターをテキスト右側に配置、全身画像600px、レスポンシブ対応
 - syncProfileLevel、rank_change_logs テーブル、avatar.md 仕様書の整備
