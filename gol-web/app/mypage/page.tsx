@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
+import Image from "next/image"
 import {
   Swords,
   Coins,
@@ -98,9 +99,30 @@ export default async function MypagePage() {
           <FontSizeControl />
         </div>
 
-        <h1 className="text-xl sm:text-2xl font-bold text-cyan-400 mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-cyan-400 mb-1">
           マイページ
         </h1>
+        <p className="text-sm text-white mb-4">〜人生をゲームに、日記を冒険に〜</p>
+
+        {/* アイキャッチ：ロゴ（上下を背景にグラデーションで溶け込ませる） */}
+        <div
+          className="mb-[30px] w-full overflow-hidden mask-size-[100%_100%]"
+          style={{
+            maskImage:
+              "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+            WebkitMaskImage:
+              "linear-gradient(to bottom, transparent 0%, black 15%, black 85%, transparent 100%)",
+          }}
+        >
+          <Image
+            src="/gol-logo.png"
+            alt="GOL - Gamification of Life"
+            width={1200}
+            height={600}
+            priority
+            className="w-full h-auto"
+          />
+        </div>
 
         {/* プロフィールサマリー */}
         <section className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mb-6">

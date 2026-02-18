@@ -624,7 +624,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         </div>
       )}
 
-      {/* 日誌を保存ボタン・確定ボタン */}
+      {/* 日誌を保存ボタン・確定ボタン（確定は初回AI判定実行まで無効） */}
       {isEditable && (
         <div className="flex justify-center gap-3">
           <Button
@@ -639,8 +639,18 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           {!isConfirmed && (
             <Button
               onClick={handleConfirm}
+              disabled={
+                !aiJudgmentResult &&
+                !(dailyLog && dailyLog.ai_condition_body != null && dailyLog.ai_condition_mood != null)
+              }
               aria-label="日誌を確定する"
-              className="bg-green-600 hover:bg-green-700 text-white"
+              title={
+                !aiJudgmentResult &&
+                !(dailyLog && dailyLog.ai_condition_body != null && dailyLog.ai_condition_mood != null)
+                  ? 'AI判定を実行してから確定できます'
+                  : undefined
+              }
+              className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:pointer-events-none"
               size="lg"
             >
               <Check className="w-4 h-4 mr-1" />
@@ -785,6 +795,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           return (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-2">
             <h3 className="text-lg font-medium text-cyan-400">獲得スコア</h3>
+            <p className="text-zinc-500 text-xs">日誌確定後にスコアは獲得されます</p>
             <div className="text-base space-y-2 text-zinc-300">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="shrink-0">ToDo:</span>

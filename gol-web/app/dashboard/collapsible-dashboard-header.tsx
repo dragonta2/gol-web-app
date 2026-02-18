@@ -16,6 +16,7 @@ import {
   BarChart3,
   Megaphone,
   Swords,
+  FileText,
 } from "lucide-react"
 import LogoutButton from "./logout-button"
 import FontSizeControl from "@/components/font-size-control"
@@ -37,10 +38,10 @@ import type { DayDeltas } from "@/lib/score-calculator"
 interface CollapsibleDashboardHeaderProps {
   userProfile: DashboardHeaderProfile
   selectedDate: string
-  /** 現在開いている画面名（日誌 / ToDoサマリー / 統計） */
+  /** 現在開いている画面名（日誌 / ToDoサマリー / 統計 / 過去の日誌） */
   screenName?: string
   /** 現在のタブ（画面名の左に同じアイコンを表示するため） */
-  activeTab?: "journal" | "todo-summary" | "stats" | "announcements"
+  activeTab?: "journal" | "todo-summary" | "stats" | "journals" | "announcements"
   /** 未確定の日誌がある日の仮スコア（確定時に反映されるデルタ） */
   pendingDeltas?: DayDeltas | null
 }
@@ -49,6 +50,7 @@ const TAB_ICONS = {
   journal: Home,
   "todo-summary": ClipboardList,
   stats: BarChart3,
+  journals: FileText,
   announcements: Megaphone,
 } as const
 

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { Mail, Lock } from 'lucide-react';
 
@@ -70,6 +71,16 @@ export default function SignupPage() {
 
         {/* ヘッダー */}
         <header className="text-center mb-8">
+          <div className="flex justify-center mb-4 w-full">
+            <Image
+              src="/gol-logo.png"
+              alt="GOL - Gamification of Life"
+              width={800}
+              height={400}
+              priority
+              className="w-full h-auto max-w-3xl"
+            />
+          </div>
           <h1 className="text-4xl font-bold text-cyan-400 mb-2">
             ⚔️ GOL ⚔️
           </h1>

@@ -23,12 +23,13 @@ import {
   Minimize2,
   Lock,
   Unlock,
+  FileText,
 } from "lucide-react"
 
 // 統計タブを動的インポート（コード分割・パフォーマンス最適化）
 const StatsTab = lazy(() => import("./stats-tab"))
 
-type TabType = "journal" | "todo-summary" | "stats" | "announcements"
+type TabType = "journal" | "todo-summary" | "stats" | "journals" | "announcements"
 
 export interface DashboardTabsOwnProps extends DashboardTabsProps {
   /** 親で制御する場合の現在タブ */
@@ -69,7 +70,6 @@ export default function DashboardTabs({
   // アコーディオンの開閉状態を管理（全てのアコーディオンを一括制御）
   const [isKanbanExpanded, setIsKanbanExpanded] = useState(true)
   const [isHabitsExpanded, setIsHabitsExpanded] = useState(true)
-  const [isJournalListExpanded, setIsJournalListExpanded] = useState(true)
   const [journalFormStates, setJournalFormStates] = useState({
     journal: true,
     impression: true,
@@ -187,6 +187,28 @@ export default function DashboardTabs({
           )}
         </Button>
         <Button
+          onClick={() => setActiveTab("journals")}
+          variant="ghost"
+          role="tab"
+          aria-selected={activeTab === "journals"}
+          aria-controls="tabpanel-journals"
+          id="tab-journals"
+          className={`pb-3 px-3 sm:px-4 text-base sm:text-lg font-medium transition-colors relative h-auto rounded-none whitespace-nowrap focus:outline-none focus:ring-0 focus-visible:ring-0 border-0 hover:border-0 ${
+            activeTab === "journals"
+              ? "text-cyan-400"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <FileText className="w-4 h-4 mr-1" />
+          過去の日誌
+          {activeTab === "journals" && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-cyan-400"
+              aria-hidden="true"
+            ></div>
+          )}
+        </Button>
+        <Button
           onClick={() => setActiveTab("announcements")}
           variant="ghost"
           role="tab"
@@ -228,7 +250,6 @@ export default function DashboardTabs({
                 onClick={() => {
                   setIsKanbanExpanded(true)
                   setIsHabitsExpanded(true)
-                  setIsJournalListExpanded(true)
                   setJournalFormStates({
                     journal: true,
                     impression: true,
@@ -247,7 +268,6 @@ export default function DashboardTabs({
                 onClick={() => {
                   setIsKanbanExpanded(false)
                   setIsHabitsExpanded(false)
-                  setIsJournalListExpanded(false)
                   setJournalFormStates({
                     journal: false,
                     impression: false,
@@ -351,17 +371,13 @@ export default function DashboardTabs({
               journalTextsRef={journalTextsRef}
             />
 
-            {/* 過去の日誌一覧 */}
-            <div>
-              <JournalList
-                onDateSelect={(date) => {
-                  // 日付選択時の処理（親コンポーネントでURL更新）
-                  window.location.href = `/dashboard?date=${date}`
-                }}
-                isExpanded={isJournalListExpanded}
-                onExpandedChange={setIsJournalListExpanded}
-              />
-            </div>
+            {/* 今月の日誌（過去の日誌は「過去の日誌」タブへ） */}
+            <JournalList
+              onDateSelect={(date) => {
+                window.location.href = `/dashboard?date=${date}`
+              }}
+              section="current-month-only"
+            />
           </div>
         )}
 
@@ -402,6 +418,22 @@ export default function DashboardTabs({
             >
               <StatsTab />
             </Suspense>
+          </div>
+        )}
+
+        {activeTab === "journals" && (
+          <div
+            id="tabpanel-journals"
+            role="tabpanel"
+            aria-labelledby="tab-journals"
+            className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg"
+          >
+            <JournalList
+              onDateSelect={(date) => {
+                window.location.href = `/dashboard?date=${date}`
+              }}
+              section="past-only"
+            />
           </div>
         )}
 

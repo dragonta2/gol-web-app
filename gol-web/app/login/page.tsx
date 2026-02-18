@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 
@@ -68,7 +69,7 @@ function LoginContent() {
   const googleLoginUrl = '/api/auth/google';
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-4 pt-[50px]">
       <div className="w-full max-w-md">
 
         {/* ヘッダー */}
@@ -77,7 +78,17 @@ function LoginContent() {
             ⚔️ GOL ⚔️
           </h1>
           <p className="text-xl text-zinc-300 mb-1">Gamification of Life</p>
-          <p className="text-sm text-zinc-500">〜人生をゲームに、日記を冒険に〜</p>
+          <p className="text-sm text-white mb-4">〜人生をゲームに、日記を冒険に〜</p>
+          <div className="flex justify-center w-full">
+            <Image
+              src="/gol-logo.png"
+              alt="GOL - Gamification of Life"
+              width={800}
+              height={400}
+              priority
+              className="w-full h-auto max-w-3xl"
+            />
+          </div>
         </header>
 
         {/* メインカード */}

@@ -6,8 +6,13 @@ import { Calendar, FileText, ChevronDown, ChevronUp, CheckCircle } from 'lucide-
 import { format, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
+/** 'current-month-only': 日誌タブ用（今月の日誌のみ）。'past-only': 過去の日誌タブ用（過去の日誌のみ）。'all': 両方 */
+type JournalListSection = 'all' | 'current-month-only' | 'past-only';
+
 interface JournalListProps {
   onDateSelect: (date: string) => void;
+  /** 表示するセクション。省略時は 'all' */
+  section?: JournalListSection;
   /** アコーディオンの開閉状態（外部制御用） */
   isExpanded?: boolean;
   /** アコーディオンの開閉状態を更新する関数（外部制御用） */
@@ -19,7 +24,7 @@ type SortOrder = 'desc' | 'asc';
 /** 月キー "yyyy-MM" ごとの折りたたみ状態。過去の日誌はデフォルトで畳む */
 type ExpandedMonthsState = Record<string, boolean>;
 
-export default function JournalList({ onDateSelect, isExpanded: externalIsExpanded, onExpandedChange }: JournalListProps) {
+export default function JournalList({ onDateSelect, section = 'all', isExpanded: externalIsExpanded, onExpandedChange }: JournalListProps) {
   const supabase = createClient();
   const [allJournals, setAllJournals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,9 +194,13 @@ export default function JournalList({ onDateSelect, isExpanded: externalIsExpand
     );
   }
 
+  const showCurrentMonth = section === 'all' || section === 'current-month-only';
+  const showPast = section === 'all' || section === 'past-only';
+
   return (
     <div className="space-y-4">
       {/* 今月の日誌セクション */}
+      {showCurrentMonth && (
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg">
         <div className="flex items-center justify-between p-4 border-b border-zinc-800 gap-2 flex-wrap">
           <button
@@ -244,8 +253,10 @@ export default function JournalList({ onDateSelect, isExpanded: externalIsExpand
           </div>
         )}
       </div>
+      )}
 
       {/* 過去の日誌エリア全体：折りたたみ可能（デフォルトで畳む）＋月単位でも折りたたみ */}
+      {showPast && (
       <div className="bg-zinc-900 border border-zinc-800 rounded-lg">
         <button
           type="button"
@@ -306,6 +317,7 @@ export default function JournalList({ onDateSelect, isExpanded: externalIsExpand
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

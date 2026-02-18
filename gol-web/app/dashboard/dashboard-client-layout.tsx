@@ -13,6 +13,7 @@ const TAB_SCREEN_NAMES: Record<string, string> = {
   journal: '日誌',
   'todo-summary': 'ToDoサマリー',
   stats: '統計',
+  journals: '過去の日誌',
   announcements: 'お知らせ',
 };
 
@@ -30,7 +31,7 @@ export default function DashboardClientLayout({
   ...tabsProps
 }: DashboardClientLayoutProps) {
   const [activeTab, setActiveTab] = useState<
-    'journal' | 'todo-summary' | 'stats' | 'announcements'
+    'journal' | 'todo-summary' | 'stats' | 'journals' | 'announcements'
   >('journal');
   const screenName = (TAB_SCREEN_NAMES[activeTab] ?? '')
     ? `${TAB_SCREEN_NAMES[activeTab]} 画面`
