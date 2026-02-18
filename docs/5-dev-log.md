@@ -50,6 +50,26 @@
 
 ## 2602 --------------
 
+### 260218-水
+
+#### Notion 日誌取り込み・env 整理
+
+**実施内容（詳細）:**
+
+- **Notion 日誌取り込み連携**（既に実装済みのものを整理・補足）
+  - POST /api/notion/import: logDate で Notion DB をクエリし、日誌・感想を返却。@notionhq/client、Supabase 認証。.env.local の NOTION_API_KEY / NOTION_JOURNAL_DB_ID を参照
+  - journal-impression-sections.tsx: 「Notionから取り込み」ボタン、既存テキストあり時は確認ダイアログでプレビュー後に上書き、空のときはそのまま反映。toast で成功・404・API エラー通知
+- **環境変数まわり**
+  - .env.example: 本物のキーを書かない旨の注意を追記。NOTION_API_KEY=ntn_xxxx、NOTION_JOURNAL_DB_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx にダミー化。コメントで「実際の値は .env.local にのみ書く」と明記
+  - .env.local: Notion 用キー名（NOTION_API_KEY=、NOTION_JOURNAL_DB_ID=）を追加し、値は空のまま「値は自分で書く」コメントを付与
+  - docs/appendix/NotionMCP-Sync-memo.md: 実際にアプリが読むのは .env.local である旨を追記
+
+**変更・追加ファイル:**
+- gol-web: .env.example, app/api/notion/import/route.ts, app/dashboard/journal-impression-sections.tsx
+- docs: 4-project-progress.md, 5-dev-log.md, appendix/NotionMCP-Sync-memo.md
+
+---
+
 ### 260217-火
 
 #### アバターディレクトリ gy 対応・あらすじ2行ごと空行

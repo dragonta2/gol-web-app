@@ -284,6 +284,24 @@
 
 ## 2602 --------------
 
+### 260218-水
+
+#### 実施内容
+
+- Notion 日誌取り込み連携の実装（API Route、ダッシュボード「Notionから取り込み」ボタン、確認ダイアログ、toast 通知）。環境変数は .env.example に項目のみ（ダミー値）、実際の値は .env.local に記載する運用に整理
+- .env.example: 本物の API キー・DB ID を書かない注意を追記し、NOTION 系を明らかなダミー（ntn_xxxx、xxxxxxxx-xxxx-...）に変更
+- .env.local: Notion 用のキー名（NOTION_API_KEY、NOTION_JOURNAL_DB_ID）を追加（値は自分で記入）。進捗メモ（NotionMCP-Sync-memo）で「実際にアプリが読むのは .env.local」と明記
+
+#### 決定事項
+
+- 環境変数の本番値は .env.local にのみ書く。.env.example はひな形のみで git にコミットする
+
+#### 次回予定
+
+- 未定
+
+---
+
 ### 260217-火
 
 #### 実施内容

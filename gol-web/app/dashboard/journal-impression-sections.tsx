@@ -5,9 +5,18 @@ import { useState, useEffect, memo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import type { DailyLog } from '@/lib/types';
-import { Edit, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
+import { Edit, MessageSquare, ChevronDown, ChevronUp, Import, Loader2 } from 'lucide-react';
 
 interface JournalImpressionSectionsProps {
   dailyLogId: string | null;
@@ -106,6 +115,73 @@ function JournalImpressionSections({
   // 日誌本文と一言感想の状態
   const [journalText, setJournalText] = useState(dailyLog?.journal_text || '');
   const [impressionText, setImpressionText] = useState(dailyLog?.one_line_comment || '');
+
+  const journalImpressionRef = useRef({ journalText: '', impressionText: '' });
+  journalImpressionRef.current = { journalText, impressionText };
+
+  // Notion 取り込み
+  const [notionImportLoading, setNotionImportLoading] = useState(false);
+  const [notionConfirmOpen, setNotionConfirmOpen] = useState(false);
+  const [notionFetched, setNotionFetched] = useState<{ journalText: string; impressionText: string }>({ journalText: '', impressionText: '' });
+
+  const handleNotionImport = async () => {
+    const dateToUse = logDate ?? new Date().toISOString().slice(0, 10);
+    if (!dateToUse) {
+      toast.error('日付が選択されていません');
+      return;
+    }
+    setNotionImportLoading(true);
+    try {
+      const res = await fetch('/api/notion/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ logDate: dateToUse }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (res.status === 404) {
+          toast.error('該当日の日誌が見つかりません');
+        } else {
+          toast.error(data?.error ?? 'Notion の取得に失敗しました');
+        }
+        return;
+      }
+      const j = (data.journalText ?? '') as string;
+      const i = (data.impressionText ?? '') as string;
+      setNotionFetched({ journalText: j, impressionText: i });
+      const current = journalImpressionRef.current;
+      const hasExisting = (current.journalText?.trim() ?? '') !== '' || (current.impressionText?.trim() ?? '') !== '';
+      if (hasExisting) {
+        setNotionConfirmOpen(true);
+      } else {
+        setJournalText(j);
+        setImpressionText(i);
+        if (journalTextsRef?.current) {
+          journalTextsRef.current.journalText = j;
+          journalTextsRef.current.impressionText = i;
+        }
+        toast.success('Notion から取り込みました');
+        router.refresh();
+      }
+    } catch {
+      toast.error('Notion の取得に失敗しました');
+    } finally {
+      setNotionImportLoading(false);
+    }
+  };
+
+  const applyNotionImport = () => {
+    const { journalText: j, impressionText: i } = notionFetched;
+    setJournalText(j);
+    setImpressionText(i);
+    if (journalTextsRef?.current) {
+      journalTextsRef.current.journalText = j;
+      journalTextsRef.current.impressionText = i;
+    }
+    setNotionConfirmOpen(false);
+    toast.success('Notion の内容で上書きしました');
+    router.refresh();
+  };
 
   // 表示する日付（dailyLogId）が変わったときだけ props から状態を同期する。
   // dailyLog の参照が変わるたびに上書きすると、保存後の router.refresh() で
@@ -213,22 +289,40 @@ function JournalImpressionSections({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* 今日の日誌 */}
           <div className="flex flex-col">
-            <button
-              onClick={() => setIsJournalExpanded(!isJournalExpanded)}
-              className="w-full text-left mb-2 sm:mb-3 flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
-              aria-expanded={isJournalExpanded}
-              aria-controls="journal-content"
-            >
-              <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2">
-                <Edit className="w-7 h-7 sm:w-8 sm:h-8" />
-                <span>日誌</span>
-              </h3>
-              {isJournalExpanded ? (
-                <ChevronUp className="w-6 h-6 text-zinc-400 shrink-0" />
-              ) : (
-                <ChevronDown className="w-6 h-6 text-zinc-400 shrink-0" />
-              )}
-            </button>
+            <div className="w-full mb-2 sm:mb-3 flex items-center justify-between gap-2">
+              <button
+                onClick={() => setIsJournalExpanded(!isJournalExpanded)}
+                className="flex-1 text-left flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
+                aria-expanded={isJournalExpanded}
+                aria-controls="journal-content"
+              >
+                <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2">
+                  <Edit className="w-7 h-7 sm:w-8 sm:h-8" />
+                  <span>日誌</span>
+                </h3>
+                {isJournalExpanded ? (
+                  <ChevronUp className="w-6 h-6 text-zinc-400 shrink-0" />
+                ) : (
+                  <ChevronDown className="w-6 h-6 text-zinc-400 shrink-0" />
+                )}
+              </button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!isEditable || notionImportLoading}
+                onClick={handleNotionImport}
+                className="shrink-0"
+                title="Notion の日誌・感想を取り込む"
+              >
+                {notionImportLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Import className="w-4 h-4" />
+                )}
+                <span className="sr-only sm:not-sr-only sm:ml-1">Notionから取り込み</span>
+              </Button>
+            </div>
             {isJournalExpanded && (
               <div id="journal-content" className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 flex flex-col">
                 <Textarea
@@ -292,6 +386,45 @@ function JournalImpressionSections({
           </div>
         </div>
       )}
+
+      <Dialog open={notionConfirmOpen} onOpenChange={setNotionConfirmOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Notion の内容で上書きしますか？</DialogTitle>
+            <DialogDescription>
+              現在の日誌・感想は、Notion から取得した内容で置き換わります。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2 text-sm">
+            {notionFetched.journalText ? (
+              <div>
+                <p className="font-medium text-zinc-300 mb-1">日誌（プレビュー）</p>
+                <p className="text-zinc-400 whitespace-pre-wrap line-clamp-4 bg-zinc-900 rounded p-2">
+                  {notionFetched.journalText.slice(0, 200)}
+                  {notionFetched.journalText.length > 200 ? '…' : ''}
+                </p>
+              </div>
+            ) : null}
+            {notionFetched.impressionText ? (
+              <div>
+                <p className="font-medium text-zinc-300 mb-1">感想（プレビュー）</p>
+                <p className="text-zinc-400 whitespace-pre-wrap line-clamp-2 bg-zinc-900 rounded p-2">
+                  {notionFetched.impressionText.slice(0, 100)}
+                  {notionFetched.impressionText.length > 100 ? '…' : ''}
+                </p>
+              </div>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNotionConfirmOpen(false)}>
+              キャンセル
+            </Button>
+            <Button onClick={applyNotionImport}>
+              上書きする
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
