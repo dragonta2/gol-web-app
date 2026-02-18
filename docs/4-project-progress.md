@@ -291,6 +291,9 @@
 - Notion 日誌取り込み連携の実装（API Route、ダッシュボード「Notionから取り込み」ボタン、確認ダイアログ、toast 通知）。環境変数は .env.example に項目のみ（ダミー値）、実際の値は .env.local に記載する運用に整理
 - .env.example: 本物の API キー・DB ID を書かない注意を追記し、NOTION 系を明らかなダミー（ntn_xxxx、xxxxxxxx-xxxx-...）に変更
 - .env.local: Notion 用のキー名（NOTION_API_KEY、NOTION_JOURNAL_DB_ID）を追加（値は自分で記入）。進捗メモ（NotionMCP-Sync-memo）で「実際にアプリが読むのは .env.local」と明記
+- Notion 取り込みのアカウント制限: NOTION_IMPORT_ALLOWED_EMAILS（カンマ区切り）で許可メールを指定。GET /api/notion/import/allowed で許可判定、POST で未許可時 403。ボタンは許可時のみ表示。ボタンを日誌・感想の見出しの上の段の右端に配置、ラベル「Notionから日誌と感想を取り込む」・下マージン 20px
+- Notion 取り込み後の保存: 取り込み反映時・上書き確定時に即時で daily_logs に保存。「日誌を保存」で権利＋日誌本文・一言感想（journalTextsRef）をまとめて保存し、保存成功後に router.refresh() で日誌画面の全データを再取得
+- .env.local から NOTION_DATE_PROPERTY_NAME=日付 を削除（未設定時デフォルトで「日付」「Date」を試すため不要）
 
 #### 決定事項
 

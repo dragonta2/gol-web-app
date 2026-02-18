@@ -306,7 +306,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     ));
   };
 
-  // 日誌保存ハンドラー（権利の保存のみ。日誌本文と一言感想はJournalImpressionSectionsで自動保存される）
+  // 日誌保存ハンドラー（権利＋日誌本文・一言感想。本文・感想は ref の最新値もまとめて保存）
   const handleSave = async () => {
     if (!dailyLogId) {
       toast.error('日誌IDが取得できませんでした', {
@@ -317,17 +317,18 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
     try {
       const countByIndex = RIGHT_COLUMNS_BY_INDEX.map((_, i) => rights[i]?.count ?? 0);
-      const updatePayload: Record<string, number> = {};
+      const updatePayload: Record<string, number | string> = {};
       RIGHT_COLUMNS_BY_INDEX.forEach((col, i) => {
         updatePayload[col] = countByIndex[i];
       });
+      if (journalTextsRef?.current) {
+        updatePayload.journal_text = journalTextsRef.current.journalText;
+        updatePayload.one_line_comment = journalTextsRef.current.impressionText;
+      }
 
       const { error } = await supabase
         .from('daily_logs')
-        .update({
-          // journal_textとone_line_commentはJournalImpressionSectionsで自動保存されるため、ここでは更新しない
-          ...updatePayload,
-        })
+        .update(updatePayload)
         .eq('id', dailyLogId);
 
       if (error) {
@@ -337,6 +338,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         });
       } else {
         toast.success('日誌を保存しました');
+        router.refresh();
       }
     } catch (error) {
       console.error('Error saving journal:', error);

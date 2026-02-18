@@ -14,7 +14,7 @@ function getModeFromStorage(): RankMode {
   return stored === "dq" || stored === "ghost" ? stored : "ghost"
 }
 
-const AVATAR_EXTS = ["png", "jpg", "svg"] as const
+const AVATAR_EXTS = ["jpg", "png", "svg"] as const
 
 /**
  * アバター画像のパス（avatar.md 準拠）

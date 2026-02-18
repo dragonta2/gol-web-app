@@ -70,6 +70,29 @@
 
 ---
 
+#### Notion 取り込みアカウント制限・ボタン位置・保存挙動・env 整理（同日続き）
+
+**実施内容（詳細）:**
+
+- **アカウント制限**
+  - .env.example に NOTION_IMPORT_ALLOWED_EMAILS（カンマ区切りメール）を追加。実際の値は .env.local に記載
+  - GET /api/notion/import/allowed を新規作成。認証ユーザーのメールが許可リストに含まれるか判定し `{ allowed: true/false }` を返す。未認証は 401
+  - POST /api/notion/import の認証直後に許可リストチェックを追加。未許可時は 403
+  - journal-impression-sections.tsx: マウント時に GET /api/notion/import/allowed を呼び、`notionImportAllowed` が true のときだけボタンを表示
+- **ボタン位置・ラベル**
+  - ボタンを「日誌」「感想」見出しの上の段の右端に移動（1行上に配置、justify-end）。ラベルを「Notionから日誌と感想を取り込む」に変更、下マージン 20px
+- **保存挙動**
+  - Notion 取り込みで即時反映する場合・確認ダイアログで上書きする場合の両方で、daily_logs の journal_text / one_line_comment をその場で更新するよう修正（デバウンスに依存せず確実に保存）
+  - 「日誌を保存」で権利に加え journalTextsRef の日誌本文・一言感想も daily_logs に保存。保存成功後に router.refresh() で日誌画面の全データ（ToDo・習慣含む）を再取得
+- **env 整理**
+  - .env.local から NOTION_DATE_PROPERTY_NAME=日付 を削除。未設定時はコード側で「日付」「Date」を順に試すため不要
+
+**変更・追加ファイル:**
+- gol-web: .env.example, .env.local, app/api/notion/import/route.ts, app/api/notion/import/allowed/route.ts（新規）, app/dashboard/journal-impression-sections.tsx, app/dashboard/journal-form.tsx
+- docs: 4-project-progress.md, 5-dev-log.md
+
+---
+
 ### 260217-火
 
 #### アバターディレクトリ gy 対応・あらすじ2行ごと空行

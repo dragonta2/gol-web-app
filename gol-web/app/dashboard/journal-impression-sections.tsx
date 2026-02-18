@@ -119,10 +119,26 @@ function JournalImpressionSections({
   const journalImpressionRef = useRef({ journalText: '', impressionText: '' });
   journalImpressionRef.current = { journalText, impressionText };
 
-  // Notion 取り込み
+  // Notion 取り込み（許可されているアカウントのみボタン表示）
+  const [notionImportAllowed, setNotionImportAllowed] = useState(false);
   const [notionImportLoading, setNotionImportLoading] = useState(false);
   const [notionConfirmOpen, setNotionConfirmOpen] = useState(false);
   const [notionFetched, setNotionFetched] = useState<{ journalText: string; impressionText: string }>({ journalText: '', impressionText: '' });
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/notion/import/allowed');
+        if (cancelled) return;
+        const data = await res.json().catch(() => ({}));
+        setNotionImportAllowed(data?.allowed === true);
+      } catch {
+        if (!cancelled) setNotionImportAllowed(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleNotionImport = async () => {
     const dateToUse = logDate ?? new Date().toISOString().slice(0, 10);
@@ -139,11 +155,7 @@ function JournalImpressionSections({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        if (res.status === 404) {
-          toast.error('該当日の日誌が見つかりません');
-        } else {
-          toast.error(data?.error ?? 'Notion の取得に失敗しました');
-        }
+        toast.error(data?.error ?? 'Notion の取得に失敗しました', { duration: 10000 });
         return;
       }
       const j = (data.journalText ?? '') as string;
@@ -160,6 +172,16 @@ function JournalImpressionSections({
           journalTextsRef.current.journalText = j;
           journalTextsRef.current.impressionText = i;
         }
+        if (dailyLogId && isEditable) {
+          const { error } = await supabase
+            .from('daily_logs')
+            .update({ journal_text: j, one_line_comment: i })
+            .eq('id', dailyLogId);
+          if (error) {
+            console.error('Notion取り込み後の保存エラー:', error);
+            toast.error('日誌・感想の保存に失敗しました');
+          }
+        }
         toast.success('Notion から取り込みました');
         router.refresh();
       }
@@ -170,7 +192,7 @@ function JournalImpressionSections({
     }
   };
 
-  const applyNotionImport = () => {
+  const applyNotionImport = async () => {
     const { journalText: j, impressionText: i } = notionFetched;
     setJournalText(j);
     setImpressionText(i);
@@ -179,6 +201,16 @@ function JournalImpressionSections({
       journalTextsRef.current.impressionText = i;
     }
     setNotionConfirmOpen(false);
+    if (dailyLogId && isEditable) {
+      const { error } = await supabase
+        .from('daily_logs')
+        .update({ journal_text: j, one_line_comment: i })
+        .eq('id', dailyLogId);
+      if (error) {
+        console.error('Notion上書き後の保存エラー:', error);
+        toast.error('日誌・感想の保存に失敗しました');
+      }
+    }
     toast.success('Notion の内容で上書きしました');
     router.refresh();
   };
@@ -286,7 +318,29 @@ function JournalImpressionSections({
     <>
       {/* 今日の日誌と一言感想（横並びカラム） */}
       {(!isPastDate || dailyLog) && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <>
+          {/* 日誌・感想の見出しの上の段（右端に Notion 取り込みボタン） */}
+          {notionImportAllowed && (
+            <div className="w-full flex items-center justify-end gap-2" style={{ marginBottom: '20px' }}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={!isEditable || notionImportLoading}
+                onClick={handleNotionImport}
+                className="shrink-0 bg-zinc-600 hover:bg-zinc-500 text-zinc-100 border border-zinc-500"
+                title="Notion の日誌・感想を取り込む"
+              >
+                {notionImportLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Import className="w-4 h-4" />
+                )}
+                <span className="sr-only sm:not-sr-only sm:ml-1">Notionから日誌と感想を取り込む</span>
+              </Button>
+            </div>
+          )}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* 今日の日誌 */}
           <div className="flex flex-col">
             <div className="w-full mb-2 sm:mb-3 flex items-center justify-between gap-2">
@@ -306,22 +360,6 @@ function JournalImpressionSections({
                   <ChevronDown className="w-6 h-6 text-zinc-400 shrink-0" />
                 )}
               </button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!isEditable || notionImportLoading}
-                onClick={handleNotionImport}
-                className="shrink-0"
-                title="Notion の日誌・感想を取り込む"
-              >
-                {notionImportLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Import className="w-4 h-4" />
-                )}
-                <span className="sr-only sm:not-sr-only sm:ml-1">Notionから取り込み</span>
-              </Button>
             </div>
             {isJournalExpanded && (
               <div id="journal-content" className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 flex flex-col">
@@ -384,7 +422,8 @@ function JournalImpressionSections({
               </div>
             )}
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       <Dialog open={notionConfirmOpen} onOpenChange={setNotionConfirmOpen}>
