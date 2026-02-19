@@ -33,21 +33,23 @@ export function CalendarDialogProvider({ children }: { children: React.ReactNode
 
   useEffect(() => {
     const newDateParam = searchParams.get('date');
-    if (newDateParam) {
-      const newDate = new Date(newDateParam);
-      if (isValid(newDate)) {
-        setSelectedDate(newDate);
+    queueMicrotask(() => {
+      if (newDateParam) {
+        const newDate = new Date(newDateParam);
+        if (isValid(newDate)) {
+          setSelectedDate(newDate);
+        }
+      } else {
+        setSelectedDate(new Date());
       }
-    } else {
-      setSelectedDate(new Date());
-    }
+    });
   }, [searchParams]);
 
   /** URLのdateが遷移先と一致したらスピナーを消す */
   useEffect(() => {
     if (!navigatingToDate) return;
     if (searchParams.get('date') === navigatingToDate) {
-      setNavigatingToDate(null);
+      queueMicrotask(() => setNavigatingToDate(null));
     }
   }, [navigatingToDate, searchParams]);
 

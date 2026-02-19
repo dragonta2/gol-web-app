@@ -26,7 +26,7 @@ type ExpandedMonthsState = Record<string, boolean>;
 
 export default function JournalList({ onDateSelect, section = 'all', isExpanded: externalIsExpanded, onExpandedChange }: JournalListProps) {
   const supabase = createClient();
-  const [allJournals, setAllJournals] = useState<any[]>([]);
+  const [allJournals, setAllJournals] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [internalIsExpanded, setInternalIsExpanded] = useState(true);
 
@@ -97,7 +97,7 @@ export default function JournalList({ onDateSelect, section = 'all', isExpanded:
   const currentMonthJournals = useMemo(() => {
     const { start, end } = getCurrentMonthRange();
     return allJournals.filter((journal) => {
-      const journalDate = new Date(journal.log_date);
+      const journalDate = new Date(journal.log_date as string);
       return isWithinInterval(journalDate, { start, end });
     });
   }, [allJournals]);
@@ -106,22 +106,22 @@ export default function JournalList({ onDateSelect, section = 'all', isExpanded:
   const pastJournals = useMemo(() => {
     const { start, end } = getCurrentMonthRange();
     return allJournals.filter((journal) => {
-      const journalDate = new Date(journal.log_date);
+      const journalDate = new Date(journal.log_date as string);
       return !isWithinInterval(journalDate, { start, end });
     });
   }, [allJournals]);
 
   // 過去の日誌を月単位でグループ化（月は新しい順）
   const pastJournalsByMonth = useMemo(() => {
-    const byMonth = new Map<string, any[]>();
+    const byMonth = new Map<string, Record<string, unknown>[]>();
     for (const j of pastJournals) {
-      const d = new Date(j.log_date);
+      const d = new Date(j.log_date as string);
       const key = format(d, 'yyyy-MM');
       if (!byMonth.has(key)) byMonth.set(key, []);
       byMonth.get(key)!.push(j);
     }
     for (const arr of byMonth.values()) {
-      arr.sort((a, b) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime());
+      arr.sort((a, b) => new Date(b.log_date as string).getTime() - new Date(a.log_date as string).getTime());
     }
     const keys = Array.from(byMonth.keys()).sort((a, b) => b.localeCompare(a));
     return keys.map((monthKey) => {
@@ -135,8 +135,8 @@ export default function JournalList({ onDateSelect, section = 'all', isExpanded:
   const sortedCurrentMonthJournals = useMemo(() => {
     const sorted = [...currentMonthJournals];
     sorted.sort((a, b) => {
-      const dateA = new Date(a.log_date).getTime();
-      const dateB = new Date(b.log_date).getTime();
+      const dateA = new Date(a.log_date as string).getTime();
+      const dateB = new Date(b.log_date as string).getTime();
       return currentMonthSortOrder === 'desc' ? dateB - dateA : dateA - dateB;
     });
     return sorted;
@@ -151,14 +151,14 @@ export default function JournalList({ onDateSelect, section = 'all', isExpanded:
     window.location.href = `/dashboard?date=${date}`;
   };
 
-  const renderJournalItem = (journal: any) => {
-    const date = new Date(journal.log_date);
+  const renderJournalItem = (journal: Record<string, unknown>) => {
+    const date = new Date(journal.log_date as string);
     const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
     
     return (
       <button
-        key={journal.id}
-        onClick={() => handleDateClick(journal.log_date)}
+        key={String(journal.id)}
+        onClick={() => handleDateClick(String(journal.log_date))}
         className="w-full p-4 border-b border-zinc-800 hover:bg-zinc-800 transition-colors text-left"
       >
         <div className="flex items-start justify-between gap-4">
@@ -173,7 +173,7 @@ export default function JournalList({ onDateSelect, section = 'all', isExpanded:
                   今日
                 </span>
               )}
-              {journal.is_confirmed && (
+              {Boolean(journal.is_confirmed) && (
                 <span className="text-xs text-green-400 px-2 py-0.5 bg-green-400/10 rounded flex items-center gap-1">
                   <CheckCircle className="w-3 h-3" />
                   確定済み

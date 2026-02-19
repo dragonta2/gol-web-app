@@ -82,7 +82,13 @@ export default function StatsTab() {
   const [todoCompletionData, setTodoCompletionData] = useState<TodoCompletionData[]>([]);
   const [todoSummary, setTodoSummary] = useState<TodoCompletionSummary | null>(null);
   const [weeklySummary, setWeeklySummary] = useState<WeeklyMonthlySummary | null>(null);
-  const [aiUsage, setAiUsage] = useState<any>(null);
+  const [aiUsage, setAiUsage] = useState<{
+    statistics?: unknown[];
+    todayCost?: number;
+    monthlyCost?: number;
+    todayUsage?: { judgment?: number; advice?: number; story?: number };
+    monthlyUsage?: { judgment?: number; advice?: number; story?: number };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(30);
@@ -551,7 +557,7 @@ export default function StatsTab() {
                     color: '#f4f4f5',
                   }}
                   labelStyle={{ color: '#a1a1aa' }}
-                  formatter={(value: number | undefined, name: string | undefined, props: any) => [
+                  formatter={(value: number | undefined, name: string | undefined, props: { payload?: { completedDays?: number; totalDays?: number } }) => [
                     `${value ?? 0}% (${props.payload?.completedDays ?? 0}/${props.payload?.totalDays ?? 0}日)`,
                     '達成率',
                   ]}
@@ -619,7 +625,7 @@ export default function StatsTab() {
                       color: '#f4f4f5',
                     }}
                     labelStyle={{ color: '#a1a1aa' }}
-                    formatter={(value: number | undefined, name: string | undefined, props: any) => [
+                    formatter={(value: number | undefined, name: string | undefined, props: { payload?: { completed?: number; total?: number } }) => [
                       `${value ?? 0}% (${props.payload?.completed ?? 0}/${props.payload?.total ?? 0}個)`,
                       '完了率',
                     ]}

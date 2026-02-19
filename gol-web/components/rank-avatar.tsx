@@ -67,10 +67,12 @@ export function RankAvatar({
   )
 
   useEffect(() => {
-    const m = getModeFromStorage()
-    setMode(m)
-    setExtIndex(0)
-    setSrc(getAvatarSrc(m, level, variant, 0))
+    const m = getModeFromStorage();
+    queueMicrotask(() => {
+      setMode(m);
+      setExtIndex(0);
+      setSrc(getAvatarSrc(m, level, variant, 0));
+    });
   }, [level, variant])
 
   useEffect(() => {

@@ -222,7 +222,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         name: r.name,
         points: r.points,
         unit: r.unit,
-        count: (dailyLog as any)?.[RIGHT_COLUMNS_BY_INDEX[index]] ?? 0,
+        count: (dailyLog as unknown as Record<string, number>)?.[RIGHT_COLUMNS_BY_INDEX[index]] ?? 0,
       })) as Right[],
     };
   }, [dailyLog, rightsList]);

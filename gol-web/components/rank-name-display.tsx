@@ -20,8 +20,8 @@ export function RankNameDisplay({ level, className }: { level: number; className
   const [mode, setMode] = useState<RankMode>('ghost');
 
   useEffect(() => {
-    setMode(getModeFromStorage());
     const handler = () => setMode(getModeFromStorage());
+    queueMicrotask(handler);
     window.addEventListener('storage', handler);
     window.addEventListener(STORY_WORLD_CHANGED_EVENT, handler);
     return () => {
@@ -48,8 +48,8 @@ export function RankHistoryItem({
   const [mode, setMode] = useState<RankMode>('ghost');
 
   useEffect(() => {
-    setMode(getModeFromStorage());
     const handler = () => setMode(getModeFromStorage());
+    queueMicrotask(handler);
     window.addEventListener('storage', handler);
     window.addEventListener(STORY_WORLD_CHANGED_EVENT, handler);
     return () => {

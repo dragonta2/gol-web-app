@@ -37,7 +37,7 @@ export async function GET() {
     const points = typeof profile.points === 'number' ? profile.points : 10;
     const hasRightsConfig = profile.rights_config != null && typeof profile.rights_config === 'object';
     const rightsIsEmpty = hasRightsConfig && (
-      (Array.isArray((profile.rights_config as any).rights) && (profile.rights_config as any).rights.length === 0) ||
+      (Array.isArray((profile.rights_config as { rights?: unknown[] }).rights) && (profile.rights_config as { rights: unknown[] }).rights.length === 0) ||
       (Object.keys(profile.rights_config as object).length === 0)
     );
     const needsRights = !hasRightsConfig || rightsIsEmpty;
@@ -89,7 +89,7 @@ export async function POST() {
     const points = typeof profile.points === 'number' ? profile.points : 10;
     const hasRightsConfig = profile.rights_config != null && typeof profile.rights_config === 'object';
     const rightsIsEmpty = hasRightsConfig && (
-      (Array.isArray((profile.rights_config as any).rights) && (profile.rights_config as any).rights.length === 0) ||
+      (Array.isArray((profile.rights_config as { rights?: unknown[] }).rights) && (profile.rights_config as { rights: unknown[] }).rights.length === 0) ||
       (Object.keys(profile.rights_config as object).length === 0)
     );
     const needsRights = !hasRightsConfig || rightsIsEmpty;

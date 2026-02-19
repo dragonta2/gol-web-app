@@ -15,7 +15,8 @@ interface FormInputProps extends React.ComponentProps<typeof Input> {
 
 export const FormInput = React.forwardRef<HTMLInputElement, FormInputProps>(
   ({ label, required, error, className, id, ...props }, ref) => {
-    const inputId = id || `input-${Math.random().toString(36).slice(2, 11)}`;
+    const fallbackId = React.useId().replace(/:/g, '');
+    const inputId = id || `input-${fallbackId}`;
 
     return (
       <div className="space-y-2">
@@ -52,7 +53,8 @@ interface FormInputSmallProps extends React.ComponentProps<typeof Input> {
 
 export const FormInputSmall = React.forwardRef<HTMLInputElement, FormInputSmallProps>(
   ({ label, required, error, className, id, labelClassName, ...props }, ref) => {
-    const inputId = id || `input-small-${Math.random().toString(36).slice(2, 11)}`;
+    const fallbackId = React.useId().replace(/:/g, '');
+    const inputId = id || `input-small-${fallbackId}`;
 
     return (
       <div className="space-y-1">
@@ -88,7 +90,8 @@ interface FormTextareaProps extends React.ComponentProps<typeof Textarea> {
 
 export const FormTextarea = React.forwardRef<HTMLTextAreaElement, FormTextareaProps>(
   ({ label, required, error, className, id, ...props }, ref) => {
-    const textareaId = id || `textarea-${Math.random().toString(36).slice(2, 11)}`;
+    const fallbackId = React.useId().replace(/:/g, '');
+    const textareaId = id || `textarea-${fallbackId}`;
 
     return (
       <div className="space-y-2">

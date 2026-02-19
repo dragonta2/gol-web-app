@@ -31,13 +31,16 @@ const NEW_USER_DEFAULT_RIGHTS: RightItem[] = [
 function toRightsArray(config: unknown): RightItem[] {
   if (Array.isArray(config)) {
     return config
-      .filter((r): r is RightItem => r != null && typeof r === 'object' && typeof (r as any).code === 'string')
-      .map((r) => ({
-        code: sanitizeCode(String((r as any).code)),
-        name: typeof (r as any).name === 'string' ? (r as any).name : '',
-        points: typeof (r as any).points === 'number' ? (r as any).points : 0,
-        unit: typeof (r as any).unit === 'string' ? (r as any).unit : '',
-      }));
+      .filter((r): r is RightItem => r != null && typeof r === 'object' && typeof (r as Record<string, unknown>).code === 'string')
+      .map((r) => {
+        const row = r as Record<string, unknown>;
+        return {
+          code: sanitizeCode(String(row.code)),
+          name: typeof row.name === 'string' ? row.name : '',
+          points: typeof row.points === 'number' ? row.points : 0,
+          unit: typeof row.unit === 'string' ? row.unit : '',
+        };
+      });
   }
   if (config && typeof config === 'object') {
     const obj = config as Record<string, { name?: string; points?: number; maxCount?: number }>;
@@ -45,7 +48,7 @@ function toRightsArray(config: unknown): RightItem[] {
       const c = obj[code];
       const name = c?.name ?? '';
       const points = typeof c?.points === 'number' ? c.points : 0;
-      const unit = (c as any)?.unit ?? (c?.maxCount != null ? `${c.maxCount}回まで` : '1回');
+      const unit = (c as { unit?: string } | undefined)?.unit ?? (c?.maxCount != null ? `${c.maxCount}回まで` : '1回');
       return { code, name, points, unit };
     }).filter((r) => r.name.trim() !== '');
   }
@@ -74,8 +77,8 @@ export async function GET() {
 
     const raw = profile?.rights_config;
     let rights: RightItem[];
-    if (raw && typeof raw === 'object' && Array.isArray((raw as any).rights)) {
-      rights = toRightsArray((raw as any).rights);
+    if (raw && typeof raw === 'object' && Array.isArray((raw as { rights?: unknown }).rights)) {
+      rights = toRightsArray((raw as { rights: unknown }).rights);
     } else {
       rights = toRightsArray(raw);
     }

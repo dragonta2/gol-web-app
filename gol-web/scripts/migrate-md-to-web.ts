@@ -14,8 +14,9 @@ import * as path from 'path';
 
 // 環境変数の読み込み（.env.localから）
 try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- スクリプト実行時のみ dotenv をオプションで読み込む
   require('dotenv').config({ path: '.env.local' });
-} catch (e) {
+} catch {
   // dotenvがインストールされていない場合は無視
 }
 
@@ -112,7 +113,7 @@ function parseJournalEntry(content: string, dateMatch: string): {
     }
     
     // パターン3: 日付セクション全体から直接抽出（セクション構造がない場合）
-    let targetSection = processedSectionMatch ? processedSectionMatch[1] : dateSection;
+    const targetSection = processedSectionMatch ? processedSectionMatch[1] : dateSection;
     
     // デバッグ: 抽出されたセクションの最初の200文字を表示
     if (process.env.DEBUG) {

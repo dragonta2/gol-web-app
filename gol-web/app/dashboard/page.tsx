@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import type { DailyLog } from "@/lib/types"
 import DashboardClientLayout from "./dashboard-client-layout"
 import { syncProfileLevel } from "@/lib/sync-profile-level"
 import { calculateDayDeltas, calculateDayDeltasWithBreakdown } from "@/lib/score-calculator"
@@ -85,7 +86,7 @@ export default async function DashboardPage({
 
   // 選択された日付のdaily_logsを取得（なければ作成）
   let dailyLogId: string | null = null
-  let dailyLogData: any = null
+  let dailyLogData: DailyLog | null = null
 
   const { data: dailyLog, error: dailyLogError } = await supabase
     .from("daily_logs")

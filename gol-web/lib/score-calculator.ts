@@ -302,25 +302,25 @@ function toPointsNumber(v: unknown): number {
  */
 function parseRightsPoints(config: unknown): number[] {
   if (Array.isArray(config)) {
-    const arr = config.slice(0, RIGHT_COLUMNS_BY_INDEX.length).map((r: any) =>
-      toPointsNumber(r?.points)
+    const arr = config.slice(0, RIGHT_COLUMNS_BY_INDEX.length).map((r: unknown) =>
+      toPointsNumber((r as { points?: unknown })?.points)
     );
     if (arr.length > 0) return arr;
   }
   if (config && typeof config === 'object') {
     const obj = config as Record<string, unknown>;
     // { rights: [...] } 形式
-    if (Array.isArray(obj.rights) && (obj.rights as any[]).length > 0) {
-      return (obj.rights as any[])
+    if (Array.isArray(obj.rights) && obj.rights.length > 0) {
+      return obj.rights
         .slice(0, RIGHT_COLUMNS_BY_INDEX.length)
-        .map((r: any) => toPointsNumber(r?.points));
+        .map((r: unknown) => toPointsNumber((r as { points?: unknown })?.points));
     }
     // レガシー形式: { A: { points }, B: { points }, ... }
     const LEGACY_ORDER = ['A', 'B', 'C', 'D', 'E', 'F', 'O', 'U', 'X'];
     const hasLegacyKeys = LEGACY_ORDER.some((code) => code in obj);
     if (hasLegacyKeys) {
       return LEGACY_ORDER.map((code) => {
-        const c = obj[code] as any;
+        const c = obj[code] as { points?: unknown } | undefined;
         return toPointsNumber(c?.points);
       });
     }

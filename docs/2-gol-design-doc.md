@@ -9,6 +9,14 @@
 
 ※ **Gitに上げてはいけない情報**（APIキー・アカウントID／PWなど）は別ファイルに記載。
 
+
+・Notion MCP｜マーケットプレイスプロフィール
+https://www.notion.so/profile/integrations/internal/30b4c1f3-dcd0-8142-b238-0027c1aca24c
+
+・Notion｜日誌 | 全ての日誌｜たつひこのみ｜テーブルビュー
+https://www.notion.so/22feac3fdfa4478caca2d75c1d5e35c5?v=91034d9fb8324ba783bff7a0dd886242
+
+
 ## 参考APP --------------
 
 ### 🎮 Habitica

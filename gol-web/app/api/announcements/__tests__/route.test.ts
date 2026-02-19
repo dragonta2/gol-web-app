@@ -29,7 +29,7 @@ describe('/api/announcements', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(createClient).mockResolvedValue(mockSupabase as any);
+    vi.mocked(createClient).mockResolvedValue(mockSupabase as Awaited<ReturnType<typeof createClient>>);
   });
 
   describe('GET', () => {

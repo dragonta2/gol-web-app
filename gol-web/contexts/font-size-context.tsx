@@ -15,10 +15,9 @@ export function FontSizeProvider({ children }: { children: ReactNode }) {
   const [fontSize, setFontSizeState] = useState<FontSize>('medium');
 
   useEffect(() => {
-    // localStorageからフォントサイズを読み込む
     const savedFontSize = localStorage.getItem('fontSize') as FontSize;
     if (savedFontSize && ['small', 'medium', 'large'].includes(savedFontSize)) {
-      setFontSizeState(savedFontSize);
+      queueMicrotask(() => setFontSizeState(savedFontSize));
     }
   }, []);
 

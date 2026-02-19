@@ -80,7 +80,7 @@ export async function recordUsage(
 /**
  * OpenAI APIのレスポンスからトークン使用量を取得
  */
-export function extractTokenUsage(completion: any): {
+export function extractTokenUsage(completion: { usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }): {
   input_tokens: number;
   output_tokens: number;
   total_tokens: number;

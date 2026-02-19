@@ -17,7 +17,7 @@ describe('/api/stats/points-exp', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (createClient as any).mockResolvedValue(mockSupabase);
+    vi.mocked(createClient).mockResolvedValue(mockSupabase as Awaited<ReturnType<typeof createClient>>);
   });
 
   it('returns 401 when user is not authenticated', async () => {
