@@ -919,7 +919,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         </button>
         {isGoodHabitsExpanded && (
           <FormCard id="good-habits-content" className="p-3 sm:p-4 overflow-hidden">
-          <div className="space-y-3 w-full min-w-0 overflow-x-auto">
+          <div className="space-y-3 w-full min-w-0 overflow-x-auto pl-3 pt-3">
           {goodTree.map(({ parent, children }) => {
             const parentChecked = isParentCompleted(parent, children);
             const hasChildren = children.length > 0;
@@ -1168,7 +1168,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         </button>
         {isBadHabitsExpanded && (
           <FormCard id="bad-habits-content" className="p-3 sm:p-4 overflow-hidden">
-          <div className="space-y-3 w-full min-w-0 overflow-x-auto">
+          <div className="space-y-3 w-full min-w-0 overflow-x-auto pl-3 pt-3">
           {badTree.map(({ parent, children }) => {
             const parentChecked = isParentCompleted(parent, children);
             const hasChildren = children.length > 0;
@@ -1413,7 +1413,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           </button>
           {isBonusExpanded && (
             <FormCard id="bonus-content" className="p-3 sm:p-4">
-            <div className="space-y-3 w-full min-w-0 overflow-x-auto">
+            <div className="space-y-3 w-full min-w-0 overflow-x-auto pl-3 pt-3">
             {bonusTree.map(({ parent, children }) => {
               const parentChecked = isParentCompleted(parent, children);
               const isFirstBonus = bonusTree[0].parent.id === parent.id;

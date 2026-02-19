@@ -175,10 +175,11 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       .trim();
   };
 
-  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines: 2行ごとに空行（これまでの冒険・これからの冒険・アドバイス用） */
+  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines: 2行ごとに空行（これまでの冒険・これからの冒険・アドバイス用）。連続空行は1行に統一。 */
   const renderAiText = (text: string, options?: { blankEveryTwoLines?: boolean }) => {
     let formatted = applyAiTextLineBreaks(text);
     if (options?.blankEveryTwoLines) formatted = insertBlankLineEveryTwoLines(formatted);
+    formatted = formatted.replace(/\n{3,}/g, '\n\n');
     if (!userName) return formatted;
     const parts = formatted.split(userName);
     if (parts.length <= 1) return formatted;
@@ -252,6 +253,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   );
   const [isJudging, setIsJudging] = useState(false);
   const [isResettingBatchCount, setIsResettingBatchCount] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   // AIアドバイス
   const [aiAdvice, setAIAdvice] = useState<string | null>(dailyLog?.ai_advice || null);
@@ -355,6 +357,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       return;
     }
 
+    setIsConfirming(true);
     try {
       const res = await fetch('/api/daily-logs/confirm', {
         method: 'POST',
@@ -375,6 +378,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     } catch (error) {
       console.error('Error confirming journal:', error);
       toast.error('日誌の確定に失敗しました');
+    } finally {
+      setIsConfirming(false);
     }
   };
 
@@ -421,8 +426,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     const currentJournalText = journalTextsRef?.current?.journalText ?? dailyLog?.journal_text ?? '';
     const currentImpressionText = journalTextsRef?.current?.impressionText ?? dailyLog?.one_line_comment ?? '';
 
-    if (!currentJournalText.trim() && !currentImpressionText.trim()) {
-      toast.error('日誌本文または一言感想を入力してください');
+    if (!currentJournalText.trim()) {
+      toast.error('日誌を記入してください。');
       return;
     }
     if (currentJournalText.length > journalMaxLength) {
@@ -628,36 +633,45 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
       {/* 日誌を保存ボタン・確定ボタン（確定は初回AI判定実行まで無効） */}
       {isEditable && (
-        <div className="flex justify-center gap-3">
-          <Button
-            onClick={handleSave}
-            aria-label="日誌を保存する"
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
-            size="lg"
-          >
-            <Save className="w-4 h-4 mr-1" />
-            日誌を保存
-          </Button>
-          {!isConfirmed && (
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex justify-center gap-3">
             <Button
-              onClick={handleConfirm}
-              disabled={
-                !aiJudgmentResult &&
-                !(dailyLog && dailyLog.ai_condition_body != null && dailyLog.ai_condition_mood != null)
-              }
-              aria-label="日誌を確定する"
-              title={
-                !aiJudgmentResult &&
-                !(dailyLog && dailyLog.ai_condition_body != null && dailyLog.ai_condition_mood != null)
-                  ? 'AI判定を実行してから確定できます'
-                  : undefined
-              }
-              className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:pointer-events-none"
+              onClick={handleSave}
+              aria-label="日誌を保存する"
+              className="bg-cyan-600 hover:bg-cyan-700 text-white"
               size="lg"
             >
-              <Check className="w-4 h-4 mr-1" />
-              確定
+              <Save className="w-4 h-4 mr-1" />
+              日誌を保存
             </Button>
+            {!isConfirmed && (
+              <Button
+                onClick={handleConfirm}
+                disabled={
+                  isConfirming ||
+                  (!aiJudgmentResult &&
+                    !(dailyLog && dailyLog.ai_condition_body != null && dailyLog.ai_condition_mood != null))
+                }
+                aria-label="日誌を確定する"
+                aria-busy={isConfirming}
+                title={
+                  !aiJudgmentResult &&
+                  !(dailyLog && dailyLog.ai_condition_body != null && dailyLog.ai_condition_mood != null)
+                    ? 'AI判定を実行してから確定できます'
+                    : undefined
+                }
+                className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:pointer-events-none"
+                size="lg"
+              >
+                <Check className="w-4 h-4 mr-1" />
+                確定
+              </Button>
+            )}
+          </div>
+          {!isConfirmed && (
+            <p className="text-zinc-400 text-xs text-center">
+              {isConfirming ? '確定処理中…' : 'AI判定を実行するまで確定できません'}
+            </p>
           )}
         </div>
       )}
