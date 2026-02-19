@@ -101,7 +101,7 @@ export function validateJournalText(journalText: string | undefined | null): { v
  * 一言感想のバリデーション
  */
 export function validateImpressionText(impressionText: string | undefined | null): { valid: boolean; error?: string } {
-  return validateStringLength(impressionText, '一言感想', 500, 0);
+  return validateStringLength(impressionText, '一言感想', 3000, 0);
 }
 
 /**

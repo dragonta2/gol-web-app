@@ -244,7 +244,7 @@ export default function JournalList({ onDateSelect, section = 'all', isExpanded:
           )}
         </div>
         {isCurrentMonthExpanded && (
-          <div id="current-month-journal-content" className="max-h-96 overflow-y-auto">
+          <div id="current-month-journal-content">
             {sortedCurrentMonthJournals.length === 0 ? (
               <div className="p-4 text-zinc-400 text-sm">今月の日誌がありません</div>
             ) : (

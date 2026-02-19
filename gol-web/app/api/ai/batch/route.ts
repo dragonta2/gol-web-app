@@ -28,7 +28,7 @@ import {
 import { validateJournalText, validateImpressionText, validateAll } from '@/lib/validation';
 
 const JOURNAL_MAX_LENGTH = 3000;
-const IMPRESSION_MAX_LENGTH = 500;
+const IMPRESSION_MAX_LENGTH = 3000;
 
 function calculatePointsAndExp(conditionBody: number, conditionMood: number) {
   const averageScore = (conditionBody + conditionMood) / 2;

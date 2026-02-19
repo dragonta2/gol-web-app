@@ -49,7 +49,7 @@ function JournalImpressionSections({
   const supabase = createClient();
 
   const journalMaxLength = 3000;
-  const impressionMaxLength = 500;
+  const impressionMaxLength = 3000;
 
   // アコーディオンの開閉状態を管理（外部制御があればそれを使用、なければ内部状態）
   const [internalJournalExpanded, setInternalJournalExpanded] = useState(true);
@@ -373,7 +373,7 @@ function JournalImpressionSections({
                   aria-label="日誌を入力する"
                   aria-describedby="journal-text-count"
                   disabled={!isEditable}
-                  className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[600px] overflow-y-auto text-[17px] md:text-[15px]"
+                  className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px]"
                 />
                 <div id="journal-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 shrink-0" aria-live="polite">
                   <Edit className="w-5 h-5" />
@@ -413,7 +413,7 @@ function JournalImpressionSections({
                   aria-label="感想を入力する"
                   aria-describedby="impression-text-count"
                   disabled={!isEditable}
-                  className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[600px] overflow-y-auto text-[17px] md:text-[15px]"
+                  className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px]"
                 />
                 <div id="impression-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 shrink-0" aria-live="polite">
                   <Edit className="w-5 h-5" />

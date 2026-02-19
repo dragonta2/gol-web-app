@@ -69,7 +69,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
   // 日誌本文と一言感想の最大文字数（バリデーション用）
   const journalMaxLength = 3000;
-  const impressionMaxLength = 500;
+  const impressionMaxLength = 3000;
 
   // アコーディオンの開閉状態を管理（外部制御があればそれを使用、なければ内部状態）
   const [internalJournalExpanded, setInternalJournalExpanded] = useState(true);

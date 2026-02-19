@@ -28,13 +28,13 @@
 
 **データベース制約:**
 - `journal_text`: TEXT（最大長制約なし、アプリ側で3000文字制限）
-- `one_line_comment`: TEXT（最大長制約なし、アプリ側で500文字制限）
+- `one_line_comment`: TEXT（最大長制約なし、アプリ側で3000文字制限）
 - `right_*_count`: INTEGER（0以上、アプリ側で上限設定）
 - `UNIQUE(user_id, log_date)`: 1ユーザーにつき1日1レコード
 
 **バリデーション実装:**
 - `validateJournalText`: 0-3000文字
-- `validateImpressionText`: 0-500文字
+- `validateImpressionText`: 0-3000文字
 - `validateRightCount`: 0-上限値（権利Cは10、その他は99）
 - API Routeでユーザー所有権を確認
 
@@ -96,7 +96,7 @@
 
 **バリデーション実装:**
 - `validateJournalText`: 0-3000文字
-- `validateImpressionText`: 0-500文字
+- `validateImpressionText`: 0-3000文字
 - `validateScore`: 0-100（体調スコア・気分スコア）
 
 **API Route:**
@@ -111,7 +111,7 @@
 ### 文字列バリデーション
 - `validateStringLength`: 文字列の長さチェック
 - `validateJournalText`: 日誌本文（0-3000文字）
-- `validateImpressionText`: 一言感想（0-500文字）
+- `validateImpressionText`: 一言感想（0-3000文字）
 - `validateHabitName`: 習慣名（必須、1-100文字）
 - `validateTaskName`: ToDoタスク名（必須、1-200文字）
 
