@@ -28,6 +28,7 @@ export default function DashboardClientLayout({
   userProfile,
   selectedDate,
   pendingDeltas,
+  dailyLog,
   ...tabsProps
 }: DashboardClientLayoutProps) {
   const [activeTab, setActiveTab] = useState<
@@ -45,11 +46,13 @@ export default function DashboardClientLayout({
         screenName={screenName}
         activeTab={activeTab}
         pendingDeltas={pendingDeltas ?? undefined}
+        isConfirmed={dailyLog?.is_confirmed ?? false}
       />
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         <ApplyNewUserDefaultsBanner />
         <DashboardTabs
           {...tabsProps}
+          dailyLog={dailyLog}
           activeTab={activeTab}
           onActiveTabChange={setActiveTab}
         />

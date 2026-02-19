@@ -44,6 +44,8 @@ interface CollapsibleDashboardHeaderProps {
   activeTab?: "journal" | "todo-summary" | "stats" | "journals" | "announcements"
   /** 未確定の日誌がある日の仮スコア（確定時に反映されるデルタ） */
   pendingDeltas?: DayDeltas | null
+  /** 表示中の日誌が確定済みのとき true */
+  isConfirmed?: boolean
 }
 
 const TAB_ICONS = {
@@ -60,6 +62,7 @@ export default function CollapsibleDashboardHeader({
   screenName,
   activeTab,
   pendingDeltas,
+  isConfirmed = false,
 }: CollapsibleDashboardHeaderProps) {
   const TabIcon = activeTab ? TAB_ICONS[activeTab] : null
   const { openCalendar } = useCalendarDialog() ?? { openCalendar: () => {} }
@@ -135,6 +138,14 @@ export default function CollapsibleDashboardHeader({
                         <span className="translate-y-[1px]">本日</span>
                       </span>
                     )}
+                    {isConfirmed && (
+                      <span
+                        className="inline-flex items-center justify-center leading-none px-2 py-1 rounded text-xs font-medium bg-zinc-600/80 text-zinc-300 border border-zinc-500/50 shrink-0 -translate-y-[2px]"
+                        aria-label="確定済み"
+                      >
+                        <span className="translate-y-[1px]">確定済み</span>
+                      </span>
+                    )}
                   </>
                 )}
               </>
@@ -154,6 +165,14 @@ export default function CollapsibleDashboardHeader({
                     aria-label="本日"
                   >
                     <span className="translate-y-[1px]">本日</span>
+                  </span>
+                )}
+                {isConfirmed && (
+                  <span
+                    className="inline-flex items-center justify-center leading-none px-2 py-1 rounded text-xs font-medium bg-zinc-600/80 text-zinc-300 border border-zinc-500/50 shrink-0 -translate-y-[2px]"
+                    aria-label="確定済み"
+                  >
+                    <span className="translate-y-[1px]">確定済み</span>
                   </span>
                 )}
               </>
@@ -240,6 +259,14 @@ export default function CollapsibleDashboardHeader({
                       aria-label="本日"
                     >
                       <span className="translate-y-[1px]">本日</span>
+                    </span>
+                  )}
+                  {isConfirmed && (
+                    <span
+                      className="inline-flex items-center justify-center leading-none px-2 py-1 rounded text-xs font-medium bg-zinc-600/80 text-zinc-300 border border-zinc-500/50 -translate-y-[2px]"
+                      aria-label="確定済み"
+                    >
+                      <span className="translate-y-[1px]">確定済み</span>
                     </span>
                   )}
                 </div>
