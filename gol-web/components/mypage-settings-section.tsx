@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   Trash2,
@@ -35,6 +35,16 @@ export function MypageSettingsSection() {
     inserted: Record<string, number>
     error?: string
   } | null>(null)
+  const [showAdminCard, setShowAdminCard] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/settings/level-thresholds")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.canEdit === true) setShowAdminCard(true)
+      })
+      .catch(() => {})
+  }, [])
 
   const handleExportJson = async () => {
     setIsExporting(true)
@@ -231,6 +241,19 @@ export function MypageSettingsSection() {
               <p className="text-sm text-zinc-400">物語の世界観・設定</p>
             </div>
           </Link>
+          {showAdminCard && (
+            <Link href="/settings/admin">
+              <div className="bg-zinc-900 border border-cyan-600 rounded-lg p-5 hover:border-cyan-500 transition-colors cursor-pointer">
+                <div className="flex items-center gap-3 mb-2">
+                  <SettingsIcon className="w-5 h-5 text-cyan-400" />
+                  <h3 className="text-base font-semibold text-zinc-100">
+                    管理者用の設定
+                  </h3>
+                </div>
+                <p className="text-sm text-zinc-400">世界観・文字数制限・レベル閾値</p>
+              </div>
+            </Link>
+          )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link href="/announcements">

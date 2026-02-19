@@ -9,6 +9,14 @@
 
 ※ **Gitに上げてはいけない情報**（APIキー・アカウントID／PWなど）は別ファイルに記載。
 
+・GOL｜本番環境
+https://gol-web-app.vercel.app/login
+
+・Supabase｜データベース
+https://supabase.com/dashboard/project/lridxyccbxqglnoejntz/auth/users
+
+・Vercel｜ホスティング
+https://vercel.com/dragonta2s-projects/gol-web-app
 
 ・Notion MCP｜マーケットプレイスプロフィール
 https://www.notion.so/profile/integrations/internal/30b4c1f3-dcd0-8142-b238-0027c1aca24c

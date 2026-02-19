@@ -13,6 +13,7 @@ import {
   History,
 } from "lucide-react"
 import { syncProfileLevel } from "@/lib/sync-profile-level"
+import { getGlobalLevelThresholds } from "@/lib/get-global-level-thresholds"
 import { getExpToNextLevel } from "@/lib/rank-utils"
 import {
   RankNameDisplay,
@@ -70,10 +71,12 @@ export default async function MypagePage() {
         exp: { body: 0, intellect: 0, mind: 0 },
       }
 
+  const levelThresholds = await getGlobalLevelThresholds(supabase)
   const expToNext = getExpToNextLevel(
     userProfile.exp.body,
     userProfile.exp.intellect,
     userProfile.exp.mind,
+    levelThresholds,
   )
 
   // ランク変更履歴を取得（テーブルが存在しない場合は空配列）

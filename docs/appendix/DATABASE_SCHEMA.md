@@ -69,6 +69,7 @@ EXECUTE FUNCTION update_updated_at_column();
 | created_at | TIMESTAMP | 作成日時 | NOW() |
 | updated_at | TIMESTAMP | 更新日時 | NOW() |
 
+**level_thresholds（JSONB、任意）:** レベル1〜10の必要EXPをカスタムで保持。管理者・テストアカウントがマイページから設定可能。NULLのときはアプリのデフォルトを使用。マイグレーション: `docs/sql-snippet/add-level-thresholds-to-profiles.sql`
 
 ### 2. daily_logs（日誌）
 

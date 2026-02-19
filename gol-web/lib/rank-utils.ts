@@ -47,18 +47,42 @@ export const RANK_NAMES_DQ: Record<number, string> = {
   10: '伝説の勇者',
 };
 
+/** レベル閾値の型（1〜10のキー、値は必要EXP） */
+export type LevelThresholds = Record<number, number>;
+
+/**
+ * DBの level_thresholds（JSONB）を LevelThresholds にパース。不正なら null
+ */
+export function parseLevelThresholds(raw: unknown): LevelThresholds | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+  const result: LevelThresholds = {};
+  for (let lv = 1; lv <= 10; lv++) {
+    const v = obj[String(lv)];
+    if (typeof v === 'number' && !Number.isNaN(v) && v >= 0) {
+      result[lv] = Math.floor(v);
+    } else {
+      return null;
+    }
+  }
+  return result;
+}
+
 /**
  * EXPから現在のレベルを計算
  * 身体・頭脳・精神のそれぞれが閾値を超えたレベルを返す
+ * customThresholds が渡されればそれを使用、なければ LEVEL_THRESHOLDS
  */
 export function getLevelFromExp(
   expBody: number,
   expMind: number,
-  expSpirit: number
+  expSpirit: number,
+  customThresholds?: LevelThresholds | null
 ): number {
+  const thresholds = customThresholds ?? LEVEL_THRESHOLDS;
   let level = 0;
   for (let lv = 1; lv <= 10; lv++) {
-    const th = LEVEL_THRESHOLDS[lv] ?? 0;
+    const th = thresholds[lv] ?? 0;
     if (expBody >= th && expMind >= th && expSpirit >= th) {
       level = lv;
     } else {
@@ -79,16 +103,19 @@ export function getRankName(level: number, mode: RankMode): string {
 /**
  * 次のレベルに必要な残りEXP（身体・頭脳・精神それぞれ）
  * すでにLv10の場合は null
+ * customThresholds が渡されればそれを使用
  */
 export function getExpToNextLevel(
   expBody: number,
   expMind: number,
-  expSpirit: number
+  expSpirit: number,
+  customThresholds?: LevelThresholds | null
 ): { body: number; intellect: number; spirit: number } | null {
-  const currentLevel = getLevelFromExp(expBody, expMind, expSpirit);
+  const thresholds = customThresholds ?? LEVEL_THRESHOLDS;
+  const currentLevel = getLevelFromExp(expBody, expMind, expSpirit, customThresholds);
   if (currentLevel >= 10) return null;
 
-  const nextThreshold = LEVEL_THRESHOLDS[currentLevel + 1] ?? 0;
+  const nextThreshold = thresholds[currentLevel + 1] ?? 0;
   return {
     body: Math.max(0, nextThreshold - expBody),
     intellect: Math.max(0, nextThreshold - expMind),

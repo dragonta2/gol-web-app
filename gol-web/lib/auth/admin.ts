@@ -48,6 +48,32 @@ export async function isAdmin(): Promise<boolean> {
 }
 
 /**
+ * レベルアップ必要EXPの設定を変更できるか（管理者またはテストアカウント）
+ * NEXT_PUBLIC_TEST_EMAILS に含まれるメールも編集可
+ */
+export async function canEditLevelThresholds(): Promise<boolean> {
+  const supabase = await createClient();
+
+  try {
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) return false;
+
+    if (await isAdmin()) return true;
+
+    const testEmails = process.env.NEXT_PUBLIC_TEST_EMAILS
+      ? process.env.NEXT_PUBLIC_TEST_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+      : [];
+    const email = (user.email ?? '').toLowerCase();
+    if (email && testEmails.includes(email)) return true;
+
+    return false;
+  } catch (error) {
+    console.error('canEditLevelThresholds error:', error);
+    return false;
+  }
+}
+
+/**
  * 指定されたユーザーIDが管理者かどうかをチェック（サーバーサイド用）
  * @param userId チェックするユーザーID
  * @returns {Promise<boolean>} 管理者の場合true、それ以外はfalse

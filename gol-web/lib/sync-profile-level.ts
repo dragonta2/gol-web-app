@@ -1,13 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import {
-  getLevelFromExp,
-  getRankName,
-  type RankMode,
-} from './rank-utils';
+import { getGlobalLevelThresholds } from './get-global-level-thresholds';
+import { getLevelFromExp, getRankName, type RankMode } from './rank-utils';
 
 /**
  * プロファイルのEXPからレベルを再計算し、必要なら更新・ログ記録
  * ダッシュボード・マイページ読み込み時に呼ぶ
+ * 閾値は app_config の全アカウント共通設定を使用
  */
 export async function syncProfileLevel(
   supabase: SupabaseClient,
@@ -28,10 +26,12 @@ export async function syncProfileLevel(
     return { level: 1, class_name: getRankName(1, mode), levelChanged: false };
   }
 
+  const customThresholds = await getGlobalLevelThresholds(supabase);
   const computedLevel = getLevelFromExp(
     profile.exp_body ?? 0,
     profile.exp_mind ?? 0,
-    profile.exp_spirit ?? 0
+    profile.exp_spirit ?? 0,
+    customThresholds
   );
 
   const storedLevel = profile.level ?? 1;

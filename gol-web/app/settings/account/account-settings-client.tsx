@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
+import { Settings as SettingsIcon } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -12,13 +13,9 @@ import {
   Key,
   Bot,
   BookOpen,
-  ChevronDown,
-  ChevronUp,
 } from "lucide-react"
 import { toast } from "sonner"
-import type { StoryWorldConfig, StoryWorldId } from "@/lib/ai/story-worlds"
-import type { AiOutputLimits } from "@/lib/ai/ai-output-limits"
-import { DEFAULT_AI_OUTPUT_LIMITS } from "@/lib/ai/ai-output-limits"
+import type { StoryWorldId } from "@/lib/ai/story-worlds"
 import {
   type PersonalityTypeId,
   PERSONALITY_TYPES,
@@ -32,108 +29,6 @@ import {
   STORAGE_STORY_WORLD,
   notifyStoryWorldChanged,
 } from "@/lib/story-world-storage"
-
-function AdminWorldConfigForm({
-  config,
-  onConfigChange,
-  onSave,
-  saving,
-}: {
-  config: StoryWorldConfig
-  onConfigChange: (c: StoryWorldConfig) => void
-  onSave: () => void
-  saving: boolean
-}) {
-  const update = (key: keyof StoryWorldConfig, value: string) => {
-    onConfigChange({ ...config, [key]: value })
-  }
-  return (
-    <div className="space-y-4 pl-2 border-l-2 border-zinc-700 py-2">
-      <div>
-        <label className="block text-sm text-zinc-400 mb-1">表示名</label>
-        <input
-          type="text"
-          value={config.displayName}
-          onChange={(e) => update("displayName", e.target.value)}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm"
-        />
-      </div>
-      <div>
-        <label className="block text-sm text-zinc-400 mb-1">
-          主人公のデフォルト名
-        </label>
-        <input
-          type="text"
-          value={config.protagonistName}
-          onChange={(e) => update("protagonistName", e.target.value)}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm"
-        />
-      </div>
-      <div>
-        <label className="block text-sm text-zinc-400 mb-1">
-          世界観の雰囲気
-        </label>
-        <textarea
-          value={config.worldTone}
-          onChange={(e) => update("worldTone", e.target.value)}
-          rows={2}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm resize-y"
-        />
-      </div>
-      <div>
-        <label className="block text-sm text-zinc-400 mb-1">
-          アドバイスのスタイル
-        </label>
-        <textarea
-          value={config.adviceStyle}
-          onChange={(e) => update("adviceStyle", e.target.value)}
-          rows={2}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm resize-y"
-        />
-      </div>
-      <div>
-        <label className="block text-sm text-zinc-400 mb-1">比喩の出典</label>
-        <input
-          type="text"
-          value={config.metaphorSource}
-          onChange={(e) => update("metaphorSource", e.target.value)}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm"
-        />
-      </div>
-      <div>
-        <label className="block text-sm text-zinc-400 mb-1">
-          あらすじ生成のシステムメッセージ
-        </label>
-        <textarea
-          value={config.storySystemMessage}
-          onChange={(e) => update("storySystemMessage", e.target.value)}
-          rows={3}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm resize-y"
-        />
-      </div>
-      <div>
-        <label className="block text-sm text-zinc-400 mb-1">
-          アドバイス生成の口調指示
-        </label>
-        <textarea
-          value={config.adviceToneInstruction}
-          onChange={(e) => update("adviceToneInstruction", e.target.value)}
-          rows={2}
-          className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm resize-y"
-        />
-      </div>
-      <Button
-        type="button"
-        onClick={onSave}
-        disabled={saving}
-        className="bg-cyan-600 hover:bg-cyan-700 text-white text-sm"
-      >
-        {saving ? "保存中..." : "この世界観の設定を保存"}
-      </Button>
-    </div>
-  )
-}
-
 export interface AccountSettingsInitialData {
   username: string
   email: string
@@ -171,42 +66,24 @@ export default function AccountSettingsClient({
   const [aiStorySaving, setAiStorySaving] = useState(false)
 
   const [storyWorldId, setStoryWorldId] = useState<StoryWorldId>("ghost")
-  const [dqConfig, setDqConfig] = useState<StoryWorldConfig | null>(null)
-  const [ghostConfig, setGhostConfig] = useState<StoryWorldConfig | null>(null)
-  const [worldConfigSaving, setWorldConfigSaving] = useState(false)
-  const [worldConfigLoading, setWorldConfigLoading] = useState(false)
-  const [worldConfigLoadError, setWorldConfigLoadError] = useState<string | null>(null)
-  const [dqExpanded, setDqExpanded] = useState(false)
-  const [ghostExpanded, setGhostExpanded] = useState(false)
-
-  const [aiLimits, setAiLimits] = useState<AiOutputLimits>(DEFAULT_AI_OUTPUT_LIMITS)
-  const [aiLimitsLoading, setAiLimitsLoading] = useState(false)
-  const [aiLimitsSaving, setAiLimitsSaving] = useState(false)
-  const [aiLimitsLoadError, setAiLimitsLoadError] = useState<string | null>(null)
-
-  const loadWorldConfigs = useCallback(async () => {
-    if (!isAdmin) return
-    setWorldConfigLoadError(null)
-    setWorldConfigLoading(true)
-    try {
-      const res = await fetch("/api/settings/story-worlds")
-      if (res.ok) {
-        const sw = await res.json()
-        setDqConfig(sw.dq ?? null)
-        setGhostConfig(sw.ghost ?? null)
-      } else {
-        setWorldConfigLoadError("設定の取得に失敗しました")
-      }
-    } catch {
-      setWorldConfigLoadError("設定の取得に失敗しました")
-    } finally {
-      setWorldConfigLoading(false)
-    }
-  }, [isAdmin])
+  const [showAdminButton, setShowAdminButton] = useState(initialData.isAdmin)
 
   useEffect(() => {
-    loadWorldConfigs()
-  }, [loadWorldConfigs])
+    if (initialData.isAdmin) {
+      setShowAdminButton(true)
+      return
+    }
+    let cancelled = false
+    fetch("/api/settings/level-thresholds")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!cancelled && data.canEdit === true) setShowAdminButton(true)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [initialData.isAdmin])
 
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -219,57 +96,6 @@ export default function AccountSettingsClient({
     const stored = localStorage.getItem(STORAGE_STORY_WORLD)
     if (stored === "dq" || stored === "ghost") setStoryWorldId(stored)
   }, [])
-
-  useEffect(() => {
-    loadWorldConfigs()
-  }, [loadWorldConfigs])
-
-  const loadAiOutputLimits = useCallback(async () => {
-    if (!isAdmin) return
-    setAiLimitsLoadError(null)
-    setAiLimitsLoading(true)
-    try {
-      const res = await fetch("/api/settings/ai-output-limits")
-      if (res.ok) {
-        const data = await res.json()
-        if (data.limits) setAiLimits(data.limits)
-      } else {
-        setAiLimitsLoadError("文字数制限の取得に失敗しました")
-      }
-    } catch {
-      setAiLimitsLoadError("文字数制限の取得に失敗しました")
-    } finally {
-      setAiLimitsLoading(false)
-    }
-  }, [isAdmin])
-
-  useEffect(() => {
-    loadAiOutputLimits()
-  }, [loadAiOutputLimits])
-
-  const handleSaveAiOutputLimits = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setAiLimitsSaving(true)
-    try {
-      const res = await fetch("/api/settings/ai-output-limits", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(aiLimits),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        const msg = data.error ?? "保存に失敗しました"
-        const detail = typeof data.details === "string" ? data.details : undefined
-        toast.error(msg, { description: detail })
-        return
-      }
-      toast.success("文字数制限を保存しました")
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "保存に失敗しました")
-    } finally {
-      setAiLimitsSaving(false)
-    }
-  }
 
   const handleChangeEmail = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -377,41 +203,6 @@ export default function AccountSettingsClient({
       toast.error("保存に失敗しました")
     } finally {
       setAiStorySaving(false)
-    }
-  }
-
-  const handleSaveWorldConfig = async (
-    worldId: StoryWorldId,
-    config: StoryWorldConfig,
-  ) => {
-    setWorldConfigSaving(true)
-    try {
-      const payload = {
-        worldId,
-        config: {
-          displayName: config.displayName,
-          protagonistName: config.protagonistName,
-          worldTone: config.worldTone,
-          adviceStyle: config.adviceStyle,
-          metaphorSource: config.metaphorSource,
-          storySystemMessage: config.storySystemMessage,
-          adviceToneInstruction: config.adviceToneInstruction,
-        },
-      }
-      const res = await fetch("/api/settings/story-worlds", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        throw new Error(data.error ?? "保存に失敗しました")
-      }
-      toast.success(`${config.displayName}の設定を保存しました`)
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "保存に失敗しました")
-    } finally {
-      setWorldConfigSaving(false)
     }
   }
 
@@ -643,11 +434,20 @@ export default function AccountSettingsClient({
             </div>
 
             <div id="story-world">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <BookOpen className="w-5 h-5 text-cyan-400" />
                 <h2 className="text-lg font-semibold text-zinc-100">
                   物語の世界観
                 </h2>
+                {showAdminButton && (
+                  <Link
+                    href="/settings/admin"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-medium transition-colors"
+                  >
+                    <SettingsIcon className="w-4 h-4" />
+                    管理者用の設定
+                  </Link>
+                )}
               </div>
               <p className="text-sm text-zinc-400 mb-3">
                 日誌のAIが生成する物語の世界観を選びます。
@@ -694,151 +494,6 @@ export default function AccountSettingsClient({
               {aiStorySaving ? "保存中..." : "AIの性格・物語の世界観を保存"}
             </Button>
           </form>
-
-          {isAdmin && (
-            <div className="mt-8 pt-6 border-t border-zinc-700">
-              <h3 className="text-base font-semibold text-cyan-400 mb-2">
-                管理者用：世界観の詳細設定
-              </h3>
-              <p className="text-sm text-zinc-500 mb-4">
-                テスト・管理者アカウントのみ編集可能。全ユーザーに適用されます。
-              </p>
-
-              {worldConfigLoading && (
-                <p className="text-sm text-zinc-500 py-4">読み込み中...</p>
-              )}
-              {worldConfigLoadError && !worldConfigLoading && (
-                <div className="py-4">
-                  <p className="text-sm text-amber-400 mb-2">{worldConfigLoadError}</p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => loadWorldConfigs()}
-                    className="border-zinc-600 text-zinc-300 hover:bg-zinc-800"
-                  >
-                    再読み込み
-                  </Button>
-                </div>
-              )}
-              {!worldConfigLoading && !worldConfigLoadError && dqConfig && ghostConfig && (
-                <>
-                  <div className="mb-6">
-                    <button
-                      type="button"
-                      onClick={() => setGhostExpanded(!ghostExpanded)}
-                      className="flex items-center justify-between w-full py-2 text-left text-zinc-200 hover:text-zinc-100"
-                    >
-                      <span>{ghostConfig.displayName} の設定</span>
-                      {ghostExpanded ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
-                    {ghostExpanded && (
-                      <AdminWorldConfigForm
-                        config={ghostConfig}
-                        onConfigChange={setGhostConfig}
-                        onSave={() => handleSaveWorldConfig("ghost", ghostConfig)}
-                        saving={worldConfigSaving}
-                      />
-                    )}
-                  </div>
-
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => setDqExpanded(!dqExpanded)}
-                      className="flex items-center justify-between w-full py-2 text-left text-zinc-200 hover:text-zinc-100"
-                    >
-                      <span>{dqConfig.displayName} の設定</span>
-                      {dqExpanded ? (
-                        <ChevronUp className="w-4 h-4" />
-                      ) : (
-                        <ChevronDown className="w-4 h-4" />
-                      )}
-                    </button>
-                    {dqExpanded && (
-                      <AdminWorldConfigForm
-                        config={dqConfig}
-                        onConfigChange={setDqConfig}
-                        onSave={() => handleSaveWorldConfig("dq", dqConfig)}
-                        saving={worldConfigSaving}
-                      />
-                    )}
-                  </div>
-
-                  {/* 文字数制限（世界観共通・dq/ghost どちらも同じ値を参照） */}
-                  <div className="mt-6 pt-6 border-t border-zinc-700">
-                    <h3 className="text-base font-semibold text-cyan-400 mb-2">
-                      文字数制限
-                    </h3>
-                    <p className="text-sm text-zinc-500 mb-4">
-                      AI生成テキストの最低・最大文字数。総評・あらすじ・アドバイスに適用。世界観（dq/ghost）共通です。
-                    </p>
-                    {aiLimitsLoading && <p className="text-sm text-zinc-500 py-2">読み込み中...</p>}
-                    {aiLimitsLoadError && !aiLimitsLoading && (
-                      <p className="text-sm text-amber-400 mb-2">{aiLimitsLoadError}</p>
-                    )}
-                    {!aiLimitsLoading && (
-                      <form onSubmit={handleSaveAiOutputLimits} className="space-y-4 pl-2 border-l-2 border-zinc-700 py-2">
-                        {[
-                          { key: "reasoning" as const, label: "総評" },
-                          { key: "story_past" as const, label: "これまでの冒険" },
-                          { key: "story_future" as const, label: "これからの冒険" },
-                          { key: "advice" as const, label: "辛口コーチング アドバイス" },
-                        ].map(({ key, label }) => (
-                          <div key={key} className="flex flex-wrap items-center gap-3">
-                            <span className="text-sm text-zinc-300 w-48 shrink-0">{label}</span>
-                            <label className="flex items-center gap-1.5 text-sm text-zinc-400">
-                              最小
-                              <input
-                                type="number"
-                                min={0}
-                                value={aiLimits[`${key}_min`]}
-                                onChange={(e) =>
-                                  setAiLimits((prev) => ({
-                                    ...prev,
-                                    [`${key}_min`]: Math.max(0, parseInt(e.target.value, 10) || 0),
-                                  }))
-                                }
-                                className="w-20 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm"
-                              />
-                              文字
-                            </label>
-                            <label className="flex items-center gap-1.5 text-sm text-zinc-400">
-                              最大
-                              <input
-                                type="number"
-                                min={0}
-                                value={aiLimits[`${key}_max`]}
-                                onChange={(e) =>
-                                  setAiLimits((prev) => ({
-                                    ...prev,
-                                    [`${key}_max`]: Math.max(0, parseInt(e.target.value, 10) || 0),
-                                  }))
-                                }
-                                className="w-20 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-sm"
-                              />
-                              文字
-                            </label>
-                          </div>
-                        ))}
-                        <Button
-                          type="submit"
-                          disabled={aiLimitsSaving}
-                          className="bg-cyan-600 hover:bg-cyan-700 text-white"
-                        >
-                          {aiLimitsSaving ? "保存中..." : "文字数制限を保存"}
-                        </Button>
-                      </form>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
         </section>
       </div>
     </div>
