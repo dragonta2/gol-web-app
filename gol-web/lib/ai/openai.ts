@@ -33,15 +33,31 @@ export function hasApiKey(): boolean {
  * @param journalText 日誌本文
  * @param impressionText 一言感想
  * @param limits 総評（reasoning）の文字数制限（省略時は指示なし）
+ * @param habits その日に実行した習慣の名前一覧（判定の参考。省略時は渡さない）
+ * @param todos その日に完了したToDoの名前一覧（判定の参考。省略時は渡さない）
  */
 export function createJudgmentPrompt(
   journalText: string,
   impressionText: string,
-  limits?: { reasoning_min: number; reasoning_max: number } | null
+  limits?: { reasoning_min: number; reasoning_max: number } | null,
+  habits?: string[],
+  todos?: string[]
 ): string {
   const limitLine =
     limits && limits.reasoning_max > 0
       ? `\n「reasoning」は${limits.reasoning_min}文字以上${limits.reasoning_max}文字以内で記述してください。`
+      : '';
+  const habitsBlock =
+    habits && habits.length > 0
+      ? `\n【実行した習慣】\n${habits.join('、')}\n`
+      : '';
+  const todosBlock =
+    todos && todos.length > 0
+      ? `\n【完了したToDo】\n${todos.join('、')}\n`
+      : '';
+  const referenceNote =
+    habitsBlock || todosBlock
+      ? '\n上記の習慣・ToDoの達成状況も体調・気分の判定の参考にしてください。reasoning（判定理由）には、日誌・一言の内容に加え、習慣やToDoの達成に触れても構いません。\n'
       : '';
   return `あなたは厳格なコーチです。以下の日誌と一言感想を読んで、体調スコアと気分スコアを0-100点で判定してください。
 
@@ -50,8 +66,7 @@ ${journalText || '（未記入）'}
 
 【一言感想】
 ${impressionText || '（未記入）'}
-
-以下のJSON形式で回答してください：
+${habitsBlock}${todosBlock}${referenceNote}以下のJSON形式で回答してください：
 {
   "condition_body": 0-100の整数（体調スコア）,
   "condition_mood": 0-100の整数（気分スコア）,

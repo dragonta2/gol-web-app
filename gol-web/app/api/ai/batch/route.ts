@@ -30,13 +30,17 @@ import { validateJournalText, validateImpressionText, validateAll } from '@/lib/
 const JOURNAL_MAX_LENGTH = 3000;
 const IMPRESSION_MAX_LENGTH = 3000;
 
+/** 1日あたりのAI獲得量の基準: 除算を大きくすると付与量が減る（体調・気分は0–100） */
+const AI_POINTS_DIVISOR = 13; // ゴルド = 平均スコア / 13 → 最大8
+const AI_EXP_DIVISOR = 25;   // 各EXP = スコア / 25 → 最大4
+
 function calculatePointsAndExp(conditionBody: number, conditionMood: number) {
   const averageScore = (conditionBody + conditionMood) / 2;
   return {
-    points: Math.round(averageScore / 2),
-    exp_body: Math.round(conditionBody / 10),
-    exp_mind: Math.round(averageScore / 10),
-    exp_spirit: Math.round(conditionMood / 10),
+    points: Math.round(averageScore / AI_POINTS_DIVISOR),
+    exp_body: Math.round(conditionBody / AI_EXP_DIVISOR),
+    exp_mind: Math.round(averageScore / AI_EXP_DIVISOR),
+    exp_spirit: Math.round(conditionMood / AI_EXP_DIVISOR),
   };
 }
 
@@ -172,14 +176,41 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const habits: string[] = [];
-    const todos: string[] = [];
+    // その日の習慣・ToDoを取得（判定・あらすじの参考に使う）
+    const { data: habitLogs } = await supabase
+      .from('habit_logs')
+      .select('habit_id, is_checked')
+      .eq('daily_log_id', dailyLogId);
+    const habitIdsChecked =
+      habitLogs?.filter((h) => h.is_checked).map((h) => h.habit_id) ?? [];
+    const habitIdSet = [...new Set(habitIdsChecked)];
+    const { data: habitsRows } =
+      habitIdSet.length > 0
+        ? await supabase.from('habits').select('id, habit_name').in('id', habitIdSet)
+        : { data: [] };
+    const habits: string[] =
+      habitsRows?.map((h) => (h as { habit_name: string }).habit_name?.trim()).filter(Boolean) ?? [];
 
-    // 1. 判定
+    const { data: todoLogs } = await supabase
+      .from('todo_logs')
+      .select('todo_id')
+      .eq('daily_log_id', dailyLogId);
+    const todoIds = todoLogs?.map((t) => t.todo_id) ?? [];
+    const todoIdSet = [...new Set(todoIds)];
+    const { data: todosRows } =
+      todoIdSet.length > 0
+        ? await supabase.from('todos').select('id, task_name').in('id', todoIdSet)
+        : { data: [] };
+    const todos: string[] =
+      todosRows?.map((t) => (t as { task_name: string }).task_name?.trim()).filter(Boolean) ?? [];
+
+    // 1. 判定（習慣・ToDoも参考に含める）
     const judgmentPrompt = createJudgmentPrompt(
       journalText || '',
       impressionText || '',
-      { reasoning_min: aiLimits.reasoning_min, reasoning_max: aiLimits.reasoning_max }
+      { reasoning_min: aiLimits.reasoning_min, reasoning_max: aiLimits.reasoning_max },
+      habits,
+      todos
     );
     const judgmentCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
