@@ -811,7 +811,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           return (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-2">
             <h3 className="text-lg font-medium text-cyan-400">獲得スコア</h3>
-            <p className="text-zinc-500 text-xs">日誌確定後にスコアは獲得されます</p>
+            <p className="text-zinc-300 text-xs">日誌確定後にスコアは獲得されます</p>
             <div className="text-base space-y-2 text-zinc-300">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <span className="shrink-0">ToDo:</span>

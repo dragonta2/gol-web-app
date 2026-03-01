@@ -31,13 +31,19 @@ export function AnnouncementsContent({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/announcements');
+      const res = await fetch('/api/announcements', { cache: 'no-store' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || '取得に失敗しました');
       }
       const data = await res.json();
-      setList(data.announcements ?? []);
+      const raw = data.announcements ?? [];
+      // 日付の降順（新しい順）。notice_date は "YYYY/MM/DD-曜日" なので先頭10文字で比較
+      const datePart = (s: string) => (s || '').slice(0, 10);
+      const sorted = [...raw].sort((a, b) =>
+        datePart(b.notice_date).localeCompare(datePart(a.notice_date))
+      );
+      setList(sorted);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'お知らせの取得に失敗しました');
       setList([]);

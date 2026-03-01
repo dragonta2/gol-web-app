@@ -21,8 +21,7 @@ export async function GET() {
     const { data: rows, error } = await supabase
       .from('announcements')
       .select('id, notice_date, subject, display_order, created_at')
-      .order('display_order', { ascending: true })
-      .order('created_at', { ascending: false });
+      .order('notice_date', { ascending: false });
 
     if (error) {
       console.error('announcements GET error:', error);
