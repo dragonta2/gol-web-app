@@ -50,6 +50,22 @@
 
 ## 2602 --------------
 
+### 260301-日
+
+#### お知らせ降順・注釈明度・作業終了
+
+**実施内容（詳細）:**
+
+- **お知らせを日付降順表示に変更**
+  - API（gol-web/app/api/announcements/route.ts）: GET の order を `notice_date` 降順のみに変更（従来は display_order 昇順・created_at 降順）
+  - クライアント（gol-web/components/announcements-content.tsx）: 取得後に `notice_date` の先頭10文字（YYYY/MM/DD）でソートして降順表示。fetch に `cache: 'no-store'` を指定
+- **「日誌確定後にスコアは獲得されます」の明度を上げた**
+  - journal-form.tsx: 当該注釈のクラスを text-zinc-500 → zinc-300 に変更（2段階で明度アップ）
+- **作業終了**
+  - 4-project-progress.md に 260301-日 の実施内容・次回予定を追記。5-dev-log.md に本セクションを追記。変更ファイルを add・commit（メッセージは箇条書き1つ）・main へ push
+
+---
+
 ### 260219-木
 
 #### 作業終了・進捗メモ更新・commit/push
