@@ -9,6 +9,8 @@ import { format, isValid } from 'date-fns';
 
 interface CalendarDialogContextValue {
   openCalendar: () => void;
+  /** 日付文字列（yyyy-MM-dd）でダッシュボードに遷移。スピナー表示あり */
+  navigateToDate: (dateString: string) => void;
 }
 
 const CalendarDialogContext = createContext<CalendarDialogContextValue | null>(null);
@@ -77,8 +79,21 @@ export function CalendarDialogProvider({ children }: { children: React.ReactNode
     setOpen(true);
   }, []);
 
+  const navigateToDate = useCallback(
+    (dateString: string) => {
+      const d = new Date(dateString);
+      if (!isValid(d)) return;
+      setSelectedDate(d);
+      setNavigatingToDate(dateString);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('date', dateString);
+      router.push(`/dashboard?${params.toString()}`);
+    },
+    [router, searchParams]
+  );
+
   return (
-    <CalendarDialogContext.Provider value={{ openCalendar }}>
+    <CalendarDialogContext.Provider value={{ openCalendar, navigateToDate }}>
       {children}
       {navigatingToDate && (
         <div className="fixed inset-0 z-50 min-h-screen bg-zinc-950 flex items-center justify-center" aria-busy>

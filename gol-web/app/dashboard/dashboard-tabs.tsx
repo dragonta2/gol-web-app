@@ -230,7 +230,7 @@ export default function DashboardTabs({
             ></div>
           )}
         </Button>
-        <div className="ml-auto shrink-0 pb-3 flex items-center">
+        <div className="ml-auto shrink-0 pt-3 pb-3 flex items-center overflow-visible">
           <DateSelector />
         </div>
       </div>
