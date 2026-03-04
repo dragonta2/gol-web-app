@@ -1137,7 +1137,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               variant="ghost"
               size="sm"
               aria-label="習慣を管理する"
-              className="text-base text-zinc-500 hover:text-zinc-400 h-auto p-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
+              className="text-base text-zinc-300 hover:text-zinc-200 h-auto p-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
             >
               <Settings className="w-4 h-4 mr-1" />
               習慣を管理
@@ -1156,7 +1156,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           aria-expanded={isBadHabitsExpanded}
           aria-controls="bad-habits-content"
         >
-          <h3 className="text-base sm:text-lg font-semibold text-zinc-300 flex items-center gap-2">
+          <h3 className="text-base sm:text-lg font-semibold text-zinc-200 flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" aria-hidden />
             悪習慣
           </h3>
@@ -1382,7 +1382,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               variant="ghost"
               size="sm"
               aria-label="習慣を管理する"
-              className="text-base text-zinc-500 hover:text-zinc-400 h-auto p-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
+              className="text-base text-zinc-300 hover:text-zinc-200 h-auto p-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
             >
               <Settings className="w-4 h-4 mr-1" />
               習慣を管理

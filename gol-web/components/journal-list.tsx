@@ -169,8 +169,8 @@ export default function JournalList({ onDateSelect, section = 'all', isExpanded:
                 {format(date, 'yyyy年MM月dd日(E)', { locale: ja })}
               </span>
               {isToday && (
-                <span className="text-xs text-cyan-400 px-2 py-0.5 bg-cyan-400/10 rounded">
-                  今日
+                <span className="inline-block text-xs text-cyan-400 px-2 py-0.5 bg-cyan-400/10 rounded translate-y-px">
+                  本日
                 </span>
               )}
               {Boolean(journal.is_confirmed) && (
