@@ -123,4 +123,35 @@ html[data-font-size="large"] {
     background-position: right 0.75rem center;
     background-repeat: no-repeat;
   }
+
+  /* 本日の利用ゴルド：モバイル用スライダーのつまみを大きく（押しやすく） */
+  input.rights-count-range::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 50%;
+    background: rgb(6 182 212); /* cyan-500 */
+    cursor: pointer;
+    border: 2px solid rgb(24 24 27); /* zinc-900 */
+  }
+  input.rights-count-range::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgb(6 182 212);
+    cursor: pointer;
+    border: 2px solid rgb(24 24 27);
+  }
+
+  /* 本日の利用ゴルド：デスクトップ用数値入力のスピナーを非表示（左右対称にしてセンター寄せにする） */
+  input.rights-count-input::-webkit-outer-spin-button,
+  input.rights-count-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input.rights-count-input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
 }

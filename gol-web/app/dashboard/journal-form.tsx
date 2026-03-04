@@ -25,6 +25,9 @@ import {
 import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp, Settings, Check, Unlock } from 'lucide-react';
 import { ExpWithIcons } from '@/components/exp-with-icons';
 
+/** 権利の利用回数上限（スライダー・＋ボタン用） */
+const MAX_RIGHT_COUNT = 99;
+
 interface Right {
   id: string;
   code: string;
@@ -304,7 +307,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   // 権利の回数更新（上限なし・使用単位は自由記述のため）
   const updateRightCount = (rightId: string, newCount: number) => {
     setRights(rights.map((right) =>
-      right.id === rightId ? { ...right, count: Math.max(0, newCount) } : right
+      right.id === rightId ? { ...right, count: Math.max(0, Math.min(MAX_RIGHT_COUNT, newCount)) } : right
     ));
   };
 
@@ -577,7 +580,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             <div id="rights-content" className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 space-y-3">
               <ul className="list-none space-y-3 pl-0">
               {rights.map((right) => (
-                <li key={right.id} className="flex items-center gap-2 text-base">
+                <li key={right.id} className="flex flex-wrap items-center gap-2 text-base sm:flex-nowrap">
                   <span className="text-zinc-400 shrink-0" aria-hidden>-</span>
                   {/* 権利名・使用単位 */}
                   <span className={`flex-1 min-w-0 ${right.count > 0 ? 'text-zinc-50' : 'text-zinc-300'}`}>
@@ -585,23 +588,65 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                     {right.unit && <span className="text-zinc-400 text-sm ml-1">（{right.unit}）</span>}
                   </span>
 
-                  {/* 1回あたりの利用ポイント（スピナーのすぐ左） */}
+                  {/* 1回あたりの利用ポイント */}
                   <span className="text-zinc-100 text-sm whitespace-nowrap">- {right.points}G/1回</span>
 
-                  {/* ポイント表示（スピナーの左） */}
-                  <span className="text-base text-red-400 font-medium whitespace-nowrap min-w-14 text-right">
+                  {/* ポイント表示（数字を大きく） */}
+                  <span className="text-lg text-red-400 font-medium whitespace-nowrap min-w-16 text-right tabular-nums">
                     {right.count > 0 ? `- ${right.points * right.count}G` : ''}
                   </span>
 
-                  {/* 数値入力（一番右端） */}
-                  <Input
-                    type="number"
-                    min="0"
-                    value={right.count}
-                    onChange={(e) => updateRightCount(right.id, parseInt(e.target.value) || 0)}
-                    disabled={!isEditable}
-                    className="w-16 px-2 py-1 bg-zinc-800 border-zinc-600 text-zinc-50 text-center text-base focus:border-red-500 disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
-                  />
+                  {/* モバイル：スライダー＋数値表示（押しやすい大きめつまみ・数字大きく） */}
+                  <div className="flex sm:hidden items-center gap-3 w-full min-w-0 mt-1 pl-6">
+                    <input
+                      type="range"
+                      min={0}
+                      max={MAX_RIGHT_COUNT}
+                      value={right.count}
+                      onChange={(e) => updateRightCount(right.id, parseInt(e.target.value, 10) || 0)}
+                      disabled={!isEditable}
+                      className="rights-count-range flex-1 min-w-0 h-10 accent-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                      aria-label={`権利${right.code}の利用回数`}
+                    />
+                    <span className="text-xl font-semibold tabular-nums w-10 text-right text-zinc-50 shrink-0" aria-hidden>
+                      {right.count}
+                    </span>
+                  </div>
+
+                  {/* デスクトップ：［－］［数値］［＋］ブロック（横幅控えめ・数字は上下左右中央） */}
+                  <div className="hidden sm:flex items-stretch border border-zinc-600 rounded-lg overflow-hidden shrink-0 bg-zinc-800">
+                    <button
+                      type="button"
+                      onClick={() => updateRightCount(right.id, right.count - 1)}
+                      disabled={!isEditable || right.count <= 0}
+                      className="min-w-[36px] min-h-[44px] flex items-center justify-center text-lg font-bold text-zinc-300 hover:bg-zinc-700 hover:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                      aria-label={`権利${right.code}を1減らす`}
+                    >
+                      −
+                    </button>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={MAX_RIGHT_COUNT}
+                      value={right.count}
+                      onChange={(e) => updateRightCount(right.id, parseInt(e.target.value, 10) || 0)}
+                      disabled={!isEditable}
+                      className="rights-count-input w-14 h-11 bg-zinc-800 border-0 border-x border-zinc-600 text-zinc-50 text-xl font-semibold tabular-nums focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 disabled:opacity-60 disabled:cursor-not-allowed rounded-none py-0 px-3 box-border text-center"
+                      style={{
+                        textAlign: 'center',
+                        lineHeight: '2.75rem',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateRightCount(right.id, right.count + 1)}
+                      disabled={!isEditable || right.count >= MAX_RIGHT_COUNT}
+                      className="min-w-[36px] min-h-[44px] flex items-center justify-center text-lg font-bold text-zinc-300 hover:bg-zinc-700 hover:text-zinc-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                      aria-label={`権利${right.code}を1増やす`}
+                    >
+                      ＋
+                    </button>
+                  </div>
                 </li>
               ))}
               </ul>
