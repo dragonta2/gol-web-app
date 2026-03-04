@@ -50,12 +50,19 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
   };
   const hasReward = reward.points > 0 || reward.exp_body > 0 || reward.exp_mind > 0 || reward.exp_spirit > 0;
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isReadOnly && !(e.target instanceof HTMLElement && (e.target.closest('button') || e.target.closest('a')))) {
+      toast.info('確定済みの日誌のため、タスクの移動はできません');
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
+      onClick={handleCardClick}
       role="button"
       tabIndex={0}
       aria-label={`${todo.task_name}をドラッグして移動する`}
@@ -304,12 +311,18 @@ function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, o
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.5 : 1,
   };
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isReadOnly && !(e.target instanceof HTMLElement && (e.target.closest('button') || e.target.closest('a')))) {
+      toast.info('確定済みの日誌のため、タスクの移動はできません');
+    }
+  };
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...listeners}
       {...attributes}
+      onClick={handleCardClick}
       role="button"
       tabIndex={0}
       aria-label={`${todo.task_name}をドラッグしてアクティブまたは進行中へ戻す`}
@@ -449,8 +462,8 @@ function DroppableColumn({
   });
 
   return (
-    <div>
-      <div className="bg-zinc-800 rounded-lg p-3 mb-3">
+    <div className="flex flex-col h-full min-h-0">
+      <div className="bg-zinc-800 rounded-lg p-3 mb-3 shrink-0">
         <h3 className="font-medium text-zinc-300 text-base flex items-center justify-between gap-2">
           <span>{title}</span>
           <span className="flex items-center gap-1 shrink-0">
@@ -484,7 +497,7 @@ function DroppableColumn({
         ref={setNodeRef}
         role="region"
         aria-label={`${title}カラム`}
-        className={`space-y-3 min-h-[200px] rounded-lg p-2 transition-colors ${
+        className={`flex-1 min-h-[200px] space-y-3 rounded-lg p-2 transition-colors ${
           isOver ? 'bg-cyan-900/20 border-2 border-cyan-600 border-dashed' : ''
         }`}
       >
@@ -1235,7 +1248,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
         onDragEnd={handleDragEnd}
       >
         {/* 3カラムレイアウト（モバイルでは1カラム） */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-stretch">
           {/* アクティブカラム */}
           <DroppableColumn
             id="column-active"

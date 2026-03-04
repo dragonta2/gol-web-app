@@ -362,7 +362,9 @@ function JournalImpressionSections({
                       aria-label="日誌を入力する"
                       aria-describedby="journal-text-count"
                       disabled={!isEditable}
-                      className="relative z-0 bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px] px-3 py-2 rounded-md"
+                      className={`relative z-0 bg-zinc-800 border-zinc-600 focus:border-cyan-500 resize-none disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px] px-3 py-2 rounded-md ${
+                        isConfirmed ? 'text-zinc-50 disabled:opacity-100' : 'text-zinc-100 disabled:opacity-60'
+                      }`}
                     />
                     {!journalText && (
                       <div
@@ -404,7 +406,9 @@ function JournalImpressionSections({
                       aria-label="感想を入力する"
                       aria-describedby="impression-text-count"
                       disabled={!isEditable}
-                      className="relative z-0 bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px] px-3 py-2 rounded-md"
+                      className={`relative z-0 bg-zinc-800 border-zinc-600 focus:border-cyan-500 resize-none disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px] px-3 py-2 rounded-md ${
+                        isConfirmed ? 'text-zinc-50 disabled:opacity-100' : 'text-zinc-100 disabled:opacity-60'
+                      }`}
                     />
                     {!impressionText && (
                       <div
