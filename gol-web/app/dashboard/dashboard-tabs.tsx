@@ -324,25 +324,25 @@ export default function DashboardTabs({
             />
 
             {/* 習慣チェックリスト */}
-            <div className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg">
-              <button
-                onClick={() => setIsHabitsExpanded(!isHabitsExpanded)}
-                className="w-full text-left mb-3 sm:mb-4 flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
-                aria-expanded={isHabitsExpanded}
-                aria-controls="habits-content"
-              >
-                <h2 className="text-xl sm:text-2xl font-semibold text-cyan-400 flex items-center gap-2">
-                  <ListChecks className="w-6 h-6 sm:w-7 sm:h-7" />
-                  <span>今日の習慣実行</span>
-                </h2>
-                {isHabitsExpanded ? (
-                  <ChevronUp className="w-6 h-6 text-zinc-400 flex-shrink-0" />
-                ) : (
-                  <ChevronDown className="w-6 h-6 text-cyan-400 flex-shrink-0" />
-                )}
-              </button>
+            <button
+              onClick={() => setIsHabitsExpanded(!isHabitsExpanded)}
+              className="w-full text-left mb-3 sm:mb-4 flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
+              aria-expanded={isHabitsExpanded}
+              aria-controls="habits-content"
+            >
+              <h2 className="text-xl sm:text-2xl font-semibold text-cyan-400 flex items-center gap-2">
+                <ListChecks className="w-6 h-6 sm:w-7 sm:h-7" />
+                <span>今日の習慣実行</span>
+              </h2>
+              {isHabitsExpanded ? (
+                <ChevronUp className="w-6 h-6 text-zinc-400 flex-shrink-0" />
+              ) : (
+                <ChevronDown className="w-6 h-6 text-cyan-400 flex-shrink-0" />
+              )}
+            </button>
 
-              {isHabitsExpanded && (
+            {isHabitsExpanded && (
+              <div className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg">
                 <div id="habits-content" className="w-full min-w-0">
                   <HabitList
                     habits={habits}
@@ -352,8 +352,8 @@ export default function DashboardTabs({
                     isConfirmed={isConfirmed}
                   />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* 日誌入力フォーム */}
             <JournalForm
