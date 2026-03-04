@@ -162,6 +162,11 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   // データベース更新後の一時的な状態管理
   const [localUpdates, setLocalUpdates] = useState<Map<string, { checked: boolean; count: number }>>(new Map());
 
+  // 日付（dailyLogId）が変わったらローカルのチェック状態をクリアし、前の日のチェックが残らないようにする
+  useEffect(() => {
+    setLocalUpdates(new Map());
+  }, [dailyLogId]);
+
   // 計算された値と一時的な更新をマージ
   const habitsWithLogs = useMemo<HabitWithLog[]>(() => {
     return baseHabitsWithLogs.map((habit) => {
