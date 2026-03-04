@@ -21,7 +21,7 @@ import { FormInput, FormLabel } from "@/components/ui/form-input"
 import { DatePickerField } from "@/components/date-picker-field"
 import { FormCard } from "@/components/ui/form-card"
 import { toast } from "sonner"
-import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles } from "lucide-react"
+import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, ChevronUp, ChevronDown, GripVertical } from "lucide-react"
 import {
   DndContext,
   DragEndEvent,
@@ -30,9 +30,16 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  closestCenter,
 } from "@dnd-kit/core"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
 import { CSS } from "@dnd-kit/utilities"
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
 
 interface TodoSummaryTabProps {
   userId: string
@@ -62,6 +69,204 @@ interface TodoFormData {
   is_on_hold: boolean
 }
 
+/** サブタスク1行：入力はローカルstateで保持し、保存ボタン押下時のみ親に通知（入力遅延防止）。並び替えは矢印またはドラッグハンドル */
+function SubtaskEditRow({
+  subtask,
+  onSave,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+  dragHandle,
+}: {
+  subtask: TodoSubtask
+  onSave: (name: string) => void
+  onDelete: () => void
+  onMoveUp?: () => void
+  onMoveDown?: () => void
+  canMoveUp?: boolean
+  canMoveDown?: boolean
+  /** ドラッグ&ドロップ用。渡すと行頭に表示（並び替えはドラッグでも可能） */
+  dragHandle?: React.ReactNode
+}) {
+  const [value, setValue] = useState(subtask.subtask_name)
+  useEffect(() => {
+    setValue(subtask.subtask_name)
+  }, [subtask.id, subtask.subtask_name])
+  const handleSaveClick = () => {
+    const name = value.trim()
+    if (!name) {
+      toast.error("サブタスク名を入力してください")
+      return
+    }
+    onSave(name)
+  }
+  return (
+    <div className="flex items-center gap-2 p-2 bg-zinc-800 rounded">
+      {dragHandle != null && (
+        <div className="shrink-0 touch-none" aria-label="ドラッグして並び替え">
+          {dragHandle}
+        </div>
+      )}
+      {onMoveUp != null && onMoveDown != null && (
+        <div className="flex flex-col shrink-0 gap-0" role="group" aria-label="並び替え">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onMoveUp}
+            disabled={canMoveUp === false}
+            className="h-6 w-7 p-0 text-zinc-400 hover:text-zinc-300 disabled:opacity-30"
+            aria-label="上へ"
+          >
+            <ChevronUp className="w-4 h-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onMoveDown}
+            disabled={canMoveDown === false}
+            className="h-6 w-7 p-0 text-zinc-400 hover:text-zinc-300 disabled:opacity-30"
+            aria-label="下へ"
+          >
+            <ChevronDown className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+      <Input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="flex-1 min-w-0 bg-zinc-900 border-zinc-700 text-zinc-100 text-sm"
+        placeholder="サブタスク名"
+      />
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={handleSaveClick}
+        className="text-xs text-cyan-400 hover:text-cyan-300 shrink-0 h-auto py-1"
+      >
+        保存
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={onDelete}
+        className="text-xs text-red-400 hover:text-red-300 shrink-0 h-auto py-1"
+      >
+        削除
+      </Button>
+    </div>
+  )
+}
+
+/** 新規サブタスク入力：「+ 追加」ボタン押下時のみ作成（Enterでは作成しない） */
+function NewSubtaskInput({
+  todoId,
+  onAdd,
+  disabled,
+}: {
+  todoId: string
+  onAdd: (todoId: string, name: string) => void
+  disabled?: boolean
+}) {
+  const [value, setValue] = useState("")
+  const handleAdd = () => {
+    const name = value.trim()
+    if (!name) {
+      toast.error("サブタスク名を入力してください")
+      return
+    }
+    onAdd(todoId, name)
+    setValue("")
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        type="text"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="サブタスク名を入力"
+        className="flex-1 min-w-0 bg-zinc-800 border-zinc-700 text-zinc-100"
+        disabled={disabled}
+        aria-label="新しいサブタスク名を入力。追加するには右の「+ 追加」を押してください"
+      />
+      <Button
+        type="button"
+        onClick={handleAdd}
+        disabled={disabled}
+        className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
+      >
+        + 追加
+      </Button>
+    </div>
+  )
+}
+
+/** 編集モーダル用：ドラッグ&ドロップで並び替え可能なサブタスク1行（グリップでのみドラッグ） */
+function SortableSubtaskRow({
+  subtask,
+  onSave,
+  onDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp,
+  canMoveDown,
+}: {
+  subtask: TodoSubtask
+  onSave: (name: string) => void
+  onDelete: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+  canMoveUp: boolean
+  canMoveDown: boolean
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: subtask.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={isDragging ? "opacity-50" : undefined}
+    >
+      <SubtaskEditRow
+        subtask={subtask}
+        onSave={onSave}
+        onDelete={onDelete}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
+        dragHandle={
+          <button
+            type="button"
+            className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-300 cursor-grab active:cursor-grabbing"
+            {...listeners}
+            {...attributes}
+            aria-label="ドラッグして並び替え"
+          >
+            <GripVertical className="w-4 h-4" />
+          </button>
+        }
+      />
+    </div>
+  )
+}
+
 export default function TodoSummaryTab({
   userId,
   todos,
@@ -76,12 +281,7 @@ export default function TodoSummaryTab({
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
-  /** 編集モーダル内で新規追加するサブタスク名 */
-  const [modalNewSubtaskName, setModalNewSubtaskName] = useState("")
-  /** 編集モーダル内でサブタスク名を編集するときの一時値（subtask.id -> 表示名） */
-  const [modalSubtaskNames, setModalSubtaskNames] = useState<
-    Record<string, string>
-  >({})
+  /** 編集モーダル内のサブタスク名編集・新規入力は各コンポーネントのローカルstateで管理（入力遅延・誤追加防止） */
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   // サブタスクが1件以上あるToDoはデフォルトで展開
@@ -290,6 +490,12 @@ export default function TodoSummaryTab({
       },
     }),
   )
+  // 編集モーダル内サブタスク並び替え用（グリップでのみドラッグするため同じでよい）
+  const subtaskSensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+  )
 
   // ドラッグ開始時の処理
   const handleDragStart = (event: DragStartEvent) => {
@@ -484,7 +690,6 @@ export default function TodoSummaryTab({
   // モーダルを開く（編集）
   const handleOpenEditModal = (todo: Todo) => {
     setEditingTodo(todo)
-    setModalSubtaskNames({})
     const attrs = inferAttributesFromTodo(todo)
     setSelectedAttributes(attrs)
     setFormData({
@@ -505,8 +710,6 @@ export default function TodoSummaryTab({
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setEditingTodo(null)
-    setModalNewSubtaskName("")
-    setModalSubtaskNames({})
   }
 
   // 日誌カンバンから「編集」で飛んできたとき、該当タスクの編集モーダルを開く
@@ -515,7 +718,6 @@ export default function TodoSummaryTab({
     const todo = todos.find((t) => t.id === initialEditTodoId)
     if (!todo) return
     setEditingTodo(todo)
-    setModalSubtaskNames({})
     setSelectedAttributes(inferAttributesFromTodo(todo))
     setFormData({
       task_name: todo.task_name,
@@ -819,7 +1021,9 @@ export default function TodoSummaryTab({
 
   // サブタスクを取得（todo_idでフィルタ）
   const getSubtasksForTodo = (todoId: string): TodoSubtask[] => {
-    return todoSubtasks.filter((st) => st.todo_id === todoId)
+    return todoSubtasks
+      .filter((st) => st.todo_id === todoId)
+      .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
   }
 
   // サブタスクの展開/折りたたみ
@@ -984,6 +1188,73 @@ export default function TodoSummaryTab({
           err instanceof Error ? err.message : "予期しないエラーが発生しました",
       })
     }
+  }
+
+  // サブタスクの並び替え（上へ／下へ）。隣と display_order を入れ替えてDB更新
+  const handleMoveSubtask = async (
+    todoId: string,
+    subtask: TodoSubtask,
+    direction: "up" | "down",
+  ) => {
+    const list = getSubtasksForTodo(todoId)
+    const index = list.findIndex((st) => st.id === subtask.id)
+    if (index === -1) return
+    const swapIndex = direction === "up" ? index - 1 : index + 1
+    if (swapIndex < 0 || swapIndex >= list.length) return
+    const other = list[swapIndex]
+    const myOrder = subtask.display_order ?? 0
+    const otherOrder = other.display_order ?? 0
+    try {
+      const supabase = createClient()
+      const { error: err1 } = await supabase
+        .from("todo_subtasks")
+        .update({ display_order: otherOrder })
+        .eq("id", subtask.id)
+      if (err1) throw err1
+      const { error: err2 } = await supabase
+        .from("todo_subtasks")
+        .update({ display_order: myOrder })
+        .eq("id", other.id)
+      if (err2) throw err2
+      router.refresh()
+    } catch (err) {
+      console.error("サブタスク並び替えエラー:", err)
+      toast.error("並び替えに失敗しました", {
+        description:
+          err instanceof Error ? err.message : "予期しないエラーが発生しました",
+      })
+    }
+  }
+
+  // 編集モーダル内：サブタスクをドラッグ&ドロップで並び替えたとき（display_order を 0..n-1 で一括更新）
+  const handleSubtaskDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!editingTodo || !over || active.id === over.id) return
+    const list = getSubtasksForTodo(editingTodo.id)
+    const oldIds = list.map((s) => s.id)
+    const oldIndex = oldIds.indexOf(active.id as string)
+    const newIndex = oldIds.indexOf(over.id as string)
+    if (oldIndex === -1 || newIndex === -1) return
+    const newIds = arrayMove(oldIds, oldIndex, newIndex)
+    ;(async () => {
+      try {
+        const supabase = createClient()
+        for (let i = 0; i < newIds.length; i++) {
+          const { error } = await supabase
+            .from("todo_subtasks")
+            .update({ display_order: i })
+            .eq("id", newIds[i])
+          if (error) throw error
+        }
+        router.refresh()
+      } catch (err) {
+        console.error("サブタスク並び替えエラー:", err)
+        toast.error("並び替えに失敗しました", {
+          description:
+            err instanceof Error ? err.message : "予期しないエラーが発生しました",
+        })
+      }
+    })()
   }
 
   // ToDoカード（この画面ではドラッグ無効・状態変更は日誌タブで）
@@ -1640,99 +1911,50 @@ export default function TodoSummaryTab({
           </label>
         )}
 
-        {/* サブタスク（編集時のみ：一覧・リネーム・追加・削除） */}
-        {editingTodo && (
-          <div className="space-y-3">
-            <FormLabel>サブタスク</FormLabel>
-            <p className="text-sm text-zinc-400">
-              名前を変えたら「保存」を押してください。
-            </p>
-            <div className="space-y-2">
-              {getSubtasksForTodo(editingTodo.id).map((subtask) => (
-                <div
-                  key={subtask.id}
-                  className="flex items-center gap-2 p-2 bg-zinc-800 rounded"
-                >
-                  <Input
-                    type="text"
-                    value={
-                      modalSubtaskNames[subtask.id] ?? subtask.subtask_name
-                    }
-                    onChange={(e) =>
-                      setModalSubtaskNames((prev) => ({
-                        ...prev,
-                        [subtask.id]: e.target.value,
-                      }))
-                    }
-                    className="flex-1 min-w-0 bg-zinc-900 border-zinc-700 text-zinc-100 text-sm"
-                    placeholder="サブタスク名"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                      const name =
-                        modalSubtaskNames[subtask.id] ?? subtask.subtask_name
-                      const ok = await handleEditSubtask(subtask, name)
-                      if (ok) {
-                        setModalSubtaskNames((prev) => {
-                          const next = { ...prev }
-                          delete next[subtask.id]
-                          return next
-                        })
-                      }
-                    }}
-                    className="text-xs text-cyan-400 hover:text-cyan-300 shrink-0 h-auto py-1"
+        {/* サブタスク（編集時のみ：一覧・リネーム・追加・削除・並び替え＝矢印またはドラッグ） */}
+        {editingTodo && (() => {
+          const subtaskList = getSubtasksForTodo(editingTodo.id)
+          return (
+            <div className="space-y-3">
+              <FormLabel>サブタスク</FormLabel>
+              <p className="text-sm text-zinc-400">
+                名前を変えたら「保存」を押してください。並び替えは矢印またはグリップのドラッグで変更できます。
+              </p>
+              <div className="space-y-2">
+                {subtaskList.length > 0 ? (
+                  <DndContext
+                    sensors={subtaskSensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleSubtaskDragEnd}
                   >
-                    保存
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteSubtask(subtask)}
-                    className="text-xs text-red-400 hover:text-red-300 shrink-0 h-auto py-1"
-                  >
-                    削除
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <div className="flex items-center gap-2">
-              <Input
-                type="text"
-                value={modalNewSubtaskName}
-                onChange={(e) => setModalNewSubtaskName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                    if (modalNewSubtaskName.trim()) {
-                      handleAddSubtask(editingTodo.id, modalNewSubtaskName)
-                      setModalNewSubtaskName("")
-                    }
-                  }
-                }}
-                placeholder="サブタスク名を入力"
-                className="flex-1 min-w-0 bg-zinc-800 border-zinc-700 text-zinc-100"
+                    <SortableContext
+                      items={subtaskList.map((s) => s.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {subtaskList.map((subtask, index, list) => (
+                        <SortableSubtaskRow
+                          key={subtask.id}
+                          subtask={subtask}
+                          onSave={(name) => handleEditSubtask(subtask, name)}
+                          onDelete={() => handleDeleteSubtask(subtask)}
+                          onMoveUp={() => handleMoveSubtask(editingTodo.id, subtask, "up")}
+                          onMoveDown={() => handleMoveSubtask(editingTodo.id, subtask, "down")}
+                          canMoveUp={index > 0}
+                          canMoveDown={index < list.length - 1}
+                        />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
+                ) : null}
+              </div>
+              <NewSubtaskInput
+                todoId={editingTodo.id}
+                onAdd={handleAddSubtask}
+                disabled={isSubmitting}
               />
-              <Button
-                type="button"
-                onClick={() => {
-                  if (modalNewSubtaskName.trim()) {
-                    handleAddSubtask(editingTodo.id, modalNewSubtaskName)
-                    setModalNewSubtaskName("")
-                  } else {
-                    toast.error("サブタスク名を入力してください")
-                  }
-                }}
-                className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
-              >
-                + 追加
-              </Button>
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* 期限（ヘッダーと同じダークカレンダーで選択） */}
         <DatePickerField
