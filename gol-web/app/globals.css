@@ -154,4 +154,23 @@ html[data-font-size="large"] {
     -moz-appearance: textfield;
     appearance: textfield;
   }
+
+  /* 日付選択：YY / MM / DD にシアン背景（WebKit） */
+  .date-selector-segment-input::-webkit-datetime-edit {
+    padding: 2px 0;
+  }
+  /* input フォーカス時は全セグメントに背景（MM/DD でも確実に表示） */
+  .date-selector-segment-input:focus::-webkit-datetime-edit-year-field,
+  .date-selector-segment-input:focus::-webkit-datetime-edit-month-field,
+  .date-selector-segment-input:focus::-webkit-datetime-edit-day-field {
+    background: rgba(34, 211, 238, 0.35);
+    outline: none;
+    border-radius: 3px;
+  }
+  /* セグメント単位で :focus が効く場合はより濃く */
+  .date-selector-segment-input::-webkit-datetime-edit-year-field:focus,
+  .date-selector-segment-input::-webkit-datetime-edit-month-field:focus,
+  .date-selector-segment-input::-webkit-datetime-edit-day-field:focus {
+    background: rgba(34, 211, 238, 0.5) !important;
+  }
 }

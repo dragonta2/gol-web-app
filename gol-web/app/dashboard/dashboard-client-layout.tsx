@@ -5,6 +5,7 @@ import { CalendarDialogProvider } from '@/contexts/calendar-dialog-context';
 import CollapsibleDashboardHeader from './collapsible-dashboard-header';
 import DashboardTabs from './dashboard-tabs';
 import ApplyNewUserDefaultsBanner from './apply-new-user-defaults-banner';
+import DateSelector from '@/components/date-selector';
 import type { DashboardHeaderProfile } from './collapsible-dashboard-header';
 import type { DashboardTabsProps } from '@/lib/types';
 import type { DayDeltas } from '@/lib/score-calculator';
@@ -49,6 +50,9 @@ export default function DashboardClientLayout({
         isConfirmed={dailyLog?.is_confirmed ?? false}
       />
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="flex justify-end mb-4 sm:mb-6">
+          <DateSelector />
+        </div>
         <ApplyNewUserDefaultsBanner />
         <DashboardTabs
           {...tabsProps}

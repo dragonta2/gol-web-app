@@ -10,7 +10,6 @@ import JournalList from "@/components/journal-list"
 import { AnnouncementsContent } from "@/components/announcements-content"
 import type { DashboardTabsProps } from "@/lib/types"
 import { Button } from "@/components/ui/button"
-import DateSelector from "@/components/date-selector"
 import {
   Home,
   ClipboardList,
@@ -230,9 +229,6 @@ export default function DashboardTabs({
             ></div>
           )}
         </Button>
-        <div className="ml-auto shrink-0 pt-3 pb-3 flex items-center overflow-visible">
-          <DateSelector />
-        </div>
       </div>
 
       {/* タブコンテンツ */}
