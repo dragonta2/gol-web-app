@@ -140,7 +140,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
           aria-expanded={isSubtaskExpanded}
           className="flex items-center gap-2 text-zinc-400 hover:text-zinc-300 w-full text-left"
         >
-          <span aria-hidden="true" className="inline-block text-[0.7rem] leading-none scale-95 origin-left">{isSubtaskExpanded ? '▼' : '▶'}</span>
+          <span aria-hidden="true" className={`inline-block text-[0.7rem] leading-none scale-95 origin-left ${isSubtaskExpanded ? 'text-zinc-400' : 'text-cyan-400'}`}>{isSubtaskExpanded ? '▼' : '▶'}</span>
           <span>サブタスク ({subtasks.length}件)</span>
         </button>
         {isSubtaskExpanded && (
@@ -325,7 +325,7 @@ function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, o
           aria-expanded={isSubtaskExpanded}
           className="flex items-center gap-2 text-zinc-400 hover:text-zinc-300 w-full text-left"
         >
-          <span aria-hidden="true" className="inline-block text-[0.7rem] leading-none scale-95 origin-left">{isSubtaskExpanded ? '▼' : '▶'}</span>
+          <span aria-hidden="true" className={`inline-block text-[0.7rem] leading-none scale-95 origin-left ${isSubtaskExpanded ? 'text-zinc-400' : 'text-cyan-400'}`}>{isSubtaskExpanded ? '▼' : '▶'}</span>
           <span>サブタスク ({subtasks.length}件)</span>
         </button>
         {isSubtaskExpanded && (
@@ -1119,7 +1119,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
             <ClipboardList className="w-5 h-5" />
             <span>ToDoリスト</span>
           </h2>
-          <ChevronDown className="w-5 h-5 text-zinc-400 shrink-0" />
+          <ChevronDown className="w-5 h-5 text-cyan-400 shrink-0" />
         </div>
         <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-6 text-center">
           <p className="text-zinc-400">読み込み中...</p>
@@ -1146,7 +1146,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
         {isExpanded ? (
           <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
         ) : (
-          <ChevronDown className="w-5 h-5 text-zinc-400 shrink-0" />
+          <ChevronDown className="w-5 h-5 text-cyan-400 shrink-0" />
         )}
       </button>
 

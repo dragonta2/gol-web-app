@@ -51,40 +51,24 @@ function JournalImpressionSections({
   const journalMaxLength = 3000;
   const impressionMaxLength = 3000;
 
-  // アコーディオンの開閉状態を管理（外部制御があればそれを使用、なければ内部状態）
-  const [internalJournalExpanded, setInternalJournalExpanded] = useState(true);
-  const [internalImpressionExpanded, setInternalImpressionExpanded] = useState(true);
+  // 日誌・感想エリア全体の折りたたみ（1つの枠でまとめるため1状態）
+  const [internalSectionExpanded, setInternalSectionExpanded] = useState(true);
+  const isSectionExpanded = expandedStates?.journal ?? expandedStates?.impression ?? internalSectionExpanded;
 
-  const isJournalExpanded = expandedStates?.journal ?? internalJournalExpanded;
-  const isImpressionExpanded = expandedStates?.impression ?? internalImpressionExpanded;
-
-  const setIsJournalExpanded = (value: boolean) => {
+  const setSectionExpanded = (value: boolean) => {
+    setInternalSectionExpanded(value);
     if (onExpandedStateChange) {
-      onExpandedStateChange({ ...expandedStates, journal: value });
-    } else {
-      setInternalJournalExpanded(value);
-    }
-  };
-
-  const setIsImpressionExpanded = (value: boolean) => {
-    if (onExpandedStateChange) {
-      onExpandedStateChange({ ...expandedStates, impression: value });
-    } else {
-      setInternalImpressionExpanded(value);
+      onExpandedStateChange({ ...expandedStates, journal: value, impression: value });
     }
   };
 
   // expandedStatesが外部から変更された場合、内部状態を同期
   useEffect(() => {
-    if (expandedStates) {
-      if (expandedStates.journal !== undefined) {
-        setInternalJournalExpanded(expandedStates.journal);
-      }
-      if (expandedStates.impression !== undefined) {
-        setInternalImpressionExpanded(expandedStates.impression);
-      }
+    if (expandedStates?.journal !== undefined || expandedStates?.impression !== undefined) {
+      const next = expandedStates?.journal ?? expandedStates?.impression ?? true;
+      setInternalSectionExpanded(next);
     }
-  }, [expandedStates]);
+  }, [expandedStates?.journal, expandedStates?.impression]);
 
   // 選択された日付が今日より過去かどうかを判定
   const isPastDate = (() => {
@@ -316,12 +300,27 @@ function JournalImpressionSections({
 
   return (
     <>
-      {/* 今日の日誌と一言感想（横並びカラム） */}
+      {/* 今日の日誌と一言感想（同一の背景枠内・エリア全体で折りたたみ） */}
       {(!isPastDate || dailyLog) && (
         <>
-          {/* 日誌・感想の見出しの上の段（右端に Notion 取り込みボタン） */}
-          {notionImportAllowed && (
-            <div className="w-full flex items-center justify-end gap-2" style={{ marginBottom: '20px' }}>
+          <div className="mb-[13px] sm:mb-[17px] flex items-center justify-between gap-2">
+            <button
+              onClick={() => setSectionExpanded(!isSectionExpanded)}
+              className="flex-1 text-left flex items-center justify-between gap-2 hover:opacity-80 transition-opacity min-w-0"
+              aria-expanded={isSectionExpanded}
+              aria-controls="journal-impression-content"
+            >
+              <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2 shrink-0">
+                <Edit className="w-7 h-7 sm:w-8 sm:h-8" />
+                <span>日誌・感想</span>
+              </h3>
+              {isSectionExpanded ? (
+                <ChevronUp className="w-6 h-6 text-zinc-400 shrink-0" />
+              ) : (
+                <ChevronDown className="w-6 h-6 text-cyan-400 shrink-0" />
+              )}
+            </button>
+            {notionImportAllowed && (
               <Button
                 type="button"
                 variant="secondary"
@@ -338,91 +337,64 @@ function JournalImpressionSections({
                 )}
                 <span className="sr-only sm:not-sr-only sm:ml-1">Notionから日誌と感想を取り込む</span>
               </Button>
+            )}
+          </div>
+          {isSectionExpanded && (
+            <div
+              id="journal-impression-content"
+              className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 space-y-4 sm:space-y-6"
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                {/* 日誌 */}
+                <div className="flex flex-col min-w-0">
+                  <h4 className="text-lg sm:text-xl font-medium text-zinc-300 mb-2 flex items-center gap-2">
+                    <Edit className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <span>日誌</span>
+                  </h4>
+                  <Textarea
+                    ref={journalTextareaRef}
+                    id="journal-text"
+                    value={journalText}
+                    onChange={(e) => handleJournalTextChange(e.target.value)}
+                    maxLength={journalMaxLength}
+                    placeholder="0730｜起床&#10;1000｜デスク向かう&#10;1200｜筋トレ&#10;..."
+                    aria-label="日誌を入力する"
+                    aria-describedby="journal-text-count"
+                    disabled={!isEditable}
+                    className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px]"
+                  />
+                  <div id="journal-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 shrink-0" aria-live="polite">
+                    <Edit className="w-5 h-5" />
+                    <span>{journalText.length} / {journalMaxLength}文字</span>
+                  </div>
+                </div>
+
+                {/* 感想 */}
+                <div className="flex flex-col min-w-0">
+                  <h4 className="text-lg sm:text-xl font-medium text-zinc-300 mb-2 flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <span>感想</span>
+                  </h4>
+                  <Textarea
+                    ref={impressionTextareaRef}
+                    id="impression-text"
+                    value={impressionText}
+                    onChange={(e) => handleImpressionTextChange(e.target.value)}
+                    maxLength={impressionMaxLength}
+                    placeholder="今日は久しぶりに運動ができて..."
+                    aria-label="感想を入力する"
+                    aria-describedby="impression-text-count"
+                    disabled={!isEditable}
+                    className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px]"
+                  />
+                  <div id="impression-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 shrink-0" aria-live="polite">
+                    <Edit className="w-5 h-5" />
+                    <span>{impressionText.length} / {impressionMaxLength}文字</span>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* 今日の日誌 */}
-          <div className="flex flex-col">
-            <div className="w-full mb-2 sm:mb-3 flex items-center justify-between gap-2">
-              <button
-                onClick={() => setIsJournalExpanded(!isJournalExpanded)}
-                className="flex-1 text-left flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
-                aria-expanded={isJournalExpanded}
-                aria-controls="journal-content"
-              >
-                <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2">
-                  <Edit className="w-7 h-7 sm:w-8 sm:h-8" />
-                  <span>日誌</span>
-                </h3>
-                {isJournalExpanded ? (
-                  <ChevronUp className="w-6 h-6 text-zinc-400 shrink-0" />
-                ) : (
-                  <ChevronDown className="w-6 h-6 text-zinc-400 shrink-0" />
-                )}
-              </button>
-            </div>
-            {isJournalExpanded && (
-              <div id="journal-content" className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 flex flex-col">
-                <Textarea
-                  ref={journalTextareaRef}
-                  id="journal-text"
-                  value={journalText}
-                  onChange={(e) => handleJournalTextChange(e.target.value)}
-                  maxLength={journalMaxLength}
-                  placeholder="0730｜起床&#10;1000｜デスク向かう&#10;1200｜筋トレ&#10;..."
-                  aria-label="日誌を入力する"
-                  aria-describedby="journal-text-count"
-                  disabled={!isEditable}
-                  className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px]"
-                />
-                <div id="journal-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 shrink-0" aria-live="polite">
-                  <Edit className="w-5 h-5" />
-                  <span>{journalText.length} / {journalMaxLength}文字</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 一言感想 */}
-          <div className="flex flex-col">
-            <button
-              onClick={() => setIsImpressionExpanded(!isImpressionExpanded)}
-              className="w-full text-left mb-2 sm:mb-3 flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
-              aria-expanded={isImpressionExpanded}
-              aria-controls="impression-content"
-            >
-              <h3 className="text-xl sm:text-2xl font-medium text-zinc-300 flex items-center gap-2">
-                <MessageSquare className="w-7 h-7 sm:w-8 sm:h-8" />
-                <span>感想</span>
-              </h3>
-              {isImpressionExpanded ? (
-                <ChevronUp className="w-6 h-6 text-zinc-400 shrink-0" />
-              ) : (
-                <ChevronDown className="w-6 h-6 text-zinc-400 shrink-0" />
-              )}
-            </button>
-            {isImpressionExpanded && (
-              <div id="impression-content" className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 flex flex-col">
-                <Textarea
-                  ref={impressionTextareaRef}
-                  id="impression-text"
-                  value={impressionText}
-                  onChange={(e) => handleImpressionTextChange(e.target.value)}
-                  maxLength={impressionMaxLength}
-                  placeholder="今日は久しぶりに運動ができて..."
-                  aria-label="感想を入力する"
-                  aria-describedby="impression-text-count"
-                  disabled={!isEditable}
-                  className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px]"
-                />
-                <div id="impression-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 shrink-0" aria-live="polite">
-                  <Edit className="w-5 h-5" />
-                  <span>{impressionText.length} / {impressionMaxLength}文字</span>
-                </div>
-              </div>
-            )}
-          </div>
-          </div>
         </>
       )}
 

@@ -219,7 +219,7 @@ export default function JournalList({ onDateSelect, section = 'all', isExpanded:
             {isCurrentMonthExpanded ? (
               <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-zinc-400 shrink-0" />
+              <ChevronDown className="w-5 h-5 text-cyan-400 shrink-0" />
             )}
           </button>
           {currentMonthJournals.length > 0 && (
@@ -275,7 +275,7 @@ export default function JournalList({ onDateSelect, section = 'all', isExpanded:
           {isPastJournalsSectionExpanded ? (
             <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-zinc-400 shrink-0" />
+            <ChevronDown className="w-5 h-5 text-cyan-400 shrink-0" />
           )}
         </button>
         {isPastJournalsSectionExpanded && (
@@ -299,7 +299,7 @@ export default function JournalList({ onDateSelect, section = 'all', isExpanded:
                       {isMonthExpanded ? (
                         <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0 ml-2" />
                       ) : (
-                        <ChevronDown className="w-5 h-5 text-zinc-400 shrink-0 ml-2" />
+                        <ChevronDown className="w-5 h-5 text-cyan-400 shrink-0 ml-2" />
                       )}
                     </button>
                     {isMonthExpanded && (

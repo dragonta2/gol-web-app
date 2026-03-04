@@ -180,7 +180,7 @@ export default function CollapsibleDashboardHeader({
           </span>
           <span className="shrink-0 flex items-center gap-1 text-white">
             {collapsed ? (
-              <ChevronDown className="w-5 h-5" />
+              <ChevronDown className="w-5 h-5 text-cyan-400" />
             ) : (
               <ChevronUp className="w-5 h-5" />
             )}

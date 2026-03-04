@@ -191,7 +191,7 @@ export default function AdminSettingsClient() {
                   {ghostExpanded ? (
                     <ChevronUp className="w-4 h-4" />
                   ) : (
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-4 h-4 text-cyan-400" />
                   )}
                 </button>
                 {ghostExpanded && (
@@ -213,7 +213,7 @@ export default function AdminSettingsClient() {
                   {dqExpanded ? (
                     <ChevronUp className="w-4 h-4" />
                   ) : (
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-4 h-4 text-cyan-400" />
                   )}
                 </button>
                 {dqExpanded && (

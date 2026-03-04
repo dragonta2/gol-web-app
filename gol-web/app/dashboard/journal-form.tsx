@@ -573,7 +573,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             {isRightsExpanded ? (
               <ChevronUp className="w-6 h-6 text-zinc-300 shrink-0" />
             ) : (
-              <ChevronDown className="w-6 h-6 text-zinc-300 shrink-0" />
+              <ChevronDown className="w-6 h-6 text-cyan-400 shrink-0" />
             )}
           </button>
           {isRightsExpanded && (
@@ -752,7 +752,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             {isAiExpanded ? (
               <ChevronUp className="w-6 h-6 text-zinc-400 shrink-0" />
             ) : (
-              <ChevronDown className="w-6 h-6 text-zinc-400 shrink-0" />
+              <ChevronDown className="w-6 h-6 text-cyan-400 shrink-0" />
             )}
           </button>
           {isAiExpanded && (

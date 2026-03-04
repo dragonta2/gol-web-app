@@ -914,7 +914,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           {isGoodHabitsExpanded ? (
             <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+            <ChevronDown className="w-5 h-5 text-cyan-400 flex-shrink-0" />
           )}
         </button>
         {isGoodHabitsExpanded && (
@@ -1163,7 +1163,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           {isBadHabitsExpanded ? (
             <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+            <ChevronDown className="w-5 h-5 text-cyan-400 flex-shrink-0" />
           )}
         </button>
         {isBadHabitsExpanded && (
@@ -1408,7 +1408,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
             {isBonusExpanded ? (
               <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
             ) : (
-              <ChevronDown className="w-5 h-5 text-zinc-400 flex-shrink-0" />
+              <ChevronDown className="w-5 h-5 text-cyan-400 flex-shrink-0" />
             )}
           </button>
           {isBonusExpanded && (

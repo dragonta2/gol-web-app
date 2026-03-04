@@ -338,7 +338,7 @@ export default function DashboardTabs({
                 {isHabitsExpanded ? (
                   <ChevronUp className="w-6 h-6 text-zinc-400 flex-shrink-0" />
                 ) : (
-                  <ChevronDown className="w-6 h-6 text-zinc-400 flex-shrink-0" />
+                  <ChevronDown className="w-6 h-6 text-cyan-400 flex-shrink-0" />
                 )}
               </button>
 

@@ -1370,7 +1370,7 @@ export default function TodoSummaryTab({
                   aria-expanded={isExpanded}
                   className="flex items-center gap-2 text-zinc-400 hover:text-zinc-300 h-auto p-0"
                 >
-                  <span aria-hidden="true" className="inline-block text-[0.7rem] leading-none scale-95 origin-left">{isExpanded ? "▼" : "▶"}</span>
+                  <span aria-hidden="true" className={`inline-block text-[0.7rem] leading-none scale-95 origin-left ${isExpanded ? "text-zinc-400" : "text-cyan-400"}`}>{isExpanded ? "▼" : "▶"}</span>
                   <span>サブタスク ({subtasks.length}件)</span>
                 </Button>
               </div>
