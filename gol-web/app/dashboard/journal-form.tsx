@@ -79,6 +79,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   const [internalImpressionExpanded, setInternalImpressionExpanded] = useState(true);
   const [internalRightsExpanded, setInternalRightsExpanded] = useState(true);
   const [internalAiExpanded, setInternalAiExpanded] = useState(true);
+  const [isStoryExpanded, setIsStoryExpanded] = useState(true);
+  const [isAdviceExpanded, setIsAdviceExpanded] = useState(true);
 
   const isJournalExpanded = expandedStates?.journal ?? internalJournalExpanded;
   const isImpressionExpanded = expandedStates?.impression ?? internalImpressionExpanded;
@@ -939,60 +941,92 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           );
         })()}
 
-        {/* AIあらすじ（一括生成で判定・あらすじ・アドバイスをまとめて生成） */}
+        {/* AIあらすじ（一括生成で判定・あらすじ・アドバイスをまとめて生成）・アコーディオン */}
         <div className="space-y-3">
-          <h3 className="text-xl font-medium text-cyan-400">あらすじ</h3>
-          <div className="space-y-3">
-            <div>
-              <p className="text-lg font-medium text-white mb-1">これまでの冒険</p>
+          <button
+            type="button"
+            onClick={() => setIsStoryExpanded(!isStoryExpanded)}
+            className="w-full flex items-center justify-between gap-2 hover:opacity-80 transition-opacity text-left"
+            aria-expanded={isStoryExpanded}
+            aria-controls="ai-story-content"
+          >
+            <h3 className="text-xl font-medium text-cyan-400">あらすじ</h3>
+            {isStoryExpanded ? (
+              <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-cyan-400 shrink-0" />
+            )}
+          </button>
+          {isStoryExpanded && (
+            <div id="ai-story-content" className="space-y-3">
+              <div>
+                <p className="text-lg font-medium text-white mb-1">これまでの冒険</p>
+                {isJudging ? (
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                    <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+                    <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+                    <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+                    <Skeleton className="h-4 w-3/4 bg-zinc-700" />
+                  </div>
+                ) : aiStoryPast ? (
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryPast, { blankEveryTwoLines: true })}</p>
+                  </div>
+                ) : (
+                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+                    <p className="text-zinc-500 text-sm">未生成</p>
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-lg font-medium text-white mb-1">これからの冒険</p>
+                {aiStoryFuture ? (
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(stripFutureAdventureHeading(aiStoryFuture), { blankEveryTwoLines: true })}</p>
+                  </div>
+                ) : (
+                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+                    <p className="text-zinc-500 text-sm">未生成</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 辛口コーチング アドバイス（一括生成で生成）・アコーディオン */}
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setIsAdviceExpanded(!isAdviceExpanded)}
+            className="w-full flex items-center justify-between gap-2 hover:opacity-80 transition-opacity text-left"
+            aria-expanded={isAdviceExpanded}
+            aria-controls="ai-advice-content"
+          >
+            <h3 className="text-lg font-medium text-cyan-400">辛口コーチング アドバイス</h3>
+            {isAdviceExpanded ? (
+              <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-cyan-400 shrink-0" />
+            )}
+          </button>
+          {isAdviceExpanded && (
+            <div id="ai-advice-content">
               {isJudging ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
                   <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
                   <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-                  <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
                   <Skeleton className="h-4 w-3/4 bg-zinc-700" />
                 </div>
-              ) : aiStoryPast ? (
+              ) : aiAdvice ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryPast, { blankEveryTwoLines: true })}</p>
+                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true })}</p>
                 </div>
               ) : (
                 <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-500 text-sm">未生成</p>
+                  <p className="text-zinc-500 text-sm">未生成（上の「AI判定を実行」で一括生成）</p>
                 </div>
               )}
-            </div>
-            <div>
-              <p className="text-lg font-medium text-white mb-1">これからの冒険</p>
-              {aiStoryFuture ? (
-                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(stripFutureAdventureHeading(aiStoryFuture), { blankEveryTwoLines: true })}</p>
-                </div>
-              ) : (
-                <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-500 text-sm">未生成</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* 辛口コーチング アドバイス（一括生成で生成） */}
-        <div className="space-y-3">
-          <h3 className="text-lg font-medium text-cyan-400">辛口コーチング アドバイス</h3>
-          {isJudging ? (
-            <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-              <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-              <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-              <Skeleton className="h-4 w-3/4 bg-zinc-700" />
-            </div>
-          ) : aiAdvice ? (
-            <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-              <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true })}</p>
-            </div>
-          ) : (
-            <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-              <p className="text-zinc-500 text-sm">未生成（上の「AI判定を実行」で一括生成）</p>
             </div>
           )}
         </div>
