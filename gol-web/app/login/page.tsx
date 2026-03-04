@@ -197,6 +197,14 @@ function LoginContent() {
               href={googleLoginUrl}
               className="w-full flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-medium py-3 rounded-lg transition-colors"
             >
+              <Image
+                src="/google-g-logo.png"
+                alt=""
+                width={20}
+                height={20}
+                className="shrink-0"
+                aria-hidden
+              />
               Googleでログイン
             </a>
           </div>
