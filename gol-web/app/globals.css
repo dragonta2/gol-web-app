@@ -87,12 +87,12 @@ html[data-font-size="large"] {
   }
 }
 
-/* プレースホルダーテキストの色を薄く、黒寄りに */
+/* プレースホルダーテキストの色（明度2段階上げ: zinc-700 → zinc-500） */
 @layer base {
   input::placeholder,
   textarea::placeholder {
-    color: #3f3f46; /* zinc-700 - 薄く黒寄りのグレー */
-    opacity: 0.8;
+    color: #71717a; /* zinc-500 - やや明るめで視認しやすく */
+    opacity: 0.9;
   }
 }
 

@@ -351,18 +351,36 @@ function JournalImpressionSections({
                     <Edit className="w-5 h-5 sm:w-6 sm:h-6" />
                     <span>日誌</span>
                   </h4>
-                  <Textarea
-                    ref={journalTextareaRef}
-                    id="journal-text"
-                    value={journalText}
-                    onChange={(e) => handleJournalTextChange(e.target.value)}
-                    maxLength={journalMaxLength}
-                    placeholder="0730｜起床&#10;1000｜デスク向かう&#10;1200｜筋トレ&#10;..."
-                    aria-label="日誌を入力する"
-                    aria-describedby="journal-text-count"
-                    disabled={!isEditable}
-                    className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px]"
-                  />
+                  <div className="relative">
+                    <Textarea
+                      ref={journalTextareaRef}
+                      id="journal-text"
+                      value={journalText}
+                      onChange={(e) => handleJournalTextChange(e.target.value)}
+                      maxLength={journalMaxLength}
+                      placeholder=" "
+                      aria-label="日誌を入力する"
+                      aria-describedby="journal-text-count"
+                      disabled={!isEditable}
+                      className="relative z-0 bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px] px-3 py-2 rounded-md"
+                    />
+                    {!journalText && (
+                      <div
+                        className="absolute inset-0 z-10 pointer-events-none px-3 py-2 flex items-start overflow-hidden rounded-md border border-transparent text-[17px] md:text-[15px] text-[#71717a] whitespace-pre-line"
+                        style={{ height: '800px' }}
+                        aria-hidden
+                      >
+                        {`時系列の行動記録を記載してください。
+
+例）
+0600｜起床
+0610｜日光浴
+0630｜ラン｜2km
+0650｜冷水シャワー
+…`}
+                      </div>
+                    )}
+                  </div>
                   <div id="journal-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 shrink-0" aria-live="polite">
                     <Edit className="w-5 h-5" />
                     <span>{journalText.length} / {journalMaxLength}文字</span>
@@ -375,18 +393,35 @@ function JournalImpressionSections({
                     <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6" />
                     <span>感想</span>
                   </h4>
-                  <Textarea
-                    ref={impressionTextareaRef}
-                    id="impression-text"
-                    value={impressionText}
-                    onChange={(e) => handleImpressionTextChange(e.target.value)}
-                    maxLength={impressionMaxLength}
-                    placeholder="今日は久しぶりに運動ができて..."
-                    aria-label="感想を入力する"
-                    aria-describedby="impression-text-count"
-                    disabled={!isEditable}
-                    className="bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px]"
-                  />
+                  <div className="relative">
+                    <Textarea
+                      ref={impressionTextareaRef}
+                      id="impression-text"
+                      value={impressionText}
+                      onChange={(e) => handleImpressionTextChange(e.target.value)}
+                      maxLength={impressionMaxLength}
+                      placeholder=" "
+                      aria-label="感想を入力する"
+                      aria-describedby="impression-text-count"
+                      disabled={!isEditable}
+                      className="relative z-0 bg-zinc-800 border-zinc-600 text-zinc-100 focus:border-cyan-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px] px-3 py-2 rounded-md"
+                    />
+                    {!impressionText && (
+                      <div
+                        className="absolute inset-0 z-10 pointer-events-none px-3 py-2 flex items-start overflow-hidden rounded-md border border-transparent text-[17px] md:text-[15px] text-[#71717a] whitespace-pre-line"
+                        style={{ height: '800px' }}
+                        aria-hidden
+                      >
+                        {`その日一日の感想を記載してください。
+
+例）
+今日は早起きができて、良いスタートが切れた！！
+朝、目覚めるとすぐベランダに出て太陽を全身いっぱいに浴びた！！
+さっそく用意していた運動着に着替えて外に出た。
+朝日を浴びながら季節のにおいを感じつつ、走り出すと爽快な気分に…`}
+                      </div>
+                    )}
+                  </div>
                   <div id="impression-text-count" className="mt-2 text-base text-zinc-500 text-right flex items-center justify-end gap-1 shrink-0" aria-live="polite">
                     <Edit className="w-5 h-5" />
                     <span>{impressionText.length} / {impressionMaxLength}文字</span>
