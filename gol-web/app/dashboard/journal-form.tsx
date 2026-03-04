@@ -941,10 +941,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
         {/* AIあらすじ（一括生成で判定・あらすじ・アドバイスをまとめて生成） */}
         <div className="space-y-3">
-          <h3 className="text-lg font-medium text-cyan-400">あらすじ</h3>
+          <h3 className="text-xl font-medium text-cyan-400">あらすじ</h3>
           <div className="space-y-3">
             <div>
-              <p className="text-sm font-medium text-white mb-1">これまでの冒険</p>
+              <p className="text-lg font-medium text-white mb-1">これまでの冒険</p>
               {isJudging ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
                   <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
@@ -963,7 +963,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               )}
             </div>
             <div>
-              <p className="text-sm font-medium text-white mb-1">これからの冒険</p>
+              <p className="text-lg font-medium text-white mb-1">これからの冒険</p>
               {aiStoryFuture ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
                   <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(stripFutureAdventureHeading(aiStoryFuture), { blankEveryTwoLines: true })}</p>
