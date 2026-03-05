@@ -97,6 +97,9 @@ export default function DashboardTabs({
             <Lock className="w-4 h-4" />
             この日誌は確定済みのため編集できません
           </p>
+          <p className="text-yellow-200 text-center text-sm mt-2">
+            ToDoの新規作成は「新規タスク」ボタンまたはToDoサマリータブからいつでも可能です。
+          </p>
         </div>
       )}
       {!isConfirmed && dailyLog && (
@@ -377,6 +380,7 @@ export default function DashboardTabs({
           </div>
         )}
 
+        {/* ToDoサマリー: 確定・未確定に関係なく常に表示。新規ToDoの追加・編集・一覧はここで行う */}
         {activeTab === "todo-summary" && (
           <div
             id="tabpanel-todo-summary"

@@ -41,7 +41,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: todo.id,
-    disabled: isReadOnly,
+    disabled: false,
   });
 
   const style = {
@@ -52,7 +52,10 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
 
   const handleCardClick = (e: React.MouseEvent) => {
     if (isReadOnly && !(e.target instanceof HTMLElement && (e.target.closest('button') || e.target.closest('a')))) {
-      toast.info('確定済みの日誌のため、タスクの移動はできません');
+      toast.info(
+        '確定済みの日誌のため、タスクの移動はできません。状態を変える場合は、未確定の日付の日誌画面で行ってください。',
+        { duration: 5000 }
+      );
     }
   };
 
@@ -165,7 +168,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
                   id={`kanban-subtask-${subtask.id}`}
                   checked={subtask.is_completed}
                   onChange={() => onToggleSubtaskCompletion?.(subtask)}
-                  disabled={!onToggleSubtaskCompletion}
+                  disabled={isReadOnly || !onToggleSubtaskCompletion}
                   aria-label={`${subtask.subtask_name}を${subtask.is_completed ? '未完了' : '完了'}にする`}
                   className="w-4 h-4 text-cyan-600 bg-zinc-700 border-zinc-600 rounded focus:ring-cyan-500 shrink-0"
                 />
@@ -183,8 +186,8 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
         )}
       </div>
 
-      {/* 進行中のみ：アクティブに戻す（サブタスクと編集の間） */}
-      {todo.status === 'in_progress' && onMoveToActive && (
+      {/* 進行中のみ：アクティブに戻す（確定済みでは状態変化のため非表示） */}
+      {todo.status === 'in_progress' && onMoveToActive && !isReadOnly && (
         <div className="pt-3 mt-3 border-t border-zinc-700" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
@@ -199,7 +202,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
         </div>
       )}
 
-      {/* 編集ボタン（カードの一番右下） */}
+      {/* 編集ボタン（確定済みでもタスク名・難易度・期限などの編集は可能） */}
       {onEditTodo && (
         <div className="pt-3 mt-3 border-t border-zinc-700 flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
           <button
@@ -305,7 +308,7 @@ function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, o
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: todo.id,
-    disabled: isReadOnly,
+    disabled: false,
   });
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -313,7 +316,10 @@ function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, o
   };
   const handleCardClick = (e: React.MouseEvent) => {
     if (isReadOnly && !(e.target instanceof HTMLElement && (e.target.closest('button') || e.target.closest('a')))) {
-      toast.info('確定済みの日誌のため、タスクの移動はできません');
+      toast.info(
+        '確定済みの日誌のため、タスクの移動はできません。状態を変える場合は、未確定の日付の日誌画面で行ってください。',
+        { duration: 5000 }
+      );
     }
   };
   return (
@@ -356,7 +362,7 @@ function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, o
                   id={`kanban-completed-subtask-${subtask.id}`}
                   checked={subtask.is_completed}
                   onChange={() => onToggleSubtaskCompletion?.(subtask)}
-                  disabled={!onToggleSubtaskCompletion}
+                  disabled={isReadOnly || !onToggleSubtaskCompletion}
                   aria-label={`${subtask.subtask_name}を${subtask.is_completed ? '未完了' : '完了'}にする`}
                   className="w-4 h-4 text-cyan-600 bg-zinc-700 border-zinc-600 rounded focus:ring-cyan-500 shrink-0"
                 />
@@ -374,7 +380,7 @@ function DraggableCompletedTodoCard({ todo, icon, reward, formatCompletedDate, o
         )}
       </div>
 
-      {/* 編集ボタン（カードの一番右下） */}
+      {/* 編集ボタン（確定済みでもタスク名・難易度・期限などの編集は可能） */}
       {onEditTodo && (
         <div className="pt-3 mt-3 border-t border-zinc-700 flex justify-end" onClick={(e) => e.stopPropagation()}>
           <button
@@ -853,8 +859,16 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     return todo.sp_exp_body + todo.sp_exp_mind + todo.sp_exp_spirit;
   };
 
-  // ドラッグ開始時の処理
+  // ドラッグ開始時の処理（確定済みの場合はアラートを出してドラッグを無効にする）
   const handleDragStart = (event: DragStartEvent) => {
+    if (isConfirmed) {
+      toast.info(
+        '確定済みの日誌のため、タスクの移動はできません。状態を変える場合は、未確定の日付の日誌画面で行ってください。',
+        { duration: 5000 }
+      );
+      setActiveId(null);
+      return;
+    }
     setActiveId(event.active.id as string);
   };
 
@@ -1176,12 +1190,14 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
                       フィルター適用中: アクティブタスク {activeTodos.length}件 / 進行中 {inProgressTodos.length}件 / 完了 {completedTodos.length}件
                     </span>
                   )}
+                  {/* 確定済み日誌でも新規ToDo作成は可能（押下でToDoサマリーに切り替えて作成モーダルを開く） */}
                   {onOpenCreateModal && (
                     <Button
                       onClick={(e) => { e.stopPropagation(); onOpenCreateModal(); }}
                       variant="default"
                       size="sm"
                       className="text-cyan-400 bg-cyan-950/50 border border-cyan-700/50 hover:bg-cyan-900/50"
+                      aria-label="新規ToDoを作成（ToDoサマリーで追加）"
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       新規タスク

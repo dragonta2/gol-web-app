@@ -41,6 +41,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 
+/** ToDoサマリーは日誌の確定・未確定に依存しない独立タブ。新規ToDoの作成・編集・一覧はいつでも可能 */
 interface TodoSummaryTabProps {
   userId: string
   todos: Todo[]
@@ -1257,7 +1258,7 @@ export default function TodoSummaryTab({
     })()
   }
 
-  // ToDoカード（この画面ではドラッグ無効・状態変更は日誌タブで）
+  // ToDoカード（この画面ではドラッグ無効・状態変更は日誌タブで。カードクリックでその旨をトースト）
   const DraggableTodoCard = ({
     todo,
     isCompleted,
@@ -1276,10 +1277,22 @@ export default function TodoSummaryTab({
     const expDist = isCompleted ? getExpDistribution(todo.id) : null
     const reward = calculateReward(todo)
 
+    const handleCardClick = (e: React.MouseEvent) => {
+      if (!(e.target instanceof HTMLElement && (e.target.closest("button") || e.target.closest("a")))) {
+        toast.info(
+          "ToDoサマリー画面では状態変化（タスクの移動）はできません。状態を変える場合は、日誌タブの画面で行ってください。",
+          { duration: 5000 }
+        )
+      }
+    }
+
     return (
       <div
         ref={setNodeRef}
-        className={`bg-zinc-900 border border-white rounded-lg p-3 overflow-visible ${
+        role="button"
+        tabIndex={0}
+        onClick={handleCardClick}
+        className={`bg-zinc-900 border border-white rounded-lg p-3 overflow-visible cursor-default ${
           isCompleted ? "opacity-75" : ""
         }`}
       >
