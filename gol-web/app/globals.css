@@ -174,3 +174,15 @@ html[data-font-size="large"] {
     background: rgba(34, 211, 238, 0.5) !important;
   }
 }
+
+/* レベルアップ演出用クラッカーアニメーション */
+@keyframes level-up-confetti-fall {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) rotate(720deg);
+  }
+}

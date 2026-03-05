@@ -6,6 +6,7 @@ import CollapsibleDashboardHeader from './collapsible-dashboard-header';
 import DashboardTabs from './dashboard-tabs';
 import ApplyNewUserDefaultsBanner from './apply-new-user-defaults-banner';
 import DateSelector from '@/components/date-selector';
+import { LevelUpCelebrationTrigger } from '@/components/level-up-celebration';
 import type { DashboardHeaderProfile } from './collapsible-dashboard-header';
 import type { DashboardTabsProps } from '@/lib/types';
 import type { DayDeltas } from '@/lib/score-calculator';
@@ -23,6 +24,8 @@ export interface DashboardClientLayoutProps extends DashboardTabsProps {
   selectedDate: string;
   /** 未確定の日誌がある日の仮スコア（確定時に反映されるデルタ） */
   pendingDeltas?: DayDeltas | null;
+  /** 今回の読み込みでレベルが上がった場合 true（レベルアップ演出用） */
+  levelChanged?: boolean;
 }
 
 export default function DashboardClientLayout({
@@ -30,6 +33,7 @@ export default function DashboardClientLayout({
   selectedDate,
   pendingDeltas,
   dailyLog,
+  levelChanged,
   ...tabsProps
 }: DashboardClientLayoutProps) {
   const [activeTab, setActiveTab] = useState<
@@ -41,6 +45,10 @@ export default function DashboardClientLayout({
 
   return (
     <CalendarDialogProvider>
+      <LevelUpCelebrationTrigger
+        levelChanged={levelChanged ?? false}
+        newLevel={userProfile.level}
+      />
       <CollapsibleDashboardHeader
         userProfile={userProfile}
         selectedDate={selectedDate}

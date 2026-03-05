@@ -17,7 +17,6 @@ import {
   Upload,
   FileJson,
   FileSpreadsheet,
-  Megaphone,
 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -256,19 +255,6 @@ export function MypageSettingsSection() {
           )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link href="/announcements">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
-              <div className="flex items-center gap-3 mb-2">
-                <Megaphone className="w-6 h-6 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">
-                  お知らせ
-                </h3>
-              </div>
-              <p className="text-sm text-zinc-400">
-                日付・件名でお知らせを表示・追加
-              </p>
-            </div>
-          </Link>
           <Link href="/settings/habits">
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">

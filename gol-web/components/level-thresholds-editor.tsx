@@ -86,7 +86,7 @@ export function LevelThresholdsEditor({ forceShowForAdmin = false }: { forceShow
   };
 
   const handleReset = () => {
-    if (!window.confirm('本当にデフォルト値に戻しますか？')) return;
+    if (!window.confirm('本当に初期値に戻しますか？')) return;
     const defaults: LevelThresholds = {
       1: 50, 2: 100, 3: 200, 4: 400, 5: 600,
       6: 900, 7: 1200, 8: 1600, 9: 2000, 10: 2500,
@@ -134,7 +134,7 @@ export function LevelThresholdsEditor({ forceShowForAdmin = false }: { forceShow
         身体・頭脳・精神のそれぞれが、各レベルの閾値EXPを超えるとレベルアップします。ヨウテイモード・ドラクエモードどちらも同じ閾値です。変更は全アカウントに共通で反映されます。
       </p>
       <p className="text-xs text-zinc-400 mb-4">
-        デフォルト値: {DEFAULT_VALUES_TEXT}
+        初期値: {DEFAULT_VALUES_TEXT}
       </p>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
         {LEVEL_KEYS.map((lv) => (
@@ -171,7 +171,7 @@ export function LevelThresholdsEditor({ forceShowForAdmin = false }: { forceShow
           onClick={handleReset}
           className="bg-zinc-600 hover:bg-zinc-500 text-zinc-100 border-0 ml-auto"
         >
-          デフォルト値に戻す
+          初期値に戻す
         </Button>
       </div>
     </section>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { ArrowLeft, ChevronDown, ChevronUp, Settings } from "lucide-react"
+import { ArrowLeft, ChevronDown, ChevronUp, Megaphone, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import type { StoryWorldConfig, StoryWorldId } from "@/lib/ai/story-worlds"
@@ -153,6 +153,22 @@ export default function AdminSettingsClient() {
         <p className="text-sm text-zinc-400 mb-6">
           世界観の詳細・文字数制限・レベルアップ必要EXP。管理者アカウントのみ編集可能です。
         </p>
+
+        {/* お知らせ（管理者用） */}
+        <section className="mb-6">
+          <Link
+            href="/announcements"
+            className="block bg-zinc-900 border border-zinc-800 rounded-lg p-5 hover:border-cyan-600 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Megaphone className="w-6 h-6 text-cyan-400 shrink-0" />
+              <div>
+                <h2 className="text-base font-semibold text-zinc-100">お知らせ</h2>
+                <p className="text-sm text-zinc-400">日付・件名でお知らせを表示・追加</p>
+              </div>
+            </div>
+          </Link>
+        </section>
 
         {/* 世界観の詳細設定 */}
         <section className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mb-6">

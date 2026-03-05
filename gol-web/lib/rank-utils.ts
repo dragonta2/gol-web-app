@@ -5,9 +5,9 @@
 
 export type RankMode = 'ghost' | 'dq';
 
-/** 各レベルに必要なEXP（身体・頭脳・精神それぞれがこの値を超える必要がある） */
+/** 各レベルに必要なEXP（身体・頭脳・精神それぞれがこの値を超える必要がある）。Lv.1は0＝スタート地点なので必要EXPなし */
 export const LEVEL_THRESHOLDS: Record<number, number> = {
-  1: 50,
+  1: 0,
   2: 100,
   3: 200,
   4: 400,

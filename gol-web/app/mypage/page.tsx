@@ -22,6 +22,7 @@ import {
 import { RankAvatar } from "@/components/rank-avatar"
 import { MypageSettingsSection } from "@/components/mypage-settings-section"
 import FontSizeControl from "@/components/font-size-control"
+import { LevelUpCelebrationTrigger } from "@/components/level-up-celebration"
 
 export default async function MypagePage() {
   const supabase = await createClient()
@@ -90,6 +91,10 @@ export default async function MypagePage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 p-4 sm:p-6 lg:p-8">
+      <LevelUpCelebrationTrigger
+        levelChanged={levelInfo.levelChanged}
+        newLevel={levelInfo.level}
+      />
       <div className="max-w-4xl mx-auto">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <Link
@@ -205,7 +210,7 @@ export default async function MypagePage() {
           {expToNext ? (
             <div className="space-y-3 text-lg">
               <p className="text-zinc-400 mb-3">
-                身体・頭脳・精神のそれぞれが次の閾値を超えるとレベルアップします。
+                身体・頭脳・精神の3つとも次の閾値を超えるとレベルアップします。（1つでも足りないと昇格しません）
               </p>
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-zinc-800 rounded-lg p-3">

@@ -18,10 +18,22 @@ export default async function AnnouncementsPage() {
     .single();
 
   const email = user.email ?? '';
+  const emailLower = email.toLowerCase();
   const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS
     ? process.env.NEXT_PUBLIC_ADMIN_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
     : [];
-  const isAdmin = profile?.is_admin === true || (email ? adminEmails.includes(email.toLowerCase()) : false);
+  const testEmails = process.env.NEXT_PUBLIC_TEST_EMAILS
+    ? process.env.NEXT_PUBLIC_TEST_EMAILS.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+    : [];
+  const isAdmin =
+    profile?.is_admin === true ||
+    (emailLower && adminEmails.includes(emailLower)) ||
+    (emailLower && testEmails.includes(emailLower));
+
+  if (!isAdmin) {
+    redirect('/settings/account');
+  }
+
   const canManageAnnouncements = canManage(email || undefined, isAdmin);
 
   return <AnnouncementsClient canManageAnnouncements={canManageAnnouncements} />;

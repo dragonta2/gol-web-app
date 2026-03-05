@@ -970,6 +970,15 @@ Step 4: 次のステップへ
 
 - **SUPABASE_SERVICE_ROLE_KEY**: RLS を通過する管理者用キー。マイグレーション・バッチなどサーバー側の特別な処理でのみ使用。取得元: Supabase Project Settings → API の service_role キー。クライアントに渡さない
 
+**レベル閾値の確認（管理者向け）**
+
+管理者画面「レベルアップ必要EXPの設定」で設定した値がDBに正しく入っているか確認したいときは
+
+Supabase ダッシュボードの **SQL Editor** で次のファイルのSQLを実行してください。
+レベルごとの閾値が一覧で表示されます。
+
+- `docs/appendix/DB-related/sql-snippet/check-level-thresholds.sql`
+
 ### 利用方針・ホスティング選定（少人数運用）
 
 **自分も本番 URL で利用する**
