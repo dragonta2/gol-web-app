@@ -50,6 +50,24 @@
 
 ## 2602 --------------
 
+### 260306-金
+
+#### マイページ習慣管理UI改善・作業終了
+
+**実施内容（詳細）:**
+
+- **習慣管理（settings/habits/page.tsx）**
+  - 良習慣・悪習慣セクションをアコーディオンで畳めるようにした（openGoodAccordion / openBadAccordion 状態、見出しを button でクリック開閉、ChevronUp/Down）
+  - 見出しのアイコン・色を日誌画面（habit-list.tsx）に統一: 良習慣＝CheckCircle + text-cyan-400、悪習慣＝AlertCircle + text-red-400（Sparkles・緑を廃止）
+  - ボーナス習慣の枠を削除（表示ブロック・bonusHabits/bonusTree・Trophy import を削除）
+  - 「良習慣を追加」ボタンを bg-cyan-600 に変更、「良習慣を追加」「悪習慣を追加」両方のボタンに font-bold を追加
+  - アコーディオン閉時（下向き矢印）の ChevronDown を text-cyan-400 に統一（他画面と同様）
+  - 余分な `</div>` を1つ削除し、Build Error（Unterminated regexp literal）を解消
+- **作業終了**
+  - 進捗メモ（3-project-progress.md・4-dev-log.md）に 260306-金 を追記。add・commit（箇条書き1つ）・push
+
+---
+
 ### 260305-木
 
 #### _INDEX.md 更新・通称プレフィックス追加・作業終了
