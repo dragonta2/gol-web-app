@@ -4,26 +4,22 @@
 
 ---
 
-## 📚 ドキュメント一覧
+## 📚 ドキュメント一覧 --------------​
 
 ### 0-AI-prompt-memo.md
-**通称:** AIプロンプトメモ
+**通称:** AIプロンプトメモ、0、0番
 **役割:** AIへのプロンプト指示をメモした雑多なファイル
 
-### z-project-draft.md
-**通称:** 草案、ドラフト
-**役割:** AIへの指示や設計の草案（下書き・思考整理・アイデアメモ）
-
 ### 1-spec-sheet.md
-**通称:** 仕様書、運用ルール、ルール、ルールブック
+**通称:** 仕様書、設計書、運用ルール、ルール、ルールブック、1、1番
 **役割:** 決定稿の実装ルール（確定した設計・仕様・ルール）
 
-### appendix/wireframe.md
-**通称:** ワイヤーフレーム
-**役割:** 画面レイアウトのワイヤーフレーム（UI設計図）
+### 2-support-of-progress.md
+**通称:** 進捗支援、2、2番
+**役割:** 一時的な進捗管理・支援、方針決定のサポート用に利用するドキュメント
 
 ### 3-project-progress.md
-**通称:** 進捗表、簡潔記録
+**通称:** 進捗表、簡潔記録、3、3番
 **役割:** 日々のGOL-Web版の進捗報告（整理されたもの）
 
 **記載内容:** 概要、一覧、サマリー程度。「何を作ったか」を簡潔に記録
@@ -37,7 +33,7 @@
 **記述レベル:** クリーンで読みやすい
 
 ### 4-dev-log.md
-**通称:** 開発ログ、詳細記録
+**通称:** 開発ログ、詳細記録、4、4番
 **役割:** 作業ログ（雑多でOK、コマンド、使用した流れ、学習メモ）
 
 **記載内容:** 詳細にやったことを全て記録。「どうやって作ったか」を詳細に記録
@@ -54,72 +50,78 @@
 **⚠️ 4と5の棲み分けを厳守すること**
 
 ### 5-dta2-memo.md
-**通称:** dta2メモ
+**通称:** dta2メモ、5、5番
 **役割:** AI時代のエンジニア、クリエイターとしての考え方、心がけ、良いやり方
-
-### 2-support-of-progress.md
-**通称:** 進捗支援
-**役割:** 一時的な進捗管理・支援、方針決定のサポート用に利用するドキュメント
-
-### 07-database-schema.md
-**通称:** DB設計書
-**役割:** Supabaseデータベース設計書（テーブル定義、RLS設定、初期データ挿入関数）
-
-### 08-md-sync-analysis.md
-**通称:** MD同期分析
-**役割:** MD版との同期機能に関する分析・設計
-
-### 09-server-validation.md
-**通称:** サーバーバリデーション設計書
-**役割:** サーバー側バリデーション設計書
-
-### 10-progress-support.md
-**通称:** 進捗支援
-**役割:** 一時的な進捗管理・支援、方針決定のサポート用に利用するドキュメント
-
-### 11-tags-difficulty-design.md
-**通称:** タグ・難易度設計書
-**役割:** タグ機能と難易度設定機能の設計書
-
----
-
-## 📋 ガイド・マニュアル
-
-### ADMIN_SETUP_GUIDE.md
-**役割:** 管理者権限の設定ガイド
-
-### AI_USAGE_TROUBLESHOOTING.md
-**役割:** AI機能の使用に関するトラブルシューティングガイド
-
-### DATA_DELETION_GUIDE.md
-**役割:** データ削除機能のガイド
-
-### DATABASE_SETUP_GUIDE.md
-**役割:** データベースセットアップガイド
-
-### DEBUG_STATUS_500.md
-**役割:** ステータス500エラーのデバッグガイド
-
-### HABITICA_ANALYSIS_REPORT.md
-**役割:** Habiticaアプリの分析レポート
-
-### MARKDOWN_MIGRATION_GUIDE.md
-**役割:** マークダウン版からの移行ガイド
-
-### SETTINGS_IMPLEMENTATION_PLAN.md
-**役割:** 設定機能の実装計画書
 
 ### thread-summary-260122.md
 **役割:** スレッドサマリー（260122時点）
 
+### z-project-draft.md
+**通称:** 草案、ドラフト、z、z番
+**役割:** AIへの指示や設計の草案（下書き・思考整理・アイデアメモ）
+
+## 📋 appendix -------------
+
+### appendix/wireframe.md
+**通称:** ワイヤーフレーム
+**役割:** 画面レイアウトのワイヤーフレーム（UI設計図）
+
+### appendix/deploy-guide.md
+**通称:** デプロイガイド
+**役割:** デプロイ手順・運用ガイド
+
+- DB 関連 ------
+
+### appendix/DB-related/DATABASE_SCHEMA.md
+**通称:** DB設計書
+**役割:** Supabaseデータベース設計書（テーブル定義、RLS設定、初期データ挿入関数）
+
+### appendix/DB-related/MD_SYNC_ANALYSIS.md
+**通称:** MD同期分析
+**役割:** MD版との同期機能に関する分析・設計
+
+### appendix/DB-related/SERVER_VALIDATION.md
+**通称:** サーバーバリデーション設計書
+**役割:** サーバー側バリデーション設計書
+
+### appendix/DB-related/TAGS_DIFFICULTY_DESIGN.md
+**通称:** タグ・難易度設計書
+**役割:** タグ機能と難易度設定機能の設計書
+
+- ガイド ------
+
+### appendix/DB-related/ADMIN_SETUP_GUIDE.md
+**役割:** 管理者権限の設定ガイド
+
+### appendix/DB-related/AI_USAGE_TROUBLESHOOTING.md
+**役割:** AI機能の使用に関するトラブルシューティングガイド
+
+### appendix/DB-related/DATA_DELETION_GUIDE.md
+**役割:** データ削除機能のガイド
+
+### appendix/DB-related/DATABASE_SETUP_GUIDE.md
+**役割:** データベースセットアップガイド
+
+### appendix/DB-related/DEBUG_STATUS_500.md
+**役割:** ステータス500エラーのデバッグガイド
+
+### appendix/DB-related/HABITICA_ANALYSIS_REPORT.md
+**役割:** Habiticaアプリの分析レポート
+
+### appendix/DB-related/MARKDOWN_MIGRATION_GUIDE.md
+**役割:** マークダウン版からの移行ガイド
+
+### appendix/DB-related/SETTINGS_IMPLEMENTATION_PLAN.md
+**役割:** 設定機能の実装計画書
+
 ---
 
-## 💾 SQLファイル
+## 💾 SQLファイル --------------​
 
-### supabase-setup.sql
+### appendix/DB-related/sql-snippet/supabase-setup.sql
 **役割:** Supabase実行用SQLファイル（全テーブル作成、RLS設定、関数作成を一括実行）
 
-### sql-snippet/
+### appendix/DB-related/sql-snippet/
 **役割:** SQLスニペット集（個別のテーブル作成・更新用SQLファイル）
 - `add-difficulty-column-to-todos.sql`: ToDoテーブルに難易度カラムを追加
 - `add-unique-constraint-todos.sql`: ToDoテーブルにユニーク制約を追加
@@ -138,6 +140,4 @@
 - `supabase-trigger-setup.sql`: トリガー関数のセットアップ
 - `update-difficulty-to-3-levels.sql`: 難易度を3段階に更新
 
-
-**最終更新: 2026-01-23**
-
+**最終更新: 2026-03-05**
