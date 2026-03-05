@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Edit, Trash2, GripVertical, Sparkles, AlertCircle, Trophy } from 'lucide-react';
 
@@ -209,6 +209,25 @@ export default function HabitsSettingsPage() {
     }
   };
 
+  // 新規追加ダイアログを開く（日誌画面と同じく、良習慣用・悪習慣用で開き分け）
+  const openAddDialog = (habitType: 'good' | 'bad') => {
+    setEditingHabit(null);
+    setFormData({
+      habit_name: '',
+      description: '',
+      habit_type: habitType,
+      points: 1,
+      exp_body: 0,
+      exp_mind: 0,
+      exp_spirit: 0,
+      input_type: 'checkbox',
+      exclude_weekends: false,
+      exclude_from_complete: false,
+      parent_habit_id: '',
+    });
+    setIsDialogOpen(true);
+  };
+
   // 編集ダイアログを開く
   const openEditDialog = (habit: Habit) => {
     setEditingHabit(habit);
@@ -305,22 +324,27 @@ export default function HabitsSettingsPage() {
           </Link>
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-cyan-400">習慣管理</h1>
-            <Dialog open={isDialogOpen} onOpenChange={(open) => {
-              setIsDialogOpen(open);
-              if (!open) resetForm();
-            }}>
-              <DialogTrigger asChild>
-                <Button className="bg-cyan-600 hover:bg-cyan-700">
-                  <Plus className="w-4 h-4 mr-2" />
-                  習慣を追加
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle className="text-2xl text-cyan-400">
-                    {editingHabit ? '習慣を編集' : '新しい習慣を追加'}
-                  </DialogTitle>
-                </DialogHeader>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => openAddDialog('good')} className="bg-green-600 hover:bg-green-700">
+                <Plus className="w-4 h-4 mr-2" />
+                良習慣を追加
+              </Button>
+              <Button onClick={() => openAddDialog('bad')} className="bg-red-600 hover:bg-red-700">
+                <Plus className="w-4 h-4 mr-2" />
+                悪習慣を追加
+              </Button>
+            </div>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}>
+            <DialogContent className="bg-zinc-900 border-zinc-800 text-zinc-100 max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-2xl text-cyan-400">
+                  {editingHabit ? '習慣を編集' : formData.habit_type === 'bad' ? '悪習慣を追加' : '良習慣を追加'}
+                </DialogTitle>
+              </DialogHeader>
                 <div className="space-y-4 mt-4">
                   {/* 習慣名 */}
                   <div>
@@ -347,9 +371,13 @@ export default function HabitsSettingsPage() {
                     />
                   </div>
 
-                  {/* ゴルド */}
+                  {/* ゴルド（良習慣: + 表記 / 悪習慣: - 表記。タイプは「良習慣を追加」「悪習慣を追加」で開き分け） */}
                   <div>
-                    <Label htmlFor="points" className="text-zinc-300">ゴルド</Label>
+                    <Label htmlFor="points" className="text-zinc-300">
+                      ゴルド
+                      {formData.habit_type === 'good' && <span className="text-green-400 ml-1">(+)</span>}
+                      {formData.habit_type === 'bad' && <span className="text-red-400 ml-1">(-)</span>}
+                    </Label>
                     <Input
                       id="points"
                       type="number"
@@ -359,11 +387,11 @@ export default function HabitsSettingsPage() {
                     />
                   </div>
 
-                  {/* EXP（良習慣のみ） */}
+                  {/* EXP（良習慣: + 表記 / 悪習慣: - 表記） */}
                   {formData.habit_type === 'good' && (
                     <>
                       <div>
-                        <Label htmlFor="exp_body" className="text-exp-body">身体EXP</Label>
+                        <Label htmlFor="exp_body" className="text-exp-body">身体EXP <span className="text-green-400">(+)</span></Label>
                         <Input
                           id="exp_body"
                           type="number"
@@ -373,7 +401,7 @@ export default function HabitsSettingsPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="exp_mind" className="text-exp-intelligence">頭脳EXP</Label>
+                        <Label htmlFor="exp_mind" className="text-exp-intelligence">頭脳EXP <span className="text-green-400">(+)</span></Label>
                         <Input
                           id="exp_mind"
                           type="number"
@@ -383,7 +411,7 @@ export default function HabitsSettingsPage() {
                         />
                       </div>
                       <div>
-                        <Label htmlFor="exp_spirit" className="text-exp-mind">精神EXP</Label>
+                        <Label htmlFor="exp_spirit" className="text-exp-mind">精神EXP <span className="text-green-400">(+)</span></Label>
                         <Input
                           id="exp_spirit"
                           type="number"
@@ -394,8 +422,40 @@ export default function HabitsSettingsPage() {
                       </div>
                     </>
                   )}
-
-                  {/* 入力タイプは当面チェックリストのみのため非表示（常に checkbox） */}
+                  {formData.habit_type === 'bad' && (
+                    <>
+                      <div>
+                        <Label htmlFor="exp_body_bad" className="text-exp-body">身体EXP <span className="text-red-400">(-)</span></Label>
+                        <Input
+                          id="exp_body_bad"
+                          type="number"
+                          value={formData.exp_body}
+                          onChange={(e) => setFormData({ ...formData, exp_body: parseInt(e.target.value) || 0 })}
+                          className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="exp_mind_bad" className="text-exp-intelligence">頭脳EXP <span className="text-red-400">(-)</span></Label>
+                        <Input
+                          id="exp_mind_bad"
+                          type="number"
+                          value={formData.exp_mind}
+                          onChange={(e) => setFormData({ ...formData, exp_mind: parseInt(e.target.value) || 0 })}
+                          className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="exp_spirit_bad" className="text-exp-mind">精神EXP <span className="text-red-400">(-)</span></Label>
+                        <Input
+                          id="exp_spirit_bad"
+                          type="number"
+                          value={formData.exp_spirit}
+                          onChange={(e) => setFormData({ ...formData, exp_spirit: parseInt(e.target.value) || 0 })}
+                          className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                        />
+                      </div>
+                    </>
+                  )}
 
                   {/* オプション */}
                   <div className="space-y-2">
@@ -442,7 +502,6 @@ export default function HabitsSettingsPage() {
               </DialogContent>
             </Dialog>
           </div>
-        </div>
 
         {/* 習慣一覧 */}
         {loading ? (
