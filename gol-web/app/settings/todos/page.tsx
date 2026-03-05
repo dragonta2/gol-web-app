@@ -497,23 +497,23 @@ export default function TodosSettingsPage() {
                     optional
                   />
 
-                  {/* ボタン */}
-                  <div className="flex gap-3 pt-4">
-                    <Button
-                      onClick={editingTodo ? handleUpdateTodo : handleAddTodo}
-                      className="bg-cyan-600 hover:bg-cyan-700"
-                    >
-                      {editingTodo ? '更新' : '追加'}
-                    </Button>
+                  {/* ボタン：キャンセル左端・グレー、更新は右端 */}
+                  <div className="flex justify-between gap-3 pt-4">
                     <Button
                       onClick={() => {
                         setIsDialogOpen(false);
                         resetForm();
                       }}
                       variant="outline"
-                      className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                      className="bg-zinc-600 hover:bg-zinc-500 text-zinc-200 border-zinc-500"
                     >
                       キャンセル
+                    </Button>
+                    <Button
+                      onClick={editingTodo ? handleUpdateTodo : handleAddTodo}
+                      className="bg-cyan-600 hover:bg-cyan-700 shrink-0"
+                    >
+                      {editingTodo ? '更新' : '追加'}
                     </Button>
                   </div>
                 </div>

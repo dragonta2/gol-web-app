@@ -303,7 +303,8 @@ export default function DashboardTabs({
               isConfirmed={isConfirmed}
             />
 
-            {/* 今日の日誌と一言感想 */}
+            {/* 今日の日誌と一言感想（上余白2段階追加） */}
+            <div className="mt-6 sm:mt-8 lg:mt-10">
             <JournalImpressionSections
               dailyLogId={dailyLogId}
               dailyLog={dailyLog}
@@ -321,6 +322,7 @@ export default function DashboardTabs({
               isConfirmed={isConfirmed}
               journalTextsRef={journalTextsRef}
             />
+            </div>
 
             {/* 習慣チェックリスト */}
             <button

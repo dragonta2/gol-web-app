@@ -442,6 +442,7 @@ function DroppableColumn({
   onToggleSubtaskCompletion,
   formatSubtaskCompletedDate,
   isReadOnly = false,
+  onAddTask,
 }: {
   id: string;
   title: string;
@@ -462,6 +463,8 @@ function DroppableColumn({
   onToggleSubtaskCompletion?: (subtask: TodoSubtask) => void;
   formatSubtaskCompletedDate: (completedAt: string | null) => string;
   isReadOnly?: boolean;
+  /** アクティブタスク列のときのみ使用。列の一番下に「タスクを追加」ボタンを表示 */
+  onAddTask?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
@@ -563,6 +566,20 @@ function DroppableColumn({
           })
         )}
       </div>
+      {/* アクティブタスク列の一番下：トレロ風「タスクを追加」ボタン */}
+      {title === 'アクティブタスク' && onAddTask && (
+        <div className="mt-2 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onAddTask(); }}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-600 transition-colors text-sm font-medium"
+            aria-label="タスクを追加"
+          >
+            <Plus className="w-4 h-4 shrink-0" />
+            タスクを追加
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -1285,6 +1302,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
             onToggleSubtaskCompletion={handleToggleSubtaskCompletion}
             formatSubtaskCompletedDate={formatSubtaskCompletedDate}
             isReadOnly={isConfirmed}
+            onAddTask={onOpenCreateModal}
           />
 
           {/* 進行中カラム */}

@@ -1734,7 +1734,15 @@ export default function TodoSummaryTab({
         footer={
           <>
             <div className="flex flex-1 items-center justify-between gap-2 flex-wrap">
-              <div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={handleCloseModal}
+                  disabled={isSubmitting}
+                  variant="outline"
+                  className="bg-zinc-600 hover:bg-zinc-500 text-zinc-200 border-zinc-500"
+                >
+                  キャンセル
+                </Button>
                 {editingTodo && (
                   <Button
                     type="button"
@@ -1750,23 +1758,13 @@ export default function TodoSummaryTab({
                   </Button>
                 )}
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={handleSaveTodo}
-                  disabled={isSubmitting}
-                  className="bg-cyan-600 hover:bg-cyan-700 text-white"
-                >
-                  {isSubmitting ? "保存中..." : editingTodo ? "更新" : "作成"}
-                </Button>
-                <Button
-                  onClick={handleCloseModal}
-                  disabled={isSubmitting}
-                  variant="outline"
-                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700"
-                >
-                  キャンセル
-                </Button>
-              </div>
+              <Button
+                onClick={handleSaveTodo}
+                disabled={isSubmitting}
+                className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
+              >
+                {isSubmitting ? "保存中..." : editingTodo ? "更新" : "作成"}
+              </Button>
             </div>
           </>
         }
@@ -1884,47 +1882,7 @@ export default function TodoSummaryTab({
           </p>
         </FormCard>
 
-        {/* ステータス（編集時のみ選択可。新規は常にアクティブ） */}
-        {editingTodo && (
-          <div>
-            <FormLabel htmlFor="status">ステータス</FormLabel>
-            <select
-              id="status"
-              value={formData.status}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  status: e.target.value as
-                    | "active"
-                    | "in_progress"
-                    | "completed",
-                })
-              }
-              className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
-            >
-              <option value="active">アクティブタスク</option>
-              <option value="in_progress">進行中</option>
-              <option value="completed">完了済み</option>
-            </select>
-          </div>
-        )}
-
-        {/* 保留にする（編集時のみ） */}
-        {editingTodo && (
-          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
-            <input
-              type="checkbox"
-              checked={formData.is_on_hold}
-              onChange={(e) =>
-                setFormData({ ...formData, is_on_hold: e.target.checked })
-              }
-              className="w-4 h-4 rounded border-zinc-600 text-cyan-500"
-            />
-            <span className="text-zinc-100 text-sm">保留にする</span>
-          </label>
-        )}
-
-        {/* サブタスク（編集時のみ：一覧・リネーム・追加・削除・並び替え＝矢印またはドラッグ） */}
+        {/* サブタスク（編集時のみ：一覧・リネーム・追加・削除・並び替え＝矢印またはドラッグ）。属性とステータスの間 */}
         {editingTodo && (() => {
           const subtaskList = getSubtasksForTodo(editingTodo.id)
           return (
@@ -1968,6 +1926,46 @@ export default function TodoSummaryTab({
             </div>
           )
         })()}
+
+        {/* ステータス（編集時のみ選択可。新規は常にアクティブ） */}
+        {editingTodo && (
+          <div>
+            <FormLabel htmlFor="status">ステータス</FormLabel>
+            <select
+              id="status"
+              value={formData.status}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  status: e.target.value as
+                    | "active"
+                    | "in_progress"
+                    | "completed",
+                })
+              }
+              className="mt-2 w-full pl-4 pr-10 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent custom-select-arrow"
+            >
+              <option value="active">アクティブタスク</option>
+              <option value="in_progress">進行中</option>
+              <option value="completed">完了済み</option>
+            </select>
+          </div>
+        )}
+
+        {/* 保留にする（編集時のみ） */}
+        {editingTodo && (
+          <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+            <input
+              type="checkbox"
+              checked={formData.is_on_hold}
+              onChange={(e) =>
+                setFormData({ ...formData, is_on_hold: e.target.checked })
+              }
+              className="w-4 h-4 rounded border-zinc-600 text-cyan-500"
+            />
+            <span className="text-zinc-100 text-sm">保留にする</span>
+          </label>
+        )}
 
         {/* 期限（ヘッダーと同じダークカレンダーで選択） */}
         <DatePickerField
