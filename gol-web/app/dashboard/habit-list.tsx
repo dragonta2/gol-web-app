@@ -935,7 +935,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
-                      <span className="text-[calc(1em-2px)] text-zinc-400 truncate min-w-0">
+                      <span className="text-[calc(1em-2px)] text-zinc-400 truncate min-w-0" title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
                         {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
                       </span>
                     </div>
@@ -980,6 +980,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   <label
                     htmlFor={`habit-${parent.id}`}
                     className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                    title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}
                   >
                     {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
                   </label>
@@ -1183,7 +1184,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
-                      <span className="text-[calc(1em-2px)] text-zinc-400 truncate min-w-0">
+                      <span className="text-[calc(1em-2px)] text-zinc-400 truncate min-w-0" title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
                         {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
                       </span>
                     </div>
@@ -1226,6 +1227,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   <label
                     htmlFor={`habit-${parent.id}`}
                     className={`block text-[calc(1em-2px)] cursor-pointer truncate min-w-0 ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                    title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}
                   >
                     {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
                   </label>
@@ -1312,6 +1314,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                     <label
                       htmlFor={`habit-${child.id}`}
                       className={`block text-[calc(1em-2px)] cursor-pointer truncate min-w-0 ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                      title={[child.habit_name, child.description?.trim()].filter(Boolean).join('｜') || undefined}
                     >
                       {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
                     </label>
@@ -1472,6 +1475,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                     <label
                       htmlFor={isFirstBonus ? `bonus-${parent.id}` : `habit-${parent.id}`}
                       className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                      title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}
                     >
                       {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
                     </label>
@@ -1560,6 +1564,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                       <label
                         htmlFor={`habit-${child.id}`}
                         className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}
+                        title={[child.habit_name, child.description?.trim()].filter(Boolean).join('｜') || undefined}
                       >
                         {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
                       </label>

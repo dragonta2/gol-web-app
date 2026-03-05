@@ -231,11 +231,11 @@ export default function CollapsibleDashboardHeader({
               <span className="hidden sm:inline">
                 <RankNameDisplay level={userProfile.level} />
               </span>
-              <span className="sm:hidden inline-block max-w-20 truncate">
+              <span className="sm:hidden inline-block max-w-20 truncate" title={userProfile.class}>
                 <RankNameDisplay level={userProfile.level} />
               </span>
               <span className="text-zinc-500">|</span>
-              <span className="flex items-baseline gap-1 font-semibold text-gold">
+              <span className="flex items-baseline gap-1 font-semibold text-gold" title={`${userProfile.points} GOLD`}>
                 <Coins className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 self-center" />
                 <span className="text-[25px] sm:text-[27px] leading-none">{userProfile.points}</span>
                 <span className="text-[15px] sm:text-[17px] leading-none translate-y-[2px]">GOLD</span>
