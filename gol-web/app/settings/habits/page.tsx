@@ -347,43 +347,6 @@ export default function HabitsSettingsPage() {
                     />
                   </div>
 
-                  {/* 習慣タイプ */}
-                  <div>
-                    <Label className="text-zinc-300">習慣タイプ *</Label>
-                    <div className="flex gap-4 mt-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="good"
-                          checked={formData.habit_type === 'good'}
-                          onChange={(e) => setFormData({ ...formData, habit_type: 'good' as const, parent_habit_id: '' })}
-                          className="w-4 h-4 text-cyan-600"
-                        />
-                        <span className="text-zinc-300">良習慣</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="bad"
-                          checked={formData.habit_type === 'bad'}
-                          onChange={(e) => setFormData({ ...formData, habit_type: 'bad' as const, parent_habit_id: '' })}
-                          className="w-4 h-4 text-cyan-600"
-                        />
-                        <span className="text-zinc-300">悪習慣</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          value="bonus"
-                          checked={formData.habit_type === 'bonus'}
-                          onChange={(e) => setFormData({ ...formData, habit_type: 'bonus' as const, parent_habit_id: '' })}
-                          className="w-4 h-4 text-cyan-600"
-                        />
-                        <span className="text-zinc-300">ボーナス</span>
-                      </label>
-                    </div>
-                  </div>
-
                   {/* ゴルド */}
                   <div>
                     <Label htmlFor="points" className="text-zinc-300">ゴルド</Label>
@@ -443,7 +406,7 @@ export default function HabitsSettingsPage() {
                         onChange={(e) => setFormData({ ...formData, exclude_weekends: e.target.checked })}
                         className="w-4 h-4 text-cyan-600"
                       />
-                      <span className="text-zinc-300">土日を除外</span>
+                      <span className="text-zinc-300">週末を除外する</span>
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -452,27 +415,27 @@ export default function HabitsSettingsPage() {
                         onChange={(e) => setFormData({ ...formData, exclude_from_complete: e.target.checked })}
                         className="w-4 h-4 text-cyan-600"
                       />
-                      <span className="text-zinc-300">完了判定から除外</span>
+                      <span className="text-zinc-300">Completeボーナス対象外にする</span>
                     </label>
                   </div>
 
-                  {/* ボタン */}
-                  <div className="flex gap-3 pt-4">
-                    <Button
-                      onClick={editingHabit ? handleUpdateHabit : handleAddHabit}
-                      className="bg-cyan-600 hover:bg-cyan-700"
-                    >
-                      {editingHabit ? '更新' : '追加'}
-                    </Button>
+                  {/* ボタン：キャンセル左端・グレー、更新は右端 */}
+                  <div className="flex justify-between gap-3 pt-4">
                     <Button
                       onClick={() => {
                         setIsDialogOpen(false);
                         resetForm();
                       }}
                       variant="outline"
-                      className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+                      className="bg-zinc-600 hover:bg-zinc-500 text-zinc-200 border-zinc-500"
                     >
                       キャンセル
+                    </Button>
+                    <Button
+                      onClick={editingHabit ? handleUpdateHabit : handleAddHabit}
+                      className="bg-cyan-600 hover:bg-cyan-700 shrink-0"
+                    >
+                      {editingHabit ? '更新' : '追加'}
                     </Button>
                   </div>
                 </div>
