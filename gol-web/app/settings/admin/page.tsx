@@ -24,9 +24,14 @@ export default async function AdminSettingsPage() {
         .map((e) => e.trim().toLowerCase())
         .filter(Boolean)
     : []
-  const isAdminByEmail = user.email
-    ? adminEmails.includes(user.email.toLowerCase())
-    : false
+  const testEmails = process.env.NEXT_PUBLIC_TEST_EMAILS
+    ? process.env.NEXT_PUBLIC_TEST_EMAILS.split(",")
+        .map((e) => e.trim().toLowerCase())
+        .filter(Boolean)
+    : []
+  const emailLower = user.email?.toLowerCase() ?? ""
+  const isAdminByEmail =
+    emailLower && (adminEmails.includes(emailLower) || testEmails.includes(emailLower))
   const isAdmin = profile?.is_admin === true || isAdminByEmail
 
   if (!isAdmin) {

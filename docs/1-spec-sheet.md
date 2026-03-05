@@ -934,22 +934,58 @@ Step 4: 次のステップへ
 
 - **フロント＋API（Next.js）**: Vercel などにデプロイ。ユーザーがアクセスする URL をここに張る
 
-- **認証・DB（Supabase）**: クラウドの Supabase プロジェクトを 1 本用意。本番用のプロジェクト URL / anon key を環境変数に設定
+- **認証・DB（Supabase）**: クラウドの Supabase プロジェクトを 1 本用意。接続先は環境変数で指定（下記「環境変数一覧」参照）
 
 - **AI（OpenAI）**: API キーを環境変数に設定。Next.js の API Route 経由で呼び出し（クライアントにキーを出さない）
+
+### 環境変数一覧
+
+本番（Vercel）・ローカル（`.env.local`）で使用する環境変数の一覧。**秘密情報（キー・パスワード・具体的なメールアドレス）はこのファイルには書かず、別管理とする。**
+
+**必須（Supabase）**
+
+- **NEXT_PUBLIC_SUPABASE_URL**: 接続先 Supabase プロジェクトの URL。取得元: Supabase ダッシュボード → 対象プロジェクト → Project Settings → API の「Project URL」
+
+- **NEXT_PUBLIC_SUPABASE_ANON_KEY**: 匿名（anon）キー。ブラウザから読まれるため「公開してもよい」キー。取得元: 上記同じ画面の「Project API keys」の anon / public キー（service_role とは別）
+
+**必須（AI 機能を使う場合）**
+
+- **OPENAI_API_KEY**: OpenAI API 呼び出し用の秘密キー。サーバー側のみ使用。取得元: https://platform.openai.com/ → API keys で発行
+
+**任意（管理者・テスト用）**
+
+- **NEXT_PUBLIC_ADMIN_EMAILS**: 管理者として扱うログインメールアドレス（カンマ区切り）。このメールでログインしたユーザーに「管理者用の設定」が表示され、`/settings/admin` にアクセス可能。取得元: なし（運用で決めたメールを列挙）
+
+- **NEXT_PUBLIC_TEST_EMAILS**: テスト用アカウントのメールアドレス（カンマ区切り）。ここに含まれるメールでログインしたユーザーは管理者と同様に、レベル閾値の編集と「管理者用の設定」の表示・`/settings/admin` へのアクセスが可能。取得元: なし（運用で決めたメールを列挙）
+
+**任意（Notion から日誌を取り込む機能を使う場合）**
+
+- **NOTION_API_KEY**: Notion API 用シークレット。取得元: Notion → 設定 → コネクション → 新規インテグレーション（内部）のシークレット
+
+- **NOTION_JOURNAL_DB_ID**: 取り込み元となる Notion データベースの ID。取得元: Notion で対象 DB を開いたときのブラウザ URL の「?」より前のパス末尾（32文字の英数字）
+
+- **NOTION_IMPORT_ALLOWED_EMAILS**: Notion 取り込みを許可するログインメールアドレス（カンマ区切り）。取得元: なし（運用で決めたメールを列挙）。Notion 側で当該 DB にインテグレーションをコネクション追加しておく必要あり
+
+**ローカル・スクリプト用（本番では通常設定しない）**
+
+- **SUPABASE_SERVICE_ROLE_KEY**: RLS を通過する管理者用キー。マイグレーション・バッチなどサーバー側の特別な処理でのみ使用。取得元: Supabase Project Settings → API の service_role キー。クライアントに渡さない
 
 ### 利用方針・ホスティング選定（少人数運用）
 
 **自分も本番 URL で利用する**
 
 - 当面は自分＋友達 1 名など少人数で利用する想定
+
 - **開発者（自分）も、普段の利用は Vercel にデプロイした本番 URL を使う**のがおすすめ
+
 - 理由: 友達と同じ環境にすることで本番でしか起きない不具合に気づきやすい。Google ログインのリダイレクトも本番 URL で試せる。データは Supabase 本番 1 本にまとまる
+
 - 開発・デバッグ時だけ localhost を使い、試し終わったら push して本番で確認する運用にする
 
 **ホスティングは Vercel でよいか / Amplify とのコスト比較**
 
 - **2 名程度なら Vercel も AWS Amplify もコスト差はほぼない**（どちらも無料枠で収まりやすい）
+
 - **GOL では Vercel を推奨**
   - Next.js の開発元のサービスで相性が良い。デプロイは GitHub 連携で push するだけ
   - 認証・DB は Supabase を使うため、Amplify の Cognito や DynamoDB は使わない。比較しているのは「Next.js をどこにホスティングするか」だけ
@@ -989,7 +1025,7 @@ Step 4: 次のステップへ
 
 - Supabase で本番用プロジェクトを作成。必要な SQL（テーブル・RLS・トリガーなど）を SQL Editor で実行
 
-- 環境変数の設定: Vercel に `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`、API 用に `OPENAI_API_KEY`、必要なら `NEXT_PUBLIC_ADMIN_EMAILS` など
+- 環境変数の設定: 上記「環境変数一覧」を参照し、必要な項目を Vercel に設定する
 
 - Supabase の認証設定: 本番 URL を Redirect URLs に追加。Google OAuth を使う場合はクライアント ID / シークレットを設定
 
