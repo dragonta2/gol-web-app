@@ -969,9 +969,14 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                     <Skeleton className="h-4 w-3/4 bg-zinc-700" />
                   </div>
                 ) : aiStoryPast ? (
-                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryPast, { blankEveryTwoLines: true })}</p>
-                  </div>
+                  <>
+                    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                      <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryPast, { blankEveryTwoLines: true })}</p>
+                    </div>
+                    <div className="mt-1.5 text-right" aria-live="polite">
+                      <span className="text-xs text-zinc-600">{(aiStoryPast ?? '').length}文字</span>
+                    </div>
+                  </>
                 ) : (
                   <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
                     <p className="text-zinc-500 text-sm">未生成</p>
@@ -981,9 +986,14 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               <div>
                 <p className="text-lg font-medium text-white mb-1">これからの冒険</p>
                 {aiStoryFuture ? (
-                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(stripFutureAdventureHeading(aiStoryFuture), { blankEveryTwoLines: true })}</p>
-                  </div>
+                  <>
+                    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                      <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(stripFutureAdventureHeading(aiStoryFuture), { blankEveryTwoLines: true })}</p>
+                    </div>
+                    <div className="mt-1.5 text-right" aria-live="polite">
+                      <span className="text-xs text-zinc-600">{(aiStoryFuture ?? '').length}文字</span>
+                    </div>
+                  </>
                 ) : (
                   <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
                     <p className="text-zinc-500 text-sm">未生成</p>
@@ -1019,9 +1029,14 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                   <Skeleton className="h-4 w-3/4 bg-zinc-700" />
                 </div>
               ) : aiAdvice ? (
-                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true })}</p>
-                </div>
+                <>
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true })}</p>
+                  </div>
+                  <div className="mt-1.5 text-right" aria-live="polite">
+                    <span className="text-xs text-zinc-600">{(aiAdvice ?? '').length}文字</span>
+                  </div>
+                </>
               ) : (
                 <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
                   <p className="text-zinc-500 text-sm">未生成（上の「AI判定を実行」で一括生成）</p>
