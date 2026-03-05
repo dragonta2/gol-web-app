@@ -38,10 +38,10 @@ export function MypageSettingsSection() {
   const [showAdminCard, setShowAdminCard] = useState(false)
 
   useEffect(() => {
-    fetch("/api/settings/level-thresholds")
+    fetch("/api/user/profile")
       .then((res) => res.json())
       .then((data) => {
-        if (data.canEdit === true) setShowAdminCard(true)
+        if (data.is_admin === true) setShowAdminCard(true)
       })
       .catch(() => {})
   }, [])

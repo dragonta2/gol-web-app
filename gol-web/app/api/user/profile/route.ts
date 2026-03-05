@@ -33,10 +33,25 @@ export async function GET() {
 
     const username = (profile?.username ?? "").trim()
     const email = user.email ?? ""
+    const adminEmails = process.env.NEXT_PUBLIC_ADMIN_EMAILS
+      ? process.env.NEXT_PUBLIC_ADMIN_EMAILS.split(",")
+          .map((e) => e.trim().toLowerCase())
+          .filter(Boolean)
+      : []
+    const testEmails = process.env.NEXT_PUBLIC_TEST_EMAILS
+      ? process.env.NEXT_PUBLIC_TEST_EMAILS.split(",")
+          .map((e) => e.trim().toLowerCase())
+          .filter(Boolean)
+      : []
+    const emailLower = email.toLowerCase()
+    const isAdmin =
+      profile?.is_admin === true ||
+      (emailLower && adminEmails.includes(emailLower)) ||
+      (emailLower && testEmails.includes(emailLower))
     return NextResponse.json({
       username,
       email,
-      is_admin: profile?.is_admin === true,
+      is_admin: isAdmin,
       use_username_as_display_name:
         profile?.use_username_as_display_name !== false,
     })
