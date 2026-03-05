@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Edit, Trash2, GripVertical, Sparkles, AlertCircle, Trophy } from 'lucide-react';
+import { ArrowLeft, Plus, Edit, Trash2, GripVertical, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Habit {
   id: string;
@@ -51,6 +51,8 @@ export default function HabitsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+  const [openGoodAccordion, setOpenGoodAccordion] = useState(true);
+  const [openBadAccordion, setOpenBadAccordion] = useState(true);
 
   // フォーム状態
   const [formData, setFormData] = useState({
@@ -250,10 +252,8 @@ export default function HabitsSettingsPage() {
   // 習慣を種類別に分類し、表示用ツリーを構築
   const goodHabits = habits.filter(h => h.habit_type === 'good');
   const badHabits = habits.filter(h => h.habit_type === 'bad');
-  const bonusHabits = habits.filter(h => h.habit_type === 'bonus');
   const goodTree = buildHabitTree(goodHabits);
   const badTree = buildHabitTree(badHabits);
-  const bonusTree = buildHabitTree(bonusHabits);
 
   // 習慣カードコンポーネント（子の場合はインデント。親で子を持つ場合はラベルとゴルド/EXPを「ー」表示）
   const HabitCard = ({ habit, isChild = false, hasChildren = false }: { habit: Habit; isChild?: boolean; hasChildren?: boolean }) => (
@@ -325,11 +325,11 @@ export default function HabitsSettingsPage() {
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-cyan-400">習慣管理</h1>
             <div className="flex items-center gap-2">
-              <Button onClick={() => openAddDialog('good')} className="bg-green-600 hover:bg-green-700">
+              <Button onClick={() => openAddDialog('good')} className="bg-cyan-600 hover:bg-cyan-700 font-bold">
                 <Plus className="w-4 h-4 mr-2" />
                 良習慣を追加
               </Button>
-              <Button onClick={() => openAddDialog('bad')} className="bg-red-600 hover:bg-red-700">
+              <Button onClick={() => openAddDialog('bad')} className="bg-red-600 hover:bg-red-700 font-bold">
                 <Plus className="w-4 h-4 mr-2" />
                 悪習慣を追加
               </Button>
@@ -508,77 +508,76 @@ export default function HabitsSettingsPage() {
           <div className="text-center py-12 text-zinc-400">読み込み中...</div>
         ) : (
           <div className="space-y-6">
-            {/* 良習慣 */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="w-5 h-5 text-green-400" />
-                <h2 className="text-xl font-semibold text-green-400">良習慣</h2>
+            {/* 良習慣（アコーディオン） */}
+            <div className="border border-zinc-800 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenGoodAccordion((v) => !v)}
+                className="flex w-full items-center gap-2 p-4 text-left hover:bg-zinc-800/50 transition-colors"
+                aria-expanded={openGoodAccordion}
+              >
+                <CheckCircle className="w-5 h-5 text-cyan-400 shrink-0" />
+                <h2 className="text-xl font-semibold text-cyan-400">良習慣</h2>
                 <span className="text-sm text-zinc-500">({goodHabits.length}件)</span>
-              </div>
-              {goodHabits.length === 0 ? (
-                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center text-zinc-500">
-                  良習慣が登録されていません
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {goodTree.map(({ parent, children }) => (
-                    <div key={parent.id} className="space-y-2">
-                      <HabitCard habit={parent} hasChildren={children.length > 0} />
-                      {children.map((child) => (
-                        <HabitCard key={child.id} habit={child} isChild />
+                <span className={`ml-auto ${openGoodAccordion ? 'text-zinc-400' : 'text-cyan-400'}`}>
+                  {openGoodAccordion ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </span>
+              </button>
+              {openGoodAccordion && (
+                <div className="px-4 pb-4">
+                  {goodHabits.length === 0 ? (
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center text-zinc-500">
+                      良習慣が登録されていません
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {goodTree.map(({ parent, children }) => (
+                        <div key={parent.id} className="space-y-2">
+                          <HabitCard habit={parent} hasChildren={children.length > 0} />
+                          {children.map((child) => (
+                            <HabitCard key={child.id} habit={child} isChild />
+                          ))}
+                        </div>
                       ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
 
-            {/* 悪習慣 */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <AlertCircle className="w-5 h-5 text-red-400" />
+            {/* 悪習慣（アコーディオン） */}
+            <div className="border border-zinc-800 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setOpenBadAccordion((v) => !v)}
+                className="flex w-full items-center gap-2 p-4 text-left hover:bg-zinc-800/50 transition-colors"
+                aria-expanded={openBadAccordion}
+              >
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
                 <h2 className="text-xl font-semibold text-red-400">悪習慣</h2>
                 <span className="text-sm text-zinc-500">({badHabits.length}件)</span>
-              </div>
-              {badHabits.length === 0 ? (
-                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center text-zinc-500">
-                  悪習慣が登録されていません
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {badTree.map(({ parent, children }) => (
-                    <div key={parent.id} className="space-y-2">
-                      <HabitCard habit={parent} hasChildren={children.length > 0} />
-                      {children.map((child) => (
-                        <HabitCard key={child.id} habit={child} isChild />
+                <span className={`ml-auto ${openBadAccordion ? 'text-zinc-400' : 'text-cyan-400'}`}>
+                  {openBadAccordion ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                </span>
+              </button>
+              {openBadAccordion && (
+                <div className="px-4 pb-4">
+                  {badHabits.length === 0 ? (
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center text-zinc-500">
+                      悪習慣が登録されていません
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {badTree.map(({ parent, children }) => (
+                        <div key={parent.id} className="space-y-2">
+                          <HabitCard habit={parent} hasChildren={children.length > 0} />
+                          {children.map((child) => (
+                            <HabitCard key={child.id} habit={child} isChild />
+                          ))}
+                        </div>
                       ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* ボーナス */}
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <Trophy className="w-5 h-5 text-yellow-400" />
-                <h2 className="text-xl font-semibold text-yellow-400">ボーナス</h2>
-                <span className="text-sm text-zinc-500">({bonusHabits.length}件)</span>
-              </div>
-              {bonusHabits.length === 0 ? (
-                <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 text-center text-zinc-500">
-                  ボーナス習慣が登録されていません
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {bonusTree.map(({ parent, children }) => (
-                    <div key={parent.id} className="space-y-2">
-                      <HabitCard habit={parent} hasChildren={children.length > 0} />
-                      {children.map((child) => (
-                        <HabitCard key={child.id} habit={child} isChild />
-                      ))}
-                    </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
