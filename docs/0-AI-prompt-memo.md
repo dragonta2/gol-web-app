@@ -4,6 +4,48 @@
 
 ## 2603 -------------
 
+## 260305-木 -------------
+
+9-wireframe.md
+appendix/wireframe.mdにリネームして参照箇所もリネームして
+
+8-deploy-guide.md
+appendix/deploy-guide.mdにリネーム（移動）して参照箇所もリネームして
+
+6-dta2-memo.md
+5-dta2-memo.mdにリネームして参照箇所もリネームして
+
+
+5-dev-log.md
+4-dev-log.mdにリネームして参照箇所もリネームして
+
+
+7-progress-support.md
+2-support-of-progress.mdにリネームして参照箇所もリネームして
+
+
+4-project-progress.md
+3-project-progress.mdにリネームして参照箇所もリネームして
+
+
+3-wireframe.md
+9-wireframe.mdにリネームして参照箇所もリネームして
+
+2-gol-design-doc.md
+1-spec-sheet.mdにリネームして参照箇所もリネームして
+
+
+1-project-draft.md
+z-project-draft.mdにリネームして参照箇所もリネームして
+
+
+さあ、続きからはじめよう！！
+今日の日付は 260305-木
+
+前回までの作業は進捗用のメモを参照して
+
+今日もよろしくお願いします！！
+
 ## 260304-水 -------------
 
 今日はもう終わりにします。

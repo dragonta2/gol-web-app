@@ -45,13 +45,13 @@
 
 ### 住み分け
 
-**このファイル（4-project-progress.md）:**
+**このファイル（3-project-progress.md）:**
 
 - 役割: 概要、一覧、サマリー程度
 - 記載内容: 実施内容の箇条書き（要点のみ）、決定事項、成果物リスト、学んだこと（簡潔に）
 - 記述レベル: クリーンで読みやすい。「何を作ったか」を記録
 
-**5-dev-log.md（開発ログ）:**
+**4-dev-log.md（開発ログ）:**
 
 - 役割: 詳細にやったことを全て記録
 - 記載内容: 使用したコマンド（全て）、コードの詳細、実装手順（ステップバイステップ）、エラーと解決方法、学習メモ（詳細な技術解説）
@@ -256,12 +256,12 @@
   - [x] データベース操作のテスト `260216-月`
 
 - [x] デプロイ準備 `260216-月`
-  - [x] 環境変数の整理とドキュメント化（.env.example、5-deploy-guide.md） `260216-月`
+  - [x] 環境変数の整理とドキュメント化（.env.example、appendix/deploy-guide.md） `260216-月`
   - [x] 本番環境の設定（Supabase、OpenAI API）（手順書に記載） `260216-月`
   - [x] ビルドエラーの解消（score-calculator.ts の型修正） `260216-月`
   - [x] セキュリティチェック（RLS、APIキー保護）（手順書に記載） `260216-月`
   - [x] パフォーマンステスト（ビルド成功確認・手順書に記載） `260216-月`
-  - [x] デプロイ手順書の作成（docs/5-deploy-guide.md） `260216-月`
+  - [x] デプロイ手順書の作成（docs/appendix/deploy-guide.md） `260216-月`
 
 ### **以下実装中止**
 
@@ -320,7 +320,7 @@
 
 #### 実施内容
 
-- 作業終了。進捗メモ（4-project-progress.md・5-dev-log.md）に 260219-木 の記載を追加。変更ファイルの add・commit・push（コミットメッセージは箇条書き1つ、対応ブランチへ push、o-manu-frontend の demo/main には直 push しない）
+- 作業終了。進捗メモ（3-project-progress.md・4-dev-log.md）に 260219-木 の記載を追加。変更ファイルの add・commit・push（コミットメッセージは箇条書き1つ、対応ブランチへ push、o-manu-frontend の demo/main には直 push しない）
 
 #### 次回予定
 
@@ -370,7 +370,7 @@
 
 #### 実施内容
 
-- テスト実装（4-project-progress.md の「テスト実装」チェックリストを実施）
+- テスト実装（3-project-progress.md の「テスト実装」チェックリストを実施）
   - E2Eテスト: Playwright を導入。`playwright.config.ts`、`e2e/smoke.spec.ts`（トップ・ログインページのスモーク）を追加。`npm run test:e2e` で実行。Vitest から E2E を除外（`vitest.config.mjs` の exclude に `e2e` を追加）
   - データベース操作のテスト: `/api/announcements` の GET/POST をモックでテスト。`app/api/announcements/__tests__/route.test.ts` を追加（未認証401、認証済み一覧200、POST は403/400/200）
 - UI・進捗まわり（同日・作業終了前）
@@ -515,7 +515,7 @@
 
 - ToDoサマリー: 画面上に1行説明を追加（「この画面ではタスクのドラッグ操作や状態変更はできません。状態の変更は、日誌タブのカンバンで行います。ここでは編集・削除のみできます。」）、見出し「全ToDoリスト一覧」直下に直列配置・白文字・上マージン15px
 - ToDoサマリー: カードのドラッグを無効化（useDraggable を disabled: true にし、チェック操作ができないようサブタスクのチェックボックスのみ非表示（サブタスク名・編集・削除は表示のまま）
-- 7-progress-support: 手動テスト対応依頼箇所のうち「→ **対応:**」がある項目の見出しに【対応済み】と（対応日: 要記入）を追加
+- 2-support-of-progress: 手動テスト対応依頼箇所のうち「→ **対応:**」がある項目の見出しに【対応済み】と（対応日: 要記入）を追加
 
 #### 決定事項
 
@@ -632,7 +632,7 @@
 
 **02・07の棲み分け:**
 - 02は確定事項の仕様のみ、07は未確定・確認事項を書くルールを02・07の冒頭と棲み分けセクションに明記
-- 進行中の確認用メモの置き場を 7-progress-support.md に統一（2内の10→7参照に修正）
+- 進行中の確認用メモの置き場を 2-support-of-progress.md に統一（2内の10→7参照に修正）
 
 **世界観2種類（案C）:**
 - 02の将来の拡張機能に「案C: コードで2種類固定の実装手順」を追記
@@ -803,7 +803,7 @@
 
 **作業記録:**
 
-- `docs/7-progress-support.md`にTo Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
+- `docs/2-support-of-progress.md`にTo Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
 
 #### 決定事項
 
@@ -814,7 +814,7 @@
 #### 成果物
 
 **ドキュメント:**
-- `docs/7-progress-support.md`: To Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
+- `docs/2-support-of-progress.md`: To Do操作の動線整理と使いやすい導線の検討内容を詳細に記載
 - `README.md`: 自動コミットシステムの説明とセットアップ手順を追加
 
 **コード:**
@@ -2110,7 +2110,7 @@ web-app/gol-web/app/dashboardの中
 #### 成果物
 
 - `A-Dta2/Memo/tailwind-css-memo.md`: ユーティリティクラスの覚え方、参照リンク、代表的パターンを追記
-- `docs/5-dev-log.md`: 251120-木の学習ログを詳細に追記（認証フロー、フォーム制御、BaaS理解など）
+- `docs/4-dev-log.md`: 251120-木の学習ログを詳細に追記（認証フロー、フォーム制御、BaaS理解など）
 
 
 #### 学んだこと
@@ -2412,9 +2412,9 @@ web-app/gol-web/app/dashboardの中
 
 **ドキュメント:**
 
-- `4-project-progress.md`: Phase 1チェックリスト追加、本日分更新
+- `3-project-progress.md`: Phase 1チェックリスト追加、本日分更新
 
-- `5-dev-log.md`: 詳細ログ更新（251108-土セクション作成）
+- `4-dev-log.md`: 詳細ログ更新（251108-土セクション作成）
 
 #### 学んだこと
 
@@ -2458,12 +2458,12 @@ web-app/gol-web/app/dashboardの中
 
 - ドキュメント構成確立
   - `_INDEX.md`: ドキュメント目次
-  - `1-web-ai-directive-draft.md`: AIへの指示・草案（AI編集禁止）
-  - `2-gol-design-doc.md`: 決定稿の実装ルール
-  - `3-wireframe.md`: ワイヤーフレーム（6画面分）
-  - `4-project-progress.md`: 進捗表（本ファイル）
-  - `5-dev-log.md`: 開発ログ（雑多でOK）
-  - `6-dta2-memo.md`: AI時代のエンジニア観
+  - `z-project-draft.md`: AIへの指示・草案（AI編集禁止）
+  - `1-spec-sheet.md`: 決定稿の実装ルール
+  - `appendix/wireframe.md`: ワイヤーフレーム（6画面分）
+  - `3-project-progress.md`: 進捗表（本ファイル）
+  - `4-dev-log.md`: 開発ログ（雑多でOK）
+  - `5-dta2-memo.md`: AI時代のエンジニア観
 
 - 開発スタイル決定
   - Cursor AI（Chat）とのペアプログラミング方式
@@ -2489,7 +2489,7 @@ web-app/gol-web/app/dashboardの中
   - 接続テスト成功
 
 - セキュリティ設定
-  - `.gitignore` 作成（`1-web-ai-directive-draft.md` を除外、API KEY保護）
+  - `.gitignore` 作成（`z-project-draft.md` を除外、API KEY保護）
 
 **認証システム実装（Phase 0 完了）:**
 
@@ -2541,17 +2541,17 @@ web-app/gol-web/app/dashboardの中
 
 - `_INDEX.md`: ドキュメント目次
 
-- `1-web-ai-directive-draft.md`: AI指示・草案
+- `z-project-draft.md`: AI指示・草案
 
-- `2-gol-design-doc.md`: 設計書（更新版、現在の進捗状況を反映）
+- `1-spec-sheet.md`: 設計書（更新版、現在の進捗状況を反映）
 
-- `3-wireframe.md`: ワイヤーフレーム
+- `appendix/wireframe.md`: ワイヤーフレーム
 
-- `4-project-progress.md`: 進捗表（本ファイル）
+- `3-project-progress.md`: 進捗表（本ファイル）
 
-- `5-dev-log.md`: 開発ログ（詳細記録）
+- `4-dev-log.md`: 開発ログ（詳細記録）
 
-- `6-dta2-memo.md`: エンジニア観・学習メモ
+- `5-dta2-memo.md`: エンジニア観・学習メモ
 
 **コード:**
 

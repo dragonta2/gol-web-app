@@ -19,12 +19,12 @@ tree -L 3 -I 'node_modules|.next|.git' --dirsfirst
 ```
 web-app/
 ├── docs/                           # ドキュメントディレクトリ
-│   ├── 00-web-ai-directive-draft.md
-│   ├── 01-gol-design-doc.md
-│   ├── 02-wireframe.md
-│   ├── 03-project-progress.md
-│   ├── 04-dev-log.md
-│   ├── 05-dta2-memo.md
+│   ├── z-project-draft.md
+│   ├── 1-spec-sheet.md
+│   ├── appendix/wireframe.md
+│   ├── 3-project-progress.md
+│   ├── 4-dev-log.md
+│   ├── 5-dta2-memo.md
 │   ├── 06-database-schema.md
 │   ├── _INDEX.md
 │   └── supabase-setup.sql
@@ -64,28 +64,28 @@ web-app/
 
 プロジェクトのドキュメント類を格納。
 
-#### 00-web-ai-directive-draft.md
+#### z-project-draft.md
 **役割:** AIへの指示や設計の草案（下書き・思考整理・アイデアメモ）
 
 **編集権限:** ユーザーのみ（AI編集禁止）
 
-#### 01-gol-design-doc.md
+#### 1-spec-sheet.md
 **役割:** 決定稿の実装ルール（確定した設計・仕様・ルール）
 
-#### 02-wireframe.md
+#### appendix/wireframe.md
 **役割:** 画面レイアウトのワイヤーフレーム（UI設計図）
 
-#### 03-project-progress.md
+#### 3-project-progress.md
 **役割:** 日々のGOL-Web版の進捗報告（整理されたもの）
 
 **内容:** 実施内容、決定事項、成果物リスト、学んだこと、次回予定
 
-#### 04-dev-log.md
+#### 4-dev-log.md
 **役割:** 作業ログ（雑多でOK、コマンド、使用した流れ、学習メモ）
 
 **内容:** 使用したコマンド、コードの詳細、実装手順、エラーと解決方法、学習メモ
 
-#### 05-dta2-memo.md
+#### 5-dta2-memo.md
 **役割:** AI時代のエンジニア、クリエイターとしての考え方、心がけ、良いやり方
 
 #### 06-database-schema.md

@@ -35,13 +35,13 @@
 
 ### 住み分け
 
-**03-project-progress.md（進捗表）:**
+**3-project-progress.md（進捗表）:**
 
 - 役割: 概要、一覧、サマリー程度
 - 記載内容: 実施内容の箇条書き（要点のみ）、決定事項、成果物リスト、学んだこと（簡潔に）
 - 記述レベル: クリーンで読みやすい。「何を作ったか」を記録
 
-**このファイル（5-dev-log.md）:**
+**このファイル（4-dev-log.md）:**
 
 - 役割: 詳細にやったことを全て記録
 - 記載内容: 使用したコマンド（全て）、コードの詳細、実装手順（ステップバイステップ）、エラーと解決方法、学習メモ（詳細な技術解説）
@@ -58,11 +58,11 @@
 
 - **習慣リスト（habit-list.tsx）**
   - 日付切り替えで前の日のチェックが表示される不具合を修正。`dailyLogId` が変わったときに `localUpdates` をクリアする `useEffect` を追加
-  - docs/2-gol-design-doc.md に「習慣チェックの保存タイミング（メモ）」を追記（チェックは即時 `habit_logs` に保存、日誌保存と独立）
+  - docs/1-spec-sheet.md に「習慣チェックの保存タイミング（メモ）」を追記（チェックは即時 `habit_logs` に保存、日誌保存と独立）
 - **あらすじ・辛口コーチングアドバイス（journal-form.tsx）**
   - 両エリアをアコーディオンで折りたたみ可能に。`isStoryExpanded` / `isAdviceExpanded` 状態を追加し、見出しをボタン化して ChevronUp/Down で開閉
 - **作業終了**
-  - 4-project-progress.md に 260304-水 の実施内容・次回予定を追記。5-dev-log.md に本セクションを追記。変更ファイルを add・commit（メッセージは箇条書き1つ）・main へ push
+  - 3-project-progress.md に 260304-水 の実施内容・次回予定を追記。4-dev-log.md に本セクションを追記。変更ファイルを add・commit（メッセージは箇条書き1つ）・main へ push
 
 ---
 
@@ -78,7 +78,7 @@
 - **「日誌確定後にスコアは獲得されます」の明度を上げた**
   - journal-form.tsx: 当該注釈のクラスを text-zinc-500 → zinc-300 に変更（2段階で明度アップ）
 - **作業終了**
-  - 4-project-progress.md に 260301-日 の実施内容・次回予定を追記。5-dev-log.md に本セクションを追記。変更ファイルを add・commit（メッセージは箇条書き1つ）・main へ push
+  - 3-project-progress.md に 260301-日 の実施内容・次回予定を追記。4-dev-log.md に本セクションを追記。変更ファイルを add・commit（メッセージは箇条書き1つ）・main へ push
 
 ---
 
@@ -89,8 +89,8 @@
 **実施内容（詳細）:**
 
 - 作業終了に伴い、進捗メモへ 260219-木 のセクションを追加
-  - 4-project-progress.md: 簡潔な実施内容（進捗メモ記載・add/commit/push 対応）、次回予定
-  - 5-dev-log.md: 本セクション（詳細）
+  - 3-project-progress.md: 簡潔な実施内容（進捗メモ記載・add/commit/push 対応）、次回予定
+  - 4-dev-log.md: 本セクション（詳細）
 - 0-AI-prompt-memo の終了指示に従い、関連リポジトリ（gol-web-app）の作業中ファイルをすべて add し、commit（メッセージは箇条書き1つのみ）・対応ブランチ（main）へ push。o-manu-frontend の demo/main には直 push しない
 
 ---
@@ -111,7 +111,7 @@
 
 **変更・追加ファイル:**
 - gol-web: .env.example, app/api/notion/import/route.ts, app/dashboard/journal-impression-sections.tsx
-- docs: 4-project-progress.md, 5-dev-log.md, appendix/NotionMCP-Sync-memo.md
+- docs: 3-project-progress.md, 4-dev-log.md, appendix/NotionMCP-Sync-memo.md
 
 ---
 
@@ -134,7 +134,7 @@
 
 **変更・追加ファイル:**
 - gol-web: .env.example, .env.local, app/api/notion/import/route.ts, app/api/notion/import/allowed/route.ts（新規）, app/dashboard/journal-impression-sections.tsx, app/dashboard/journal-form.tsx
-- docs: 4-project-progress.md, 5-dev-log.md
+- docs: 3-project-progress.md, 4-dev-log.md
 
 ---
 
@@ -154,7 +154,7 @@
 
 **変更・追加ファイル:**
 - gol-web: lib/utils.ts, components/rank-avatar.tsx, app/dashboard/journal-form.tsx
-- docs: for-request-md-file/avatar.md, 4-project-progress.md, 5-dev-log.md
+- docs: for-request-md-file/avatar.md, 3-project-progress.md, 4-dev-log.md
 
 ---
 
@@ -178,14 +178,14 @@
   - 権利一覧を ul/li にし、各 li の先頭に「-」の span を追加（list-disc は li に flex を付けると表示されないため明示的マークに）。
 
 - **進捗表**
-  - 4-project-progress.md: Phase 5 の「統計・分析機能の実装」を [x] に。進捗を 5/5 完了（100%）・6/6 完了（100%）に。同日実施内容に上記を追記し次回予定を「今日はここで終了」に。
+  - 3-project-progress.md: Phase 5 の「統計・分析機能の実装」を [x] に。進捗を 5/5 完了（100%）・6/6 完了（100%）に。同日実施内容に上記を追記し次回予定を「今日はここで終了」に。
 
 - **お知らせ日付用 SQL**
   - docs/sql-snippet/update-announcement-notice-date.sql を新規作成（notice_date を 2025/11/23-木 に UPDATE）。
 
 **変更・追加ファイル:**
 - gol-web: app/loading.tsx, app/dashboard/loading.tsx, app/mypage/loading.tsx, app/dashboard/collapsible-dashboard-header.tsx, app/dashboard/dashboard-client-layout.tsx, app/dashboard/dashboard-tabs.tsx, app/dashboard/habit-list.tsx, app/dashboard/journal-form.tsx, app/dashboard/kanban-board.tsx, app/mypage/page.tsx, components/mypage-settings-section.tsx, contexts/calendar-dialog-context.tsx
-- docs: sql-snippet/update-announcement-notice-date.sql（新規）, 4-project-progress.md, 5-dev-log.md
+- docs: sql-snippet/update-announcement-notice-date.sql（新規）, 3-project-progress.md, 4-dev-log.md
 
 ---
 
@@ -211,7 +211,7 @@
 
 **変更・追加ファイル:**
 - gol-web: app/api/ai/batch/route.ts, app/dashboard/journal-form.tsx, app/dashboard/habit-list.tsx, lib/types.ts, components/exp-with-icons.tsx, collapsible-dashboard-header.tsx, dashboard-client-layout.tsx, components/date-selector.tsx, contexts/calendar-dialog-context.tsx
-- docs: sql-snippet/add-ai-reasoning-to-daily-logs.sql（新規）, 2-gol-design-doc.md, 4-project-progress.md, 5-dev-log.md
+- docs: sql-snippet/add-ai-reasoning-to-daily-logs.sql（新規）, 1-spec-sheet.md, 3-project-progress.md, 4-dev-log.md
 - .cursor/plans/: 親行左詰めインデント修正、週末除外comp対象外hover表示 の plan
 
 **同日・習慣リストレイアウト・設定まわり:**
@@ -253,11 +253,11 @@
 - Debug モードで仮説（H1: 1列目幅差、H2: グリッド左マージン、H3: 名前列開始差、H4: 名前内側要素差、H5: ラッパー余白）を立て、habit-list.tsx に計装を追加。親行・通常行のグリッドに ref を付け、useEffect 内で getBoundingClientRect により「1列目幅」「2列目（名前）の left」「名前内側要素の left」を計測し、デバッグ用エンドポイントへ POST。goodTree の初期化順で ReferenceError が出たため、useEffect を goodTree 定義の直後に移動して解消。
 - ログ結果: parentCol0Width / normalCol0Width はともに 21.25、parentGridLeft / normalGridLeft は 358.5、nameStartDiff および nameInnerDiff は 0。計測上は親行と通常行の名前列・名前テキスト左端は一致していた。一方でユーザーからは「まだ右にずれて見える」「Issue reproduced」と複数回報告あり。
 - 未証明の見た目調整（grid-cols を 20px 固定に変更、親名 span に block 追加、通常行に min-w-0 追加）は行ったが、ログで仮説は否定されているため、それらの変更は戻し、計測対象を「行ごとの rowSnapshots（data-debug-row-type / data-debug-order 付与）」に広げる計装を一時追加した。その後、バグ解析を一旦やめる指示があり、計装（parentRowGridRef / normalRowGridRef、useEffect、data-debug-row-type、data-debug-order）をすべて削除。useRef の import も削除。
-- 進捗メモ: 4-project-progress.md（簡潔）と 5-dev-log.md（本節・詳細）に「親習慣インデントずれのバグ解析を一旦中止」を記載。
+- 進捗メモ: 3-project-progress.md（簡潔）と 4-dev-log.md（本節・詳細）に「親習慣インデントずれのバグ解析を一旦中止」を記載。
 
 **変更ファイル:**
 - gol-web/app/dashboard/habit-list.tsx: デバッグ用 ref・useEffect・data 属性を削除、import から useRef を削除
-- docs/4-project-progress.md, docs/5-dev-log.md: 上記経緯を追記
+- docs/3-project-progress.md, docs/4-dev-log.md: 上記経緯を追記
 
 ---
 
@@ -286,7 +286,7 @@
 
 **変更・追加ファイル:**
 - gol-web: lib/ai/ai-output-limits.ts（新規）, app/api/settings/ai-output-limits/route.ts（新規）, lib/ai/openai.ts, app/api/ai/batch/route.ts, app/settings/account/account-settings-client.tsx, app/dashboard/journal-form.tsx, lib/score-calculator.ts, app/dashboard/page.tsx ほか
-- docs: sql-snippet/add-ai-output-limits.sql（新規）, 4-project-progress.md, 5-dev-log.md
+- docs: sql-snippet/add-ai-output-limits.sql（新規）, 3-project-progress.md, 4-dev-log.md
 
 #### 表記統一・ToDo編集モーダル集約・子習慣計画・Cursor手順
 
@@ -312,7 +312,7 @@
 
 **変更・追加ファイル:**
 - gol-web: app/api/auth/google/route.ts, app/api/habits/route.ts, app/auth/callback/route.ts, middleware.ts, collapsible-dashboard-header.tsx, dashboard-tabs.tsx, habit-list.tsx, journal-form.tsx, kanban-board.tsx, page.tsx, todo-summary-tab.tsx, settings/habits/page.tsx, settings/todos/page.tsx, test-todos/page.tsx, date-selector.tsx, lib/types.ts
-- docs: 0-AI-prompt-memo.md, sql-snippet/add-habit-description.sql, 4-project-progress.md, 5-dev-log.md
+- docs: 0-AI-prompt-memo.md, sql-snippet/add-habit-description.sql, 3-project-progress.md, 4-dev-log.md
 - .cursor/plans/（子習慣ネスト機能の計画）
 
 ---
@@ -342,7 +342,7 @@
 
 **変更・追加ファイル:**
 - gol-web: app/api/ai/story/route.ts, app/api/ai/batch/route.ts, app/api/ai/advice/route.ts, app/api/user/profile/route.ts, app/settings/account/page.tsx, app/api/auth/google/route.ts（新規）, app/login/page.tsx, app/signup/page.tsx
-- docs: 4-project-progress.md, 5-dev-log.md, appendix/表示名がデフォルトになる原因調査.md, appendix/Google新規ログイン時のDatabase-error-saving-new-user.md（新規）, appendix/ログアウト後のGoogle再ログインでPKCEエラー.md, sql-snippet/fix-trigger-handle-new-user.sql（新規）, 0-AI-prompt-memo.md（表示名対応箇所のメモ追記）
+- docs: 3-project-progress.md, 4-dev-log.md, appendix/表示名がデフォルトになる原因調査.md, appendix/Google新規ログイン時のDatabase-error-saving-new-user.md（新規）, appendix/ログアウト後のGoogle再ログインでPKCEエラー.md, sql-snippet/fix-trigger-handle-new-user.sql（新規）, 0-AI-prompt-memo.md（表示名対応箇所のメモ追記）
 
 ---
 
@@ -382,11 +382,11 @@
   - batch/route.ts: 開発時のみ console.log で use_username_as_display_name / username_from_db / nickname_used を出力。レスポンスに _debug_nickname_used を付与（開発時のみ）。
   - journal-form: 成功トーストの description に _debug_nickname_used があれば「表示名: 〇〇」を追加。
   - docs/appendix/表示名がデフォルトになる原因調査.md を新規作成（流れ・切り分け・確認方法）。
-  - 7-progress-support.md に「【メモ】表示名がデフォルトになる原因調査」を追記。
+  - 2-support-of-progress.md に「【メモ】表示名がデフォルトになる原因調査」を追記。
 
 **変更・追加ファイル:**
 - gol-web: app/dashboard/page.tsx, dashboard-tabs.tsx, habit-list.tsx, journal-form.tsx, app/api/ai/batch/route.ts, app/api/ai/batch-reset/route.ts（新規）, app/settings/account/page.tsx, account-settings-client.tsx, lib/ai/openai.ts, lib/ai/story-worlds.ts, lib/auth/admin.ts, lib/types.ts
-- docs: 7-progress-support.md, 4-project-progress.md, 5-dev-log.md, appendix/表示名がデフォルトになる原因調査.md（新規）
+- docs: 2-support-of-progress.md, 3-project-progress.md, 4-dev-log.md, appendix/表示名がデフォルトになる原因調査.md（新規）
 
 ---
 
@@ -399,10 +399,10 @@
   - 見出し「全ToDoリスト一覧」直下に1行説明を配置（直列、白文字、上マージン15px）。文言は「この画面ではタスクのドラッグ操作や状態変更はできません。状態の変更は、日誌タブのカンバンで行います。ここでは編集・削除のみできます。」
   - ドラッグ無効: `DraggableTodoCard` の `useDraggable` を常に `disabled: true` にし、listeners/attributes を渡さない。
   - サブタスク: 一覧・名前・編集・削除は表示のまま、チェックボックスのみ非表示（チェック操作不可のため）。
-- **7-progress-support.md**
+- **2-support-of-progress.md**
   - 「→ **対応:**」がある各項目の見出しに【対応済み】と（対応日: 要記入）を追加。
 
-**変更ファイル:** todo-summary-tab.tsx, 7-progress-support.md, 4-project-progress.md, 5-dev-log.md
+**変更ファイル:** todo-summary-tab.tsx, 2-support-of-progress.md, 3-project-progress.md, 4-dev-log.md
 
 ---
 
@@ -428,7 +428,7 @@
 
 **変更・追加ファイル:**
 - gol-web: app/dashboard/dashboard-tabs.tsx, kanban-board.tsx, todo-summary-tab.tsx, app/api/ai/advice/route.ts, story/route.ts, app/api/user/profile/route.ts, app/settings/account/page.tsx, components/date-picker-field.tsx, lib/ai/openai.ts, lib/types.ts
-- docs: 7-progress-support.md, 4-project-progress.md, 5-dev-log.md
+- docs: 2-support-of-progress.md, 3-project-progress.md, 4-dev-log.md
 - docs/sql-snippet: add-use-username-as-display-name.sql（新規）
 
 ---
@@ -453,7 +453,7 @@
 
 **変更・追加ファイル:**
 - gol-web: app/api/user/export/route.ts（新規）, lib/export-csv.ts（新規）, components/mypage-settings-section.tsx, app/mypage/page.tsx, app/dashboard/page.tsx, app/dashboard/dashboard-tabs.tsx, app/globals.css
-- docs: 4-project-progress.md
+- docs: 3-project-progress.md
 
 ---
 
@@ -515,11 +515,11 @@
    - `gol-web/app/login/page.tsx`: `useSearchParams` で `error` と `from` を取得し、`?error=...` なら decodeURIComponent して表示、`?from=dashboard` なら「ダッシュボードから戻されました（セッションがありません）…」を表示
 
 6. **07 へのメモ追記**
-   - `docs/7-progress-support.md` の 260202-月 に以下を記載: Google クライアント ID の表示手順、redirect_uri_mismatch の対処（承認済みリダイレクト URI に Supabase コールバック URL を追加）、PKCE code verifier not found / コールバック後にログインに戻る問題の対処（共通 cookieOptions、コールバックを Route Handler で setAll 待ち、redirectTo /auth/callback、Supabase Redirect URLs に /auth/callback 追加）
+   - `docs/2-support-of-progress.md` の 260202-月 に以下を記載: Google クライアント ID の表示手順、redirect_uri_mismatch の対処（承認済みリダイレクト URI に Supabase コールバック URL を追加）、PKCE code verifier not found / コールバック後にログインに戻る問題の対処（共通 cookieOptions、コールバックを Route Handler で setAll 待ち、redirectTo /auth/callback、Supabase Redirect URLs に /auth/callback 追加）
 
 **変更・追加したファイル:**
 - gol-web: lib/supabase/cookie-options.ts（新規）, client.ts, server.ts / app/auth/callback/route.ts, app/auth/success/page.tsx（新規）/ app/login/page.tsx, app/signup/page.tsx, app/dashboard/page.tsx
-- docs: 7-progress-support.md
+- docs: 2-support-of-progress.md
 
 **学んだこと・メモ:**
 - Supabase OAuth で PKCE を使う場合、code_verifier はブラウザに保存され、コールバック時は同じブラウザ（同一タブ）で受け取る必要がある。Next.js など SSR では @supabase/ssr でブラウザ・サーバー両方に同じ cookieOptions を渡し、クッキーで code_verifier を共有する
@@ -540,7 +540,7 @@
    - `gol-web/app/dashboard/journal-impression-sections.tsx`: 日誌用 Textarea と感想用 Textarea の className に `text-[17px] md:text-[15px]` を追加（元は text-base / md:text-sm 相当のため 1px 上げた）
 
 2. **AI作成文章の改行ルール（。?の後は必ず改行）**
-   - `docs/2-gol-design-doc.md`: 改行ルールに「句点（。）・疑問符（？（全角）・?（半角））の後は必ず改行する」を追記。適用対象は AI が生成する文章（アドバイス、あらすじ）
+   - `docs/1-spec-sheet.md`: 改行ルールに「句点（。）・疑問符（？（全角）・?（半角））の後は必ず改行する」を追記。適用対象は AI が生成する文章（アドバイス、あらすじ）
    - `gol-web/lib/utils.ts`: `applyAiTextLineBreaks(text)` を新規追加。`。` → `。\n`、`？` → `？\n`、`?` → `?\n` の置換と、連続改行を最大2つに正規化
    - `gol-web/app/dashboard/journal-form.tsx`: あらすじ（これまでの冒険・これからの冒険）と辛口コーチングアドバイスの表示で `applyAiTextLineBreaks(...)` を適用してから表示
 
@@ -553,14 +553,14 @@
 4. **メールアドレス（ログイン用）変更**
    - `gol-web/app/settings/account/page.tsx`: 「メールアドレス（ログイン用）」セクションを追加。現在のメール（readonly）・新しいメール入力・「確認メールを送信」ボタン。`handleChangeEmail` で `supabase.auth.updateUser({ email: trimmed })` を実行。成功時 toast「確認リンクを新しいメールアドレスに送りました。そのリンクを開いて変更を完了してください。」説明文に「メールが届いただけでは変更されません。届いたメール内のリンクを開くと変更が完了します。」を記載
    - `gol-web/app/settings/page.tsx`: アカウント・AI設定のカードに「メールアドレス」（/settings/account#email）を追加
-   - `docs/2-gol-design-doc.md`: Supabase Auth メール変更フロー（メモ）を追記。API・確認フロー・Secure email change 時の両方のメール確認が必要なこと、トラブルシュート（Secure email change の場所・オフにすると新メールのみで完了）、リダイレクト・端末の注意（localhost は同一PCで開く必要がある）、実装時のポイント（メールが届いただけでは変更されない旨）
+   - `docs/1-spec-sheet.md`: Supabase Auth メール変更フロー（メモ）を追記。API・確認フロー・Secure email change 時の両方のメール確認が必要なこと、トラブルシュート（Secure email change の場所・オフにすると新メールのみで完了）、リダイレクト・端末の注意（localhost は同一PCで開く必要がある）、実装時のポイント（メールが届いただけでは変更されない旨）
 
 5. **2 と 7 の棲み分け**
-   - `docs/2-gol-design-doc.md`: 冒頭の「このファイルの役割」に「2には確定事項の仕様だけを書く。未確定・検討中の確認事項や案は 7 に書く」を追記。AIによる編集禁止・棲み分けルール内に「2 と 7 の棲み分け（徹底する）」を新設。2＝確定仕様のみ、7＝未確定・確認事項。進行中の確認用メモの置き場を `7-progress-support.md` に変更。0の説明内の「10」を「7」に。文中の 10-progress-support.md を 7-progress-support.md に一括置換
-   - `docs/7-progress-support.md`: 冒頭に「このファイルの役割」を追加。未確定事項を進める中での確認事項・検討案を記載する。確定した仕様は 02 に記載する旨を明記
+   - `docs/1-spec-sheet.md`: 冒頭の「このファイルの役割」に「2には確定事項の仕様だけを書く。未確定・検討中の確認事項や案は 7 に書く」を追記。AIによる編集禁止・棲み分けルール内に「2 と 7 の棲み分け（徹底する）」を新設。2＝確定仕様のみ、7＝未確定・確認事項。進行中の確認用メモの置き場を `2-support-of-progress.md` に変更。0の説明内の「10」を「7」に。文中の 10-progress-support.md を 2-support-of-progress.md に一括置換
+   - `docs/2-support-of-progress.md`: 冒頭に「このファイルの役割」を追加。未確定事項を進める中での確認事項・検討案を記載する。確定した仕様は 02 に記載する旨を明記
 
 6. **世界観2種類（案C）の実装手順**
-   - `docs/2-gol-design-doc.md`: 将来の拡張機能「世界観テーマ切り替え機能」内に「案C: コードで2種類固定の実装手順」を追記。1.定数定義（lib/ai/story-worlds.ts 等）、2.設定画面を2択に、3.API で storyWorldId 受け取り、4.createStoryPrompt に storyWorldId、5.日誌フォームで localStorage の storyWorldId を API に送る、の5ステップ
+   - `docs/1-spec-sheet.md`: 将来の拡張機能「世界観テーマ切り替え機能」内に「案C: コードで2種類固定の実装手順」を追記。1.定数定義（lib/ai/story-worlds.ts 等）、2.設定画面を2択に、3.API で storyWorldId 受け取り、4.createStoryPrompt に storyWorldId、5.日誌フォームで localStorage の storyWorldId を API に送る、の5ステップ
 
 7. **過去の日誌一覧の表示変更**
    - `gol-web/components/journal-list.tsx`: 一覧の各項目から日誌本文（journal_text）と一言感想（one_line_comment）のプレビュー表示を削除。日付・「今日」バッジ・「確定済み」バッジのみ表示するように変更
@@ -573,7 +573,7 @@
 
 **変更したファイル**
 
-- docs: 0-AI-prompt-memo.md（参照のみ・ユーザー記載）, 2-gol-design-doc.md, 4-project-progress.md, 7-progress-support.md
+- docs: 0-AI-prompt-memo.md（参照のみ・ユーザー記載）, 1-spec-sheet.md, 3-project-progress.md, 2-support-of-progress.md
 - gol-web: app/dashboard/page.tsx, dashboard-tabs.tsx, journal-form.tsx / app/settings/account/page.tsx, page.tsx / components/date-selector.tsx, journal-list.tsx / lib/types.ts, lib/utils.ts
 
 **学んだこと・メモ**
@@ -615,7 +615,7 @@
    - journal-list: handleDateClick で `window.location.href` によるフルリロードで確実に遷移
 
 **変更したファイル**
-- docs: 4-project-progress, 5-dev-log / sql-snippet/add-is-confirmed-to-daily-logs.sql（新規）
+- docs: 3-project-progress, 4-dev-log / sql-snippet/add-is-confirmed-to-daily-logs.sql（新規）
 - gol-web: app/dashboard/page.tsx, dashboard-tabs.tsx, journal-form.tsx, journal-impression-sections.tsx / components/journal-list.tsx / lib/types.ts
 - gol-web: app/settings/rights/page.tsx
 
@@ -659,7 +659,7 @@
 
 **変更したファイル（コミット df000c1 より）**
 
-- docs: 0-AI-prompt-memo, 4-project-progress, 5-dev-log / sql-snippet/supabase-add-rights-config-column.sql
+- docs: 0-AI-prompt-memo, 3-project-progress, 4-dev-log / sql-snippet/supabase-add-rights-config-column.sql
 - gol-web/app/api: daily-logs/route.ts, settings/rights/route.ts, user/profile/route.ts（新規）
 - gol-web/app/dashboard: habit-list.tsx, journal-form.tsx, kanban-board.tsx, page.tsx, todo-summary-tab.tsx
 - gol-web/app/settings: account/page.tsx（新規）, page.tsx, rights/page.tsx, todos/page.tsx
@@ -3171,7 +3171,7 @@ npx shadcn@latest add sonner --yes
 - `app/dashboard/journal-form.tsx`: すべての`alert()`を`toast()`に置き換え
 
 **ドキュメント:**
-- `docs/4-project-progress.md`: Phase 5の進捗を更新（エラーメッセージの統一完了）
+- `docs/3-project-progress.md`: Phase 5の進捗を更新（エラーメッセージの統一完了）
 
 **学んだこと:**
 
@@ -3261,7 +3261,7 @@ Phase 4完了を受けて、Phase 5の実装チェックリストを作成。エ
 
 **成果物:**
 
-- `docs/4-project-progress.md`: Phase 5チェックリストを追加
+- `docs/3-project-progress.md`: Phase 5チェックリストを追加
 
 **次回予定:**
 
@@ -3275,7 +3275,7 @@ Phase 5の各タスクを順次実装していく。優先順位は:
 
 **MD版同期機能について:**
 
-設計ドキュメント（`01-gol-design-doc.md`）と同期可能性分析（`07-md-sync-analysis.md`）に基づき、Phase 5でMD版との同期機能を実装予定。手動同期ボタン方式で、MD → Web および Web → MD の双方向同期を実装する。
+設計ドキュメント（`1-spec-sheet.md`）と同期可能性分析（`07-md-sync-analysis.md`）に基づき、Phase 5でMD版との同期機能を実装予定。手動同期ボタン方式で、MD → Web および Web → MD の双方向同期を実装する。
 
 ### 251209-火（続き10）
 
@@ -3341,7 +3341,7 @@ Phase 5の各タスクを順次実装していく。優先順位は:
   - 習慣並び替え機能: 上/下移動ボタン
 
 **ドキュメント:**
-- `docs/4-project-progress.md`: Phase 4完了を更新（100%）
+- `docs/3-project-progress.md`: Phase 4完了を更新（100%）
 
 **学んだこと:**
 
@@ -3448,7 +3448,7 @@ Phase 4のすべてのタスクが完了しました:
 - `app/dashboard/dashboard-tabs.tsx`: タブのARIA属性を追加
 
 **ドキュメント:**
-- `docs/4-project-progress.md`: アクセシビリティ対応の進捗を更新
+- `docs/3-project-progress.md`: アクセシビリティ対応の進捗を更新
 
 **学んだこと:**
 
@@ -3534,7 +3534,7 @@ Phase 4のすべてのタスクが完了しました:
 - `components/ui/modal.tsx`: モーダルのレスポンシブ対応
 
 **ドキュメント:**
-- `docs/4-project-progress.md`: レスポンシブデザイン調整の進捗を更新
+- `docs/3-project-progress.md`: レスポンシブデザイン調整の進捗を更新
 
 **学んだこと:**
 
@@ -3612,7 +3612,7 @@ Phase 4のすべてのタスクが完了しました:
 - `@radix-ui/react-icons`: インストール済み
 
 **ドキュメント:**
-- `docs/4-project-progress.md`: コンポーネント共通化の進捗を更新（カードコンポーネント完了）
+- `docs/3-project-progress.md`: コンポーネント共通化の進捗を更新（カードコンポーネント完了）
 
 **学んだこと:**
 
@@ -3679,7 +3679,7 @@ Phase 4のすべてのタスクが完了しました:
 - `app/dashboard/todo-summary-tab.tsx`: 共通フォームコンポーネントを使用するように修正
 
 **ドキュメント:**
-- `docs/4-project-progress.md`: コンポーネント共通化の進捗を更新（フォームコンポーネント完了）
+- `docs/3-project-progress.md`: コンポーネント共通化の進捗を更新（フォームコンポーネント完了）
 
 **学んだこと:**
 
@@ -3741,7 +3741,7 @@ Phase 4のすべてのタスクが完了しました:
 - `app/dashboard/todo-summary-tab.tsx`: `Modal`コンポーネントを使用するように修正
 
 **ドキュメント:**
-- `docs/4-project-progress.md`: コンポーネント共通化の進捗を更新
+- `docs/3-project-progress.md`: コンポーネント共通化の進捗を更新
 
 **学んだこと:**
 
@@ -3829,7 +3829,7 @@ Phase 4のすべてのタスクが完了しました:
 - `app/dashboard/logout-button.tsx`: Buttonコンポーネントに置き換え
 
 **ドキュメント:**
-- `docs/4-project-progress.md`: Phase 4の進捗を更新（shadcn/ui導入完了）
+- `docs/3-project-progress.md`: Phase 4の進捗を更新（shadcn/ui導入完了）
 
 **学んだこと:**
 
@@ -7114,7 +7114,7 @@ $$ LANGUAGE plpgsql;
 
 **更新したファイル:**
 
-- `docs/4-project-progress.md`: Phase 2チェックリスト追加（9項目）
+- `docs/3-project-progress.md`: Phase 2チェックリスト追加（9項目）
 
 #### Supabaseテーブル作成手順
 
@@ -7691,9 +7691,9 @@ PERFORM create_default_habits_for_user(NEW.id);
 
 **ドキュメント:**
 
-- `03-project-progress.md`: Phase 1チェックリスト追加、本日分更新
+- `3-project-progress.md`: Phase 1チェックリスト追加、本日分更新
 
-- `04-dev-log.md`: 詳細ログ更新（251108-土セクション作成）
+- `4-dev-log.md`: 詳細ログ更新（251108-土セクション作成）
 
 #### 学んだこと
 
@@ -7735,10 +7735,10 @@ PERFORM create_default_habits_for_user(NEW.id);
 
 ```bash
 # ドキュメントファイル作成
-# 01-gol-design-doc.md（設計書）
-# 02-wireframe.md（ワイヤーフレーム）
-# 03-project-progress.md（進捗表）
-# 04-dev-log.md（本ファイル）
+# 1-spec-sheet.md（設計書）
+# appendix/wireframe.md（ワイヤーフレーム）
+# 3-project-progress.md（進捗表）
+# 4-dev-log.md（本ファイル）
 ```
 
 **学んだこと:**
@@ -8042,13 +8042,13 @@ export async function createClient() {
 
 ```gitignore
 # API KEYなど機密情報が含まれるファイル
-docs/1-web-ai-directive-draft.md
+docs/z-project-draft.md
 
 # macOS
 .DS_Store
 ```
 
-これにより、`00-web-ai-directive-draft.md` に記載されたAPIキーなどがGitにコミットされることを防ぐ。
+これにより、`z-project-draft.md` に記載されたAPIキーなどがGitにコミットされることを防ぐ。
 
 #### Supabase接続テスト
 
@@ -8903,7 +8903,7 @@ app/signup/page.tsx
 - 画面遷移図
 - データフロー
 
-場所: 02-wireframe.md に追記、または新規ファイル 06-flow-diagrams.md
+場所: appendix/wireframe.md に追記、または新規ファイル 06-flow-diagrams.md
 
 **結論: 全て後回しで大丈夫。ただしMermaidは今からでもOK（簡単）**
 

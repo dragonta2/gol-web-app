@@ -88,12 +88,12 @@ PRメッセージの形式は以下の形式で(md記法で)
 ```
 → ファイルの通称一覧（`_INDEX.md`に記載）:
 - `0-AI-prompt-memo.md` → **AIプロンプトメモ**
-- `1-web-ai-directive-draft.md` → **草案**
-- `2-gol-design-doc.md` → **仕様書**
-- `3-wireframe.md` → **ワイヤーフレーム**
-- `4-project-progress.md` → **進捗表**
-- `5-dev-log.md` → **開発ログ**
-- `6-dta2-memo.md` → **dta2メモ**
+- `z-project-draft.md` → **草案**
+- `1-spec-sheet.md` → **仕様書**
+- `appendix/wireframe.md` → **ワイヤーフレーム**
+- `3-project-progress.md` → **進捗表**
+- `4-dev-log.md` → **開発ログ**
+- `5-dta2-memo.md` → **dta2メモ**
 - `07-database-schema.md` → **DB設計書**
 - `08-md-sync-analysis.md` → **MD同期分析**
 - `09-server-validation.md` → **サーバーバリデーション設計書**

@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * AI作成文章の改行ルール（2-gol-design-doc.md 準拠）
+ * AI作成文章の改行ルール（1-spec-sheet.md 準拠）
  * 句点（。）・疑問符（？（全角）・?（半角））の後は必ず改行する
  */
 export function applyAiTextLineBreaks(text: string): string {
