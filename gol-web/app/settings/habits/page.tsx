@@ -370,7 +370,7 @@ export default function HabitsSettingsPage() {
                       id="habit_name"
                       value={formData.habit_name}
                       onChange={(e) => setFormData({ ...formData, habit_name: e.target.value })}
-                      placeholder="例: 朝の散歩"
+                      placeholder="例: 筋トレ、早起き"
                       className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
                     />
                   </div>

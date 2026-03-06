@@ -1678,7 +1678,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               type="text"
               value={modalFormData.habit_name}
               onChange={(e) => setModalFormData((prev) => ({ ...prev, habit_name: e.target.value }))}
-              placeholder="例: 筋トレ、読書、タバコを吸わない"
+              placeholder="例: 筋トレ、早起き"
             />
 
             {/* 補足説明 */}
@@ -1712,9 +1712,9 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   }}
                   className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-700 rounded focus:ring-cyan-500"
                 />
-                <span className="text-zinc-300">親習慣（子習慣を設定する）</span>
+                <span className="text-zinc-300">親習慣にする（子習慣を設定する）</span>
               </label>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-zinc-400">
                 ONにすると、親は見出しのみ表示され、子習慣だけチェックできます。各子習慣ごとにゴルド・EXPを設定できます。
               </p>
             </div>

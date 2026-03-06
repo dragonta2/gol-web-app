@@ -53,7 +53,7 @@ export function Modal({
         <DialogHeader>
           <DialogTitle className="text-cyan-400">{title}</DialogTitle>
           {description && (
-            <DialogDescription className="text-zinc-400">
+            <DialogDescription className="text-sm text-zinc-400!">
               {description}
             </DialogDescription>
           )}
