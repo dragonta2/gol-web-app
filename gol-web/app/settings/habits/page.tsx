@@ -326,11 +326,19 @@ export default function HabitsSettingsPage() {
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-cyan-400">習慣管理</h1>
             <div className="flex items-center gap-2">
-              <Button onClick={() => openAddDialog('good')} className="bg-cyan-600 hover:bg-cyan-700 font-bold">
+              <Button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => openAddDialog('good')}
+                className="bg-cyan-600 hover:bg-cyan-700 font-bold"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 良習慣を追加
               </Button>
-              <Button onClick={() => openAddDialog('bad')} className="bg-red-600 hover:bg-red-700 font-bold">
+              <Button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => openAddDialog('bad')}
+                className="bg-red-600 hover:bg-red-700 font-bold"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 悪習慣を追加
               </Button>

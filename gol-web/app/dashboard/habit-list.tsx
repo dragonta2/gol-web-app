@@ -1130,6 +1130,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           {/* ボタン */}
           <div className="flex gap-3 pt-2 mt-3 border-t border-zinc-800">
             <Button
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleOpenModal('good')}
               variant="ghost"
               size="sm"
@@ -1139,6 +1140,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               [+ 良習慣を追加]
             </Button>
             <Button
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleOpenManagementModal}
               variant="ghost"
               size="sm"
@@ -1377,6 +1379,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           {/* ボタン */}
           <div className="flex gap-3 pt-2 mt-3 border-t border-zinc-800">
             <Button
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleOpenModal('bad')}
               variant="ghost"
               size="sm"
@@ -1386,6 +1389,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               [+ 悪習慣を追加]
             </Button>
             <Button
+              onMouseDown={(e) => e.preventDefault()}
               onClick={handleOpenManagementModal}
               variant="ghost"
               size="sm"
