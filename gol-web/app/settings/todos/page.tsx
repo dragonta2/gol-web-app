@@ -20,6 +20,7 @@ import {
   EXP_ATTRIBUTE_LABELS,
   distributePresetExp,
 } from '@/lib/types';
+import { isSubmitShortcut } from '@/lib/utils';
 
 interface Todo {
   id: string;
@@ -344,7 +345,15 @@ export default function TodosSettingsPage() {
                     {editingTodo ? 'ToDoを編集' : '新しいToDoを追加'}
                   </DialogTitle>
                 </DialogHeader>
-                <div className="space-y-4 mt-4">
+                <div
+                  className="space-y-4 mt-4"
+                  onKeyDown={(e) => {
+                    if (!isSubmitShortcut(e)) return
+                    e.preventDefault()
+                    if (editingTodo) handleUpdateTodo()
+                    else handleAddTodo()
+                  }}
+                >
                   {/* ToDo名 */}
                   <div>
                     <Label htmlFor="task_name" className="text-zinc-300">ToDo名 *</Label>

@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import type { StoryWorldConfig, StoryWorldId } from "@/lib/ai/story-worlds"
 import type { AiOutputLimits } from "@/lib/ai/ai-output-limits"
 import { DEFAULT_AI_OUTPUT_LIMITS } from "@/lib/ai/ai-output-limits"
+import { isSubmitShortcut } from "@/lib/utils"
 import { AdminWorldConfigForm } from "@/components/admin-world-config-form"
 import { LevelThresholdsEditor } from "@/components/level-thresholds-editor"
 
@@ -258,7 +259,15 @@ export default function AdminSettingsClient() {
             <p className="text-sm text-amber-400 mb-2">{aiLimitsLoadError}</p>
           )}
           {!aiLimitsLoading && (
-            <form onSubmit={handleSaveAiOutputLimits} className="space-y-4 pl-2 border-l-2 border-zinc-700 py-2">
+            <form
+              onSubmit={handleSaveAiOutputLimits}
+              onKeyDown={(e) => {
+                if (!isSubmitShortcut(e)) return
+                e.preventDefault()
+                handleSaveAiOutputLimits(e as unknown as React.FormEvent)
+              }}
+              className="space-y-4 pl-2 border-l-2 border-zinc-700 py-2"
+            >
               {AI_LIMITS_KEYS.map(({ key, label }) => (
                 <div key={key} className="flex flex-wrap items-center gap-3">
                   <span className="text-sm text-zinc-300 w-48 shrink-0">{label}</span>

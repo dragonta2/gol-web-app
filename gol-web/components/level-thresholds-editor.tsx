@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { LEVEL_THRESHOLDS } from '@/lib/rank-utils';
+import { isSubmitShortcut } from '@/lib/utils';
 
 type LevelThresholds = Record<number, number>;
 
@@ -125,7 +126,14 @@ export function LevelThresholdsEditor({ forceShowForAdmin = false }: { forceShow
   }
 
   return (
-    <section className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mb-6">
+    <section
+      className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 mb-6"
+      onKeyDown={(e) => {
+        if (!isSubmitShortcut(e)) return
+        e.preventDefault()
+        handleSave()
+      }}
+    >
       <h2 className="text-base font-semibold text-zinc-300 mb-2 flex items-center gap-2">
         <TrendingUp className="w-5 h-5 text-cyan-400" />
         レベルアップ必要EXPの設定（管理者・テスト用）

@@ -14,7 +14,7 @@ import { fetchWithRetry } from '@/lib/api-retry';
 import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 import type { DailyLog } from '@/lib/types';
 import type { ScoreBreakdown } from '@/lib/score-calculator';
-import { applyAiTextLineBreaks, insertBlankLineEveryTwoLines } from '@/lib/utils';
+import { applyAiTextLineBreaks, insertBlankLineEveryTwoLines, isSubmitShortcut } from '@/lib/utils';
 import {
   STORAGE_AI_PERSONALITY_TYPE,
   STORAGE_AI_STRICT_COACH_ENABLED,
@@ -558,7 +558,15 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   const totalPoints = rights.reduce((sum, right) => sum + (right.points * right.count), 0);
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+    <div
+      className="space-y-4 sm:space-y-6 lg:space-y-8"
+      onKeyDown={(e) => {
+        if (!isSubmitShortcut(e)) return
+        if (!isEditable) return
+        e.preventDefault()
+        handleSave()
+      }}
+    >
       {/* 本日の利用ポイント（過去の日付で日誌が存在する場合のみ表示） */}
       {(!isPastDate || dailyLog) && (
         <div>

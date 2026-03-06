@@ -5,6 +5,13 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+/** Mac: Cmd+Enter / Windows: Ctrl+Enter でフォーム送信などのショートカット判定 */
+export function isSubmitShortcut(
+  e: { metaKey: boolean; ctrlKey: boolean; key: string }
+): boolean {
+  return (e.metaKey || e.ctrlKey) && e.key === "Enter"
+}
+
 /**
  * AI作成文章の改行ルール（1-spec-sheet.md 準拠）
  * 句点（。）・疑問符（？（全角）・?（半角））の後は必ず改行する

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Edit, Trash2, GripVertical, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { isSubmitShortcut } from '@/lib/utils';
 
 interface Habit {
   id: string;
@@ -345,7 +346,15 @@ export default function HabitsSettingsPage() {
                   {editingHabit ? '習慣を編集' : formData.habit_type === 'bad' ? '悪習慣を追加' : '良習慣を追加'}
                 </DialogTitle>
               </DialogHeader>
-                <div className="space-y-4 mt-4">
+                <div
+                  className="space-y-4 mt-4"
+                  onKeyDown={(e) => {
+                    if (!isSubmitShortcut(e)) return
+                    e.preventDefault()
+                    if (editingHabit) handleUpdateHabit()
+                    else handleAddHabit()
+                  }}
+                >
                   {/* 習慣名 */}
                   <div>
                     <Label htmlFor="habit_name" className="text-zinc-300">習慣名 *</Label>
