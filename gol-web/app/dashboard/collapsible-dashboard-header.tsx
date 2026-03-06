@@ -99,7 +99,12 @@ export default function CollapsibleDashboardHeader({
     new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
       new Date()
     )
+  const getYesterdayJST = () =>
+    new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
+      new Date(Date.now() - 24 * 60 * 60 * 1000)
+    )
   const isToday = selectedDate === getTodayJST()
+  const isYesterday = selectedDate === getYesterdayJST()
 
   return (
     <header className="sticky top-0 z-50 bg-zinc-900 border-b border-zinc-800 shadow-lg">
@@ -138,6 +143,14 @@ export default function CollapsibleDashboardHeader({
                         <span className="translate-y-[1px]">本日</span>
                       </span>
                     )}
+                    {isYesterday && (
+                      <span
+                        className="inline-flex items-center justify-center leading-none px-2 py-1 rounded text-xs font-medium text-yellow-400 bg-yellow-900/30 border border-yellow-500/50 shrink-0 -translate-y-[2px]"
+                        aria-label="昨日"
+                      >
+                        <span className="translate-y-[1px]">昨日</span>
+                      </span>
+                    )}
                     {isConfirmed && (
                       <span
                         className="inline-flex items-center justify-center leading-none px-2 py-1 rounded text-xs font-medium bg-zinc-600/80 text-zinc-300 border border-zinc-500/50 shrink-0 -translate-y-[2px]"
@@ -165,6 +178,14 @@ export default function CollapsibleDashboardHeader({
                     aria-label="本日"
                   >
                     <span className="translate-y-[1px]">本日</span>
+                  </span>
+                )}
+                {isYesterday && (
+                  <span
+                    className="inline-flex items-center justify-center leading-none px-2 py-1 rounded text-xs font-medium bg-zinc-600/30 text-zinc-400 border border-zinc-500/50 shrink-0 -translate-y-[2px]"
+                    aria-label="昨日"
+                  >
+                    <span className="translate-y-[1px]">昨日</span>
                   </span>
                 )}
                 {isConfirmed && (
@@ -259,6 +280,14 @@ export default function CollapsibleDashboardHeader({
                       aria-label="本日"
                     >
                       <span className="translate-y-[1px]">本日</span>
+                    </span>
+                  )}
+                  {isYesterday && (
+                    <span
+                      className="inline-flex items-center justify-center leading-none px-2 py-1 rounded text-xs font-medium text-yellow-400 bg-yellow-900/30 border border-yellow-500/50 -translate-y-[2px]"
+                      aria-label="昨日"
+                    >
+                      <span className="translate-y-[1px]">昨日</span>
                     </span>
                   )}
                   {isConfirmed && (
