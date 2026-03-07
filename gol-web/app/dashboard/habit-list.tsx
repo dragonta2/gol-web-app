@@ -94,6 +94,7 @@ function isParentCompleted(parent: HabitWithLog, children: HabitWithLog[]): bool
 interface HabitFormData {
   habit_name: string;
   description: string;
+  note: string;
   habit_type: 'good' | 'bad' | 'bonus';
   points: number;
   exp_body: number;
@@ -127,6 +128,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   const defaultFormData: HabitFormData = {
     habit_name: '',
     description: '',
+    note: '',
     habit_type: 'good',
     points: 1,
     exp_body: 0,
@@ -472,6 +474,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     const initial = {
       habit_name: habit.habit_name,
       description: habit.description ?? '',
+      note: habit.note ?? '',
       habit_type: habit.habit_type,
       points: habit.points,
       exp_body: habit.exp_body,
@@ -516,6 +519,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         .update({
           habit_name: modalFormData.habit_name.trim(),
           description: modalFormData.description.trim() || null,
+          note: modalFormData.note.trim() || null,
           habit_type: modalFormData.habit_type,
           points: modalFormData.points,
           exp_body: modalFormData.exp_body,
@@ -705,6 +709,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               habitId: editingHabit.id,
               habit_name: modalFormData.habit_name.trim(),
               description: modalFormData.description.trim() || null,
+              note: modalFormData.note.trim() || null,
               habit_type: modalFormData.habit_type,
               points: 0,
               exp_body: 0,
@@ -785,6 +790,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
             body: JSON.stringify({
               habit_name: modalFormData.habit_name.trim(),
               description: modalFormData.description.trim() || null,
+              note: modalFormData.note.trim() || null,
               habit_type: modalFormData.habit_type,
               points: 0,
               exp_body: 0,
@@ -838,6 +844,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
             habitId: editingHabit.id,
             habit_name: modalFormData.habit_name.trim(),
             description: modalFormData.description.trim() || null,
+            note: modalFormData.note.trim() || null,
             habit_type: modalFormData.habit_type,
             points: modalFormData.points,
             exp_body: modalFormData.exp_body,
@@ -867,6 +874,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           body: JSON.stringify({
             habit_name: modalFormData.habit_name.trim(),
             description: modalFormData.description.trim() || null,
+            note: modalFormData.note.trim() || null,
             habit_type: modalFormData.habit_type,
             points: modalFormData.points,
             exp_body: modalFormData.exp_body,
@@ -1681,15 +1689,28 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               placeholder="例: 筋トレ、早起き"
             />
 
-            {/* 補足説明 */}
+            {/* 副見出し */}
             <div>
-              <FormLabel htmlFor="habit_description" className="text-zinc-300">補足説明</FormLabel>
-              <textarea
+              <FormLabel htmlFor="habit_description" className="text-zinc-300">副見出し（任意）</FormLabel>
+              <input
                 id="habit_description"
-                rows={3}
+                type="text"
                 value={modalFormData.description}
                 onChange={(e) => setModalFormData((prev) => ({ ...prev, description: e.target.value }))}
-                placeholder="習慣の詳細やメモを自由に記入できます（任意）"
+                placeholder="例: 胸と背中、朝6時"
+                className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+              />
+            </div>
+
+            {/* 説明 */}
+            <div>
+              <FormLabel htmlFor="habit_note" className="text-zinc-300">説明（任意）</FormLabel>
+              <textarea
+                id="habit_note"
+                rows={3}
+                value={modalFormData.note}
+                onChange={(e) => setModalFormData((prev) => ({ ...prev, note: e.target.value }))}
+                placeholder="詳しい説明を記載してください。"
                 className="mt-2 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-y min-h-[80px]"
               />
             </div>
@@ -1790,7 +1811,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                       <textarea
                         value={row.description}
                         onChange={(e) => updateModalChildRow(row.id, { description: e.target.value })}
-                        placeholder="補足説明（任意）"
+                        placeholder="副見出し（任意）"
                         rows={2}
                         className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-zinc-100 text-sm placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-y min-h-[4rem]"
                       />

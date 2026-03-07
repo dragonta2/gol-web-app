@@ -1,7 +1,7 @@
-# GOL｜設計書_Web版｜Design Doc v1
+# GOL｜設計書_Web版｜Spec Sheet v1
 
 ■ このファイルの役割
-決定稿の実装ルール（**確定した**設計・仕様・ルールのみを記載する）。
+決定稿の実装ルール（ **確定した** 設計・仕様・ルールのみを記載する）。
 
 - **1には確定事項の仕様だけを書く。** 未確定・検討中の確認事項や案は **2（2-support-of-progress.md）** に書く。このルールを徹底する。
 
@@ -23,6 +23,67 @@ https://www.notion.so/profile/integrations/internal/30b4c1f3-dcd0-8142-b238-0027
 
 ・Notion｜日誌 | 全ての日誌｜たつひこのみ｜テーブルビュー
 https://www.notion.so/22feac3fdfa4478caca2d75c1d5e35c5?v=91034d9fb8324ba783bff7a0dd886242
+
+
+## 自動日付追記（launchd） --------------
+
+`docs/0-AI-prompt-memo.md` に、Mac 起動・スリープ解除のタイミングで当日の作業欄を自動追記する仕組み。
+
+### 概要
+
+- Mac を開いたとき（ログイン時・スリープ解除後）に即時実行
+- 以降 1 時間ごとにバックグラウンドでチェック
+- 当日の見出しがすでにある場合はスキップ（二重書き込みなし）
+- 月が変わったとき、月見出しがなければ自動で作成
+
+### 挿入される内容
+
+```
+## YYMMDD-曜 -------------
+
+さあ、続きからはじめよう！！
+今日の日付は YYMMDD-曜
+
+前回までの作業は進捗用の3番メモを参照して
+
+今日もよろしくお願いします！！
+
+```
+
+月見出し `## YYMM- -------------` の直下に挿入される。
+
+### 構成ファイル
+
+- **スクリプト**: `/Users/ta2/ALL-DTA2/.automation/scripts/add-daily-prompt.sh`
+- **launchd plist**: `~/Library/LaunchAgents/com.ta2.daily-prompt.plist`
+- **ログ**: `~/Library/Logs/daily-prompt.log` / `daily-prompt.error.log`
+
+### 詳細ドキュメント
+
+スクリプトの詳細、注意事項、トラブルシューティングは以下を参照してください：
+
+```
+/Users/ta2/ALL-DTA2/.automation/README.md
+```
+
+### launchd の登録・解除コマンド
+
+```bash
+
+# 登録（初回のみ）
+launchctl load ~/Library/LaunchAgents/com.ta2.daily-prompt.plist
+
+# 解除（停止したいとき）
+launchctl unload ~/Library/LaunchAgents/com.ta2.daily-prompt.plist
+
+# 手動で今すぐ実行
+launchctl start com.ta2.daily-prompt
+```
+
+### 注意事項
+
+- `0-AI-prompt-memo.md` の月見出し（`## YYMM- -------------`）が存在しない場合、スクリプトがファイル先頭付近に月見出しごと自動作成する
+- Mac がログイン状態であれば動作する（スリープ有無は問わない）
 
 
 ## 参考APP --------------

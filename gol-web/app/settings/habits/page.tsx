@@ -28,6 +28,7 @@ interface Habit {
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
   description?: string | null;
+  note?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -59,6 +60,7 @@ export default function HabitsSettingsPage() {
   const [formData, setFormData] = useState({
     habit_name: '',
     description: '',
+    note: '',
     habit_type: 'good' as 'good' | 'bad' | 'bonus',
     points: 1,
     exp_body: 0,
@@ -105,6 +107,7 @@ export default function HabitsSettingsPage() {
     setFormData({
       habit_name: '',
       description: '',
+      note: '',
       habit_type: 'good',
       points: 1,
       exp_body: 0,
@@ -218,6 +221,7 @@ export default function HabitsSettingsPage() {
     setFormData({
       habit_name: '',
       description: '',
+      note: '',
       habit_type: habitType,
       points: 1,
       exp_body: 0,
@@ -237,6 +241,7 @@ export default function HabitsSettingsPage() {
     setFormData({
       habit_name: habit.habit_name,
       description: habit.description ?? '',
+      note: habit.note ?? '',
       habit_type: habit.habit_type,
       points: habit.points,
       exp_body: habit.exp_body,
@@ -262,7 +267,10 @@ export default function HabitsSettingsPage() {
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-2">
           <GripVertical className="w-4 h-4 text-zinc-500" />
-          <h3 className="text-lg font-medium text-zinc-100">{[habit.habit_name, habit.description?.trim()].filter(Boolean).join('｜')}</h3>
+          <h3 className="text-lg font-medium text-zinc-100">{habit.habit_name}</h3>
+          {habit.description && (
+            <span className="text-sm text-zinc-400 ml-2">｜ {habit.description}</span>
+          )}
           {hasChildren && (
             <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>
           )}
@@ -375,15 +383,27 @@ export default function HabitsSettingsPage() {
                     />
                   </div>
 
-                  {/* 補足説明 */}
+                  {/* 副見出し */}
                   <div>
-                    <Label htmlFor="habit_description" className="text-zinc-300">補足説明</Label>
-                    <textarea
-                      id="habit_description"
-                      rows={3}
+                    <Label htmlFor="habit_subtitle" className="text-zinc-300">副見出し（任意）</Label>
+                    <Input
+                      id="habit_subtitle"
                       value={formData.description}
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      placeholder="習慣の詳細やメモを自由に記入できます（任意）"
+                      placeholder="例: 胸と背中、朝6時"
+                      className="bg-zinc-800 border-zinc-700 text-zinc-100 mt-1"
+                    />
+                  </div>
+
+                  {/* 説明 */}
+                  <div>
+                    <Label htmlFor="habit_note" className="text-zinc-300">説明（任意）</Label>
+                    <textarea
+                      id="habit_note"
+                      rows={3}
+                      value={formData.note}
+                      onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+                      placeholder="詳しい説明を記載してください。"
                       className="mt-1 w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-y min-h-[80px]"
                     />
                   </div>

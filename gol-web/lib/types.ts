@@ -46,6 +46,10 @@ export interface Habit {
   exclude_weekends: boolean;
   /** 完了判定から除外するか */
   exclude_from_complete: boolean;
+  /** 副見出し（habitsテーブルの description カラム。習慣カードにも表示） */
+  description?: string | null;
+  /** 説明（habitsテーブルの note カラム。モーダル内のみ表示） */
+  note?: string | null;
   /** 難易度（habitsテーブルにカラムがある場合のみ。未設定時は 'medium' として扱う） */
   difficulty?: Difficulty;
   /** 作成日時 */

@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     const {
       habit_name,
       description,
+      note,
       habit_type,
       points,
       exp_body,
@@ -91,6 +92,10 @@ export async function POST(request: NextRequest) {
     const descValue = typeof description === 'string' && description.trim() ? description.trim() : null;
     if (descValue !== null) {
       insertPayload.description = descValue;
+    }
+    const noteValue = typeof note === 'string' && note.trim() ? note.trim() : null;
+    if (noteValue !== null) {
+      insertPayload.note = noteValue;
     }
     if (parent_habit_id != null && parent_habit_id !== '') {
       const uuidValidation = validateUUID(parent_habit_id, '親習慣ID');
@@ -158,6 +163,7 @@ export async function PUT(request: NextRequest) {
       habitId,
       habit_name,
       description,
+      note,
       habit_type,
       points,
       exp_body,
@@ -224,6 +230,12 @@ export async function PUT(request: NextRequest) {
     const descValue = typeof description === 'string' && description.trim() ? description.trim() : null;
     if (descValue !== null) {
       updatePayload.description = descValue;
+    }
+    const noteValue = typeof note === 'string' && note.trim() ? note.trim() : null;
+    if (noteValue !== null) {
+      updatePayload.note = noteValue;
+    } else {
+      updatePayload.note = null;
     }
     if (parent_habit_id !== undefined) {
       if (parent_habit_id != null && parent_habit_id !== '') {
