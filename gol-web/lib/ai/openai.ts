@@ -107,7 +107,7 @@ export function createAdvicePrompt(
       ? `${toneInstruction} 加えて、${personalityAddition.trim()}`
       : toneInstruction;
   const displayName = nickname.trim() || (worldConfig?.protagonistName ?? '勇者');
-  const nameInstruction = `【重要】アドバイスの冒頭で、読者に呼びかける形で「${displayName}よ。」のように必ず表記してください。`;
+  const nameInstruction = `【重要】アドバイスの冒頭の1行目は「${displayName}よ。」という呼びかけのみにしてください。呼びかけ以外の文章は2行目以降に書いてください。`;
 
   return `${toneBlock}
 
