@@ -28,6 +28,49 @@
 - [] ToDoサマリー画面のアクティブタスク下にもタスクを追加ボタンを設置する
 
 
+## 260308-土 実施内容
+
+### 習慣フィールドに「副見出し」「説明」を追加
+
+**概要**
+習慣の編集モーダルに「副見出し（任意）」と「説明（任意）」の2フィールドを追加。
+
+**設計**
+- `description`（既存カラム）→ 副見出し。習慣カードにも表示
+- `note`（新規カラム）→ 説明。モーダル内のみ表示
+
+**変更ファイル**
+- `gol-web/lib/types.ts` — `Habit` 型に `note` を追加
+- `gol-web/app/api/habits/route.ts` — POST / PUT で `note` を受け取り・保存
+- `gol-web/app/settings/habits/page.tsx` — フォームUI対応
+- `gol-web/app/dashboard/habit-list.tsx` — フォームUI対応・ラベル「補足説明」→「副見出し」変更
+- `docs/appendix/DB-related/sql-snippet/add-habit-note.sql` — マイグレーションSQL（実行済み）
+
+---
+
+### アドバイス冒頭に「せよ。」が余分に出る問題を修正
+
+**事象**
+- 辛口コーチングアドバイスの冒頭「DTA2よ。」の直後に「せよ。」という余分な1行が出力されていた
+
+**原因**
+- `nameInstruction` の指示が曖昧で、GPT が呼びかけ文に続けて口調の指示文を本文として出力してしまっていた
+
+**対応**
+- `gol-web/lib/ai/openai.ts` の `nameInstruction` を「1行目は呼びかけのみ。それ以外は2行目以降に」と明示するよう修正
+
+**変更ファイル**
+- `gol-web/lib/ai/openai.ts`
+
+---
+
+### Supabase MCP を Cursor に設定
+
+- `~/.cursor/mcp.json` に Supabase MCP サーバーの設定を追加
+- Cursor 再起動後に有効化される（未確認）
+
+---
+
 ## 【対応済み】良習慣・悪習慣追加ボタンのクリック時フォーカスリング（260306-金）
 
 **事象**
