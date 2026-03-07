@@ -30,6 +30,7 @@ interface Habit {
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
   description?: string | null;
+  note?: string | null;
   difficulty?: string;
   created_at: string;
   updated_at: string;
