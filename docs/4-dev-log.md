@@ -48,6 +48,30 @@
 - 記述レベル: 雑多でOK、クリーンにする必要なし。「どうやって作ったか」を記録
 
 
+## 2603 --------------
+
+### 260318-水
+
+#### カレンダー週末色・日付ナビ・日付セグメントスタイル・cursor rules
+
+**実施内容（詳細）:**
+
+- **カレンダー（components/ui/calendar.tsx）**
+  - CalendarDayButton で土日判定（getDay() === 0 || 6）、isWeekend 時に bg-zinc-800/70 text-zinc-400。data-weekend 属性付与
+  - 未来日で週末スタイルが消える問題: disabled に opacity-50 を使わず text-zinc-500 のみに変更（親の opacity で週末背景が薄れないように）
+- **日付セレクタ（components/date-selector.tsx）**
+  - 前日・翌日: addDays/subDays で日付計算、goPrevDay/goNextDay、今日のときは翌日ボタン disabled
+  - レイアウト: 左矢印｜日付枠｜右矢印 を1つの border でまとめ、「日付へ移動」は ml-auto で右寄せ、gap-x-4 で余白
+  - クリック時の青い枠を出さない: 矢印・カレンダーアイコンに onMouseDown={(e) => e.preventDefault()}、ラッパーの focus-within:ring を削除
+- **日付入力アクティブスタイル（app/globals.css）**
+  - アクティブなセグメント（::-webkit-datetime-edit-*-field:focus）のみ背景 zinc-100（rgb(244 244 245)）、文字色白よりの薄いグレー（rgb(250 250 250)）。input:focus で全セグメントに背景を付けないように transparent。レイヤー外でも同様のルールで上書き
+- **.cursor/rules**
+  - react-best-practices.mdc を親ディレクトリへのシンボリックリンクで追加。implementation-react.mdc で「実装時は react-best-practices に準拠」を明示（globs: tsx/ts/jsx/js, alwaysApply）。README にシンボリックリンクの説明と ln -s コマンドを記載
+- **2-support-of-progress.md**: 週末の色を替える・左右ボタンで前日・翌日 を完了（260318-水）
+- **作業終了**: 3・4番メモに 260318-水 を追記。add・commit・push
+
+---
+
 ## 2602 --------------
 
 ### 260306-金

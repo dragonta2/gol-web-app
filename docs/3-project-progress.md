@@ -284,6 +284,21 @@
 
 ## 2603 --------------
 
+### 260318-水
+
+#### 実施内容
+
+- カレンダー: 週末の色を変更（土日を薄いグレーで表示）。未来日付でも週末スタイルが効くよう disabled の opacity をやめ文字色のみに
+- 日付ナビ: 前日・翌日ボタンを日付枠の左右に配置。枠と「日付へ移動」の間の余白（gap-x-4）、クリック時のフォーカスリング削除（onMouseDown preventDefault）、「日付へ移動」は右端寄せ（ml-auto）
+- 日付入力: アクティブなセグメントのみ背景 zinc-100・文字色白よりの薄いグレー（globals.css の WebKit 疑似要素）
+- .cursor/rules: react-best-practices.mdc のシンボリックリンク追加、implementation-react.mdc（実装時は react-best-practices に準拠）と README を追加
+
+#### 次回予定
+
+- 未定
+
+---
+
 ### 260306-金
 
 #### 実施内容

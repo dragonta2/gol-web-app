@@ -118,7 +118,7 @@ function Calendar({
           defaultClassNames.outside
         ),
         disabled: cn(
-          "text-muted-foreground opacity-50",
+          "text-zinc-500",
           defaultClassNames.disabled
         ),
         hidden: cn("invisible", defaultClassNames.hidden),
@@ -179,6 +179,8 @@ function CalendarDayButton({
   ...props
 }: React.ComponentProps<typeof DayButton>) {
   const defaultClassNames = getDefaultClassNames()
+  const dayOfWeek = day.date.getDay()
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
 
   const ref = React.useRef<HTMLButtonElement>(null)
   React.useEffect(() => {
@@ -191,6 +193,7 @@ function CalendarDayButton({
       variant="ghost"
       size="icon"
       data-day={day.date.toLocaleDateString()}
+      data-weekend={isWeekend}
       data-selected-single={
         modifiers.selected &&
         !modifiers.range_start &&
@@ -202,6 +205,7 @@ function CalendarDayButton({
       data-range-middle={modifiers.range_middle}
       className={cn(
         "text-[20px] data-[selected-single=true]:bg-cyan-500 data-[selected-single=true]:text-white data-[selected-single=true]:font-semibold data-[range-middle=true]:bg-zinc-800 data-[range-middle=true]:text-zinc-100 data-[range-start=true]:bg-cyan-500 data-[range-start=true]:text-white data-[range-end=true]:bg-cyan-500 data-[range-end=true]:text-white group-data-[focused=true]/day:border-cyan-500 group-data-[focused=true]/day:ring-cyan-500/50 flex aspect-square h-auto w-full min-w-[--cell-size] flex-col gap-1 font-semibold leading-none text-zinc-100 hover:bg-zinc-800 hover:text-cyan-400 data-[range-end=true]:rounded-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] [&>span]:text-base [&>span]:opacity-70",
+        isWeekend && "bg-zinc-800/70 text-zinc-400",
         defaultClassNames.day,
         className
       )}
