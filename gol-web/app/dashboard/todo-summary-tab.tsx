@@ -21,7 +21,7 @@ import { FormInput, FormLabel } from "@/components/ui/form-input"
 import { DatePickerField } from "@/components/date-picker-field"
 import { FormCard } from "@/components/ui/form-card"
 import { toast } from "sonner"
-import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, GripVertical, Loader2, ChevronUp, ChevronDown } from "lucide-react"
+import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, GripVertical, Loader2, ChevronUp, ChevronDown, Copy } from "lucide-react"
 import {
   DndContext,
   DragEndEvent,
@@ -1043,6 +1043,27 @@ export default function TodoSummaryTab({
     }
   }
 
+  // ToDoとサブタスクをまとめて複製
+  const handleDuplicateTodo = async (todo: Todo) => {
+    try {
+      const res = await fetch("/api/todos/duplicate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ todoId: todo.id }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? "複製に失敗しました")
+      }
+      toast.success(`「${todo.task_name}」を複製しました`)
+      router.refresh()
+    } catch (err) {
+      toast.error("複製に失敗しました", {
+        description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
+      })
+    }
+  }
+
   // サブタスクを取得（todo_idでフィルタ）
   const getSubtasksForTodo = (todoId: string): TodoSubtask[] => {
     return todoSubtasks
@@ -1457,8 +1478,17 @@ export default function TodoSummaryTab({
           )
         })()}
 
-        {/* 編集ボタン（カードの一番右下） */}
-        <div className="pt-3 mt-3 border-t border-zinc-700 flex items-center justify-end">
+        {/* 編集・複製ボタン（カードの一番右下） */}
+        <div className="pt-3 mt-3 border-t border-zinc-700 flex items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={() => handleDuplicateTodo(todo)}
+            className="text-xs text-zinc-400 hover:text-zinc-200 hover:underline flex items-center gap-1"
+            aria-label={`${todo.task_name}を複製する`}
+          >
+            <Copy className="w-3 h-3" />
+            複製
+          </button>
           <button
             type="button"
             onClick={() => handleOpenEditModal(todo)}
