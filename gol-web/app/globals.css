@@ -155,36 +155,20 @@ html[data-font-size="large"] {
     appearance: textfield;
   }
 
-  /* 日付選択：YY / MM / DD（WebKit）・通常時は白、アクティブなセグメントだけシアン */
+  /* 日付選択：YY / MM / DD（WebKit）*/
   .date-selector-segment-input::-webkit-datetime-edit {
     padding: 2px 0;
   }
-  .date-selector-segment-input:focus::-webkit-datetime-edit-year-field,
-  .date-selector-segment-input:focus::-webkit-datetime-edit-month-field,
-  .date-selector-segment-input:focus::-webkit-datetime-edit-day-field {
-    background: transparent !important;
-    outline: none !important;
-    border-radius: 3px;
-  }
-  /* アクティブ（編集中）のセグメントだけ薄いグレー背景＋文字は白よりの薄いグレー */
-  .date-selector-segment-input::-webkit-datetime-edit-year-field:focus,
-  .date-selector-segment-input::-webkit-datetime-edit-month-field:focus,
-  .date-selector-segment-input::-webkit-datetime-edit-day-field:focus {
-    background: rgb(244 244 245) !important;
-    color: rgb(250 250 250) !important;
-    -webkit-text-fill-color: rgb(250 250 250) !important;
-    border-radius: 3px;
-  }
 }
 
-/* 日付セグメント：アクティブ（:focus）のセグメントだけ薄いグレー＋シアン（レイヤー外で上書き） */
+/* 日付セグメント：アクティブ（:focus）のセグメントだけ白背景＋黒文字（レイヤー外で上書き） */
 input.date-selector-segment-input::-webkit-datetime-edit-year-field:focus,
 input.date-selector-segment-input::-webkit-datetime-edit-month-field:focus,
 input.date-selector-segment-input::-webkit-datetime-edit-day-field:focus {
-  background: rgb(244 244 245) !important;
-  background-color: rgb(244 244 245) !important;
-  color: rgb(250 250 250) !important;
-  -webkit-text-fill-color: rgb(250 250 250) !important;
+  background: rgb(255 255 255) !important;
+  background-color: rgb(255 255 255) !important;
+  color: rgb(0 0 0) !important;
+  -webkit-text-fill-color: rgb(0 0 0) !important;
 }
 
 /* レベルアップ演出用クラッカーアニメーション */

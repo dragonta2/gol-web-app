@@ -21,7 +21,7 @@ import { FormInput, FormLabel } from "@/components/ui/form-input"
 import { DatePickerField } from "@/components/date-picker-field"
 import { FormCard } from "@/components/ui/form-card"
 import { toast } from "sonner"
-import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, GripVertical, Loader2 } from "lucide-react"
+import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, GripVertical, Loader2, ChevronUp, ChevronDown } from "lucide-react"
 import {
   DndContext,
   DragEndEvent,
@@ -71,13 +71,15 @@ interface TodoFormData {
   is_on_hold: boolean
 }
 
-/** サブタスク1行：入力はローカルstateで保持し、保存ボタン押下時のみ親に通知（入力遅延防止）。並び替えはドラッグハンドルのみ */
+/** サブタスク1行：入力はローカルstateで保持し、保存ボタン押下時のみ親に通知（入力遅延防止）。並び替えはドラッグハンドルまたは↑↓ボタン */
 function SubtaskEditRow({
   subtask,
   onSave,
   onDelete,
   dragHandle,
   isDeleting,
+  onMoveUp,
+  onMoveDown,
 }: {
   subtask: TodoSubtask
   onSave: (name: string) => void
@@ -85,6 +87,8 @@ function SubtaskEditRow({
   /** ドラッグ&ドロップ用。渡すと行頭に表示 */
   dragHandle?: React.ReactNode
   isDeleting?: boolean
+  onMoveUp?: () => void
+  onMoveDown?: () => void
 }) {
   const [value, setValue] = useState(subtask.subtask_name)
   useEffect(() => {
@@ -111,6 +115,28 @@ function SubtaskEditRow({
       {dragHandle != null && (
         <div className="shrink-0 touch-none" aria-label="ドラッグして並び替え">
           {dragHandle}
+        </div>
+      )}
+      {(onMoveUp != null || onMoveDown != null) && (
+        <div className="flex flex-col shrink-0">
+          <button
+            type="button"
+            onClick={onMoveUp}
+            disabled={onMoveUp == null}
+            className="p-0.5 rounded text-zinc-400 hover:text-zinc-200 disabled:opacity-20 disabled:cursor-not-allowed"
+            aria-label="上に移動"
+          >
+            <ChevronUp className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onMoveDown}
+            disabled={onMoveDown == null}
+            className="p-0.5 rounded text-zinc-400 hover:text-zinc-200 disabled:opacity-20 disabled:cursor-not-allowed"
+            aria-label="下に移動"
+          >
+            <ChevronDown className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
       <Input
@@ -202,17 +228,21 @@ function NewSubtaskInput({
   )
 }
 
-/** 編集モーダル用：ドラッグ&ドロップで並び替え可能なサブタスク1行（グリップでのみドラッグ） */
+/** 編集モーダル用：ドラッグ&ドロップまたは↑↓ボタンで並び替え可能なサブタスク1行 */
 function SortableSubtaskRow({
   subtask,
   onSave,
   onDelete,
   isDeleting,
+  onMoveUp,
+  onMoveDown,
 }: {
   subtask: TodoSubtask
   onSave: (name: string) => void
   onDelete: () => void
   isDeleting?: boolean
+  onMoveUp?: () => void
+  onMoveDown?: () => void
 }) {
   const {
     attributes,
@@ -221,6 +251,7 @@ function SortableSubtaskRow({
     transform,
     transition,
     isDragging,
+    isOver,
   } = useSortable({ id: subtask.id })
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -230,17 +261,22 @@ function SortableSubtaskRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={isDragging ? "opacity-50" : undefined}
+      className={[
+        isDragging ? "opacity-50" : "",
+        isOver ? "outline outline-2 outline-dashed outline-cyan-400 rounded-md" : "",
+      ].filter(Boolean).join(" ") || undefined}
     >
       <SubtaskEditRow
         subtask={subtask}
         onSave={onSave}
         onDelete={onDelete}
         isDeleting={isDeleting}
+        onMoveUp={onMoveUp}
+        onMoveDown={onMoveDown}
         dragHandle={
           <button
             type="button"
-            className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-300 cursor-grab active:cursor-grabbing"
+            className="p-1 rounded hover:bg-zinc-700 text-zinc-400 hover:text-zinc-300 cursor-grab active:cursor-grabbing touch-none"
             {...listeners}
             {...attributes}
             aria-label="ドラッグして並び替え"
@@ -478,10 +514,10 @@ export default function TodoSummaryTab({
       },
     }),
   )
-  // 編集モーダル内サブタスク並び替え用（グリップでのみドラッグするため同じでよい）
+  // 編集モーダル内サブタスク並び替え用（overflow-y-auto のスクロール横取り対策でdelayを使用）
   const subtaskSensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
+      activationConstraint: { delay: 150, tolerance: 5 },
     }),
   )
 
@@ -878,7 +914,7 @@ export default function TodoSummaryTab({
           sp_exp_mind: formData.sp_exp_mind,
           sp_exp_spirit: formData.sp_exp_spirit,
           due_date: formData.due_date || null,
-          status: formData.is_on_hold ? formData.status : "active",
+          status: formData.status,
           difficulty: formData.difficulty,
           is_on_hold: formData.is_on_hold,
         }
@@ -1202,6 +1238,37 @@ export default function TodoSummaryTab({
     const newIndex = oldIds.indexOf(over.id as string)
     if (oldIndex === -1 || newIndex === -1) return
     const newIds = arrayMove(oldIds, oldIndex, newIndex)
+    ;(async () => {
+      try {
+        const supabase = createClient()
+        for (let i = 0; i < newIds.length; i++) {
+          const { error } = await supabase
+            .from("todo_subtasks")
+            .update({ display_order: i })
+            .eq("id", newIds[i])
+          if (error) throw error
+        }
+        router.refresh()
+      } catch (err) {
+        console.error("サブタスク並び替えエラー:", err)
+        toast.error("並び替えに失敗しました", {
+          description:
+            err instanceof Error ? err.message : "予期しないエラーが発生しました",
+        })
+      }
+    })()
+  }
+
+  // 編集モーダル内：↑↓ボタンでサブタスクを1つ上下に移動（display_order を一括更新）
+  const handleSubtaskMove = (subtaskId: string, direction: "up" | "down") => {
+    if (!editingTodo) return
+    const list = getSubtasksForTodo(editingTodo.id)
+    const ids = list.map((s) => s.id)
+    const idx = ids.indexOf(subtaskId)
+    if (idx === -1) return
+    const newIdx = direction === "up" ? idx - 1 : idx + 1
+    if (newIdx < 0 || newIdx >= ids.length) return
+    const newIds = arrayMove(ids, idx, newIdx)
     ;(async () => {
       try {
         const supabase = createClient()
@@ -1855,9 +1922,9 @@ export default function TodoSummaryTab({
             <div className="space-y-3">
               <FormLabel>サブタスク</FormLabel>
               <p className="text-sm text-zinc-400">
-                名前を変えたら「保存」を押してください。並び替えはグリップをドラッグして変更できます。
+                名前を変えたら「保存」を押してください。並び替えは↑↓ボタンまたはグリップをドラッグして変更できます。両端のものはドラッグが反応しずらくなっています。
               </p>
-              <div className="space-y-2">
+              <div className="space-y-2 pb-2">
                 {subtaskList.length > 0 ? (
                   <DndContext
                     sensors={subtaskSensors}
@@ -1868,13 +1935,15 @@ export default function TodoSummaryTab({
                       items={subtaskList.map((s) => s.id)}
                       strategy={verticalListSortingStrategy}
                     >
-                      {subtaskList.map((subtask) => (
+                      {subtaskList.map((subtask, idx) => (
                         <SortableSubtaskRow
                           key={subtask.id}
                           subtask={subtask}
                           onSave={(name) => handleEditSubtask(subtask, name)}
                           onDelete={() => handleDeleteSubtask(subtask)}
                           isDeleting={deletingSubtaskId === subtask.id}
+                          onMoveUp={idx > 0 ? () => handleSubtaskMove(subtask.id, "up") : undefined}
+                          onMoveDown={idx < subtaskList.length - 1 ? () => handleSubtaskMove(subtask.id, "down") : undefined}
                         />
                       ))}
                     </SortableContext>
