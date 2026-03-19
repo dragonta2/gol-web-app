@@ -876,16 +876,8 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     return todo.sp_exp_body + todo.sp_exp_mind + todo.sp_exp_spirit;
   };
 
-  // ドラッグ開始時の処理（確定済みの場合はアラートを出してドラッグを無効にする）
+  // ドラッグ開始時の処理
   const handleDragStart = (event: DragStartEvent) => {
-    if (isConfirmed) {
-      toast.info(
-        '確定済みの日誌のため、タスクの移動はできません。状態を変える場合は、未確定の日付の日誌画面で行ってください。',
-        { duration: 5000 }
-      );
-      setActiveId(null);
-      return;
-    }
     setActiveId(event.active.id as string);
   };
 
@@ -999,7 +991,6 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     const { active, over } = event;
     setActiveId(null);
 
-    if (isConfirmed) return;
     if (!over) return;
 
     const todoId = active.id as string;
@@ -1111,13 +1102,13 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
         return;
       }
 
-      // 報酬計算・反映処理
-      if (!wasCompleted && willBeCompleted) {
-        // 未完了 → 完了: 報酬を付与
-        await handleTaskCompletion(currentTodo);
-      } else if (wasCompleted && !willBeCompleted) {
-        // 完了 → 未完了: 報酬を削除
-        await handleTaskUncompletion(currentTodo);
+      // 報酬計算・反映処理（確定済みの日誌では記録を変えない）
+      if (!isConfirmed) {
+        if (!wasCompleted && willBeCompleted) {
+          await handleTaskCompletion(currentTodo);
+        } else if (wasCompleted && !willBeCompleted) {
+          await handleTaskUncompletion(currentTodo);
+        }
       }
 
       // ページをリフレッシュして最新データを取得
@@ -1301,7 +1292,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
             onSubtaskExpandToggle={toggleSubtaskExpand}
             onToggleSubtaskCompletion={handleToggleSubtaskCompletion}
             formatSubtaskCompletedDate={formatSubtaskCompletedDate}
-            isReadOnly={isConfirmed}
+            isReadOnly={false}
             onAddTask={onOpenCreateModal}
           />
 
@@ -1325,7 +1316,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
             onSubtaskExpandToggle={toggleSubtaskExpand}
             onToggleSubtaskCompletion={handleToggleSubtaskCompletion}
             formatSubtaskCompletedDate={formatSubtaskCompletedDate}
-            isReadOnly={isConfirmed}
+            isReadOnly={false}
           />
 
           {/* 完了済みカラム */}
@@ -1347,7 +1338,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
             onSubtaskExpandToggle={toggleSubtaskExpand}
             onToggleSubtaskCompletion={handleToggleSubtaskCompletion}
             formatSubtaskCompletedDate={formatSubtaskCompletedDate}
-            isReadOnly={isConfirmed}
+            isReadOnly={false}
           />
         </div>
 

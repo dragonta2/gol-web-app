@@ -21,7 +21,7 @@ import { FormInput, FormLabel } from "@/components/ui/form-input"
 import { DatePickerField } from "@/components/date-picker-field"
 import { FormCard } from "@/components/ui/form-card"
 import { toast } from "sonner"
-import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, GripVertical, Loader2, ChevronUp, ChevronDown, Copy } from "lucide-react"
+import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, GripVertical, Loader2, ChevronUp, ChevronDown, Copy, Plus } from "lucide-react"
 import {
   DndContext,
   DragEndEvent,
@@ -526,66 +526,74 @@ export default function TodoSummaryTab({
     setActiveId(event.active.id as string)
   }
 
-  // ドラッグ終了時の処理
+  // ドラッグ終了時の処理（カラム間ステータス変更 + 同一カラム内並び替え）
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
+    setActiveId(null)
 
-    if (!over || active.id === over.id) {
-      setActiveId(null)
-      return
-    }
+    if (!over || active.id === over.id) return
 
     const activeTodo = todos.find((t) => t.id === active.id)
-    if (!activeTodo) {
-      setActiveId(null)
+    if (!activeTodo) return
+
+    const overId = over.id as string
+
+    // カラムID → ステータスのマッピング
+    const columnStatusMap: Record<string, "active" | "in_progress" | "completed"> = {
+      active: "active",
+      in_progress: "in_progress",
+      completed: "completed",
+    }
+
+    // ドロップ先がどのカラムのカードか判定
+    const targetInActive = activeTodos.find((t) => t.id === overId)
+    const targetInProgress = inProgressTodos.find((t) => t.id === overId)
+    const targetInCompleted = completedTodos.find((t) => t.id === overId)
+
+    const targetStatus: "active" | "in_progress" | "completed" | undefined =
+      columnStatusMap[overId] ??
+      (targetInActive ? "active" : targetInProgress ? "in_progress" : targetInCompleted ? "completed" : undefined)
+
+    if (!targetStatus) return
+
+    // カラム間のステータス変更
+    if (targetStatus !== activeTodo.status) {
+      await handleChangeStatus(activeTodo, targetStatus)
       return
     }
 
-    // 期限超過のToDoは並び替え不可
+    // 同一カラム内の並び替え（completedカラムは並び替え不可）
+    if (activeTodo.status === "completed") return
+
     if (isOverdue(activeTodo.due_date, activeTodo.status)) {
-      setActiveId(null)
       toast.warning("期限超過のToDoは並び替えできません")
       return
     }
 
-    // 並び替え処理
-    const status = activeTodo.status
     const currentList =
-      status === "active" ? [...activeTodos] : [...inProgressTodos]
+      activeTodo.status === "active" ? [...activeTodos] : [...inProgressTodos]
     const oldIndex = currentList.findIndex((t) => t.id === active.id)
-    const newIndex = currentList.findIndex((t) => t.id === over.id)
+    const newIndex = currentList.findIndex((t) => t.id === overId)
 
-    if (oldIndex === -1 || newIndex === -1) {
-      setActiveId(null)
-      return
-    }
+    if (oldIndex === -1 || newIndex === -1) return
 
-    // 配列を並び替え
     const [movedTodo] = currentList.splice(oldIndex, 1)
     currentList.splice(newIndex, 0, movedTodo)
 
-    // 期限超過のToDoを一番上に戻す
-    const overdueTodos = currentList.filter((t) =>
-      isOverdue(t.due_date, t.status),
-    )
-    const nonOverdueTodos = currentList.filter(
-      (t) => !isOverdue(t.due_date, t.status),
-    )
+    const overdueTodos = currentList.filter((t) => isOverdue(t.due_date, t.status))
+    const nonOverdueTodos = currentList.filter((t) => !isOverdue(t.due_date, t.status))
     const sortedList = [...overdueTodos, ...nonOverdueTodos]
 
-    // 状態を更新
-    if (status === "active") {
+    if (activeTodo.status === "active") {
       setOrderedTodos({ ...orderedTodos, active: sortedList })
     } else {
       setOrderedTodos({ ...orderedTodos, inProgress: sortedList })
     }
 
-    // display_orderを更新
     try {
       const supabase = createClient()
       for (let i = 0; i < sortedList.length; i++) {
         const todo = sortedList[i]
-        // 期限超過のToDoはdisplay_orderを更新しない（一番上に固定）
         if (!isOverdue(todo.due_date, todo.status)) {
           await supabase
             .from("todos")
@@ -597,14 +605,11 @@ export default function TodoSummaryTab({
     } catch (error) {
       console.error("並び順更新エラー:", error)
       toast.error("並び順の更新に失敗しました")
-      // エラー時は元の順序に戻す
       setOrderedTodos({
         active: filteredActiveTodos,
         inProgress: filteredInProgressTodos,
       })
     }
-
-    setActiveId(null)
   }
 
   // 完了済みタスク（月フィルター適用）
@@ -1064,6 +1069,26 @@ export default function TodoSummaryTab({
     }
   }
 
+  // ToDoのステータスを変更（サマリー画面用。todo_logs は触らず todos.status のみ更新）
+  const handleChangeStatus = async (todo: Todo, newStatus: "active" | "in_progress" | "completed") => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("todos")
+        .update({
+          status: newStatus,
+          completed_at: newStatus === "completed" ? new Date().toISOString() : null,
+        })
+        .eq("id", todo.id)
+      if (error) throw error
+      router.refresh()
+    } catch (err) {
+      toast.error("ステータスの変更に失敗しました", {
+        description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
+      })
+    }
+  }
+
   // サブタスクを取得（todo_idでフィルタ）
   const getSubtasksForTodo = (todoId: string): TodoSubtask[] => {
     return todoSubtasks
@@ -1311,7 +1336,7 @@ export default function TodoSummaryTab({
     })()
   }
 
-  // ToDoカード（この画面ではドラッグ無効・状態変更は日誌タブで。カードクリックでその旨をトースト）
+  // ToDoカード（ドラッグ&ドロップでステータス変更・並び替え可能）
   const DraggableTodoCard = ({
     todo,
     isCompleted,
@@ -1321,33 +1346,24 @@ export default function TodoSummaryTab({
     isCompleted: boolean
     isOverdue: boolean
   }) => {
-    const { setNodeRef } = useDraggable({
+    const { setNodeRef, listeners, attributes, isDragging } = useDraggable({
       id: todo.id,
-      disabled: true,
     })
 
     const totalExp = getTotalExp(todo)
     const expDist = isCompleted ? getExpDistribution(todo.id) : null
     const reward = calculateReward(todo)
 
-    const handleCardClick = (e: React.MouseEvent) => {
-      if (!(e.target instanceof HTMLElement && (e.target.closest("button") || e.target.closest("a")))) {
-        toast.info(
-          "ToDoサマリー画面では状態変化（タスクの移動）はできません。状態を変える場合は、日誌タブの画面で行ってください。",
-          { duration: 5000 }
-        )
-      }
-    }
-
     return (
       <div
         ref={setNodeRef}
-        role="button"
-        tabIndex={0}
-        onClick={handleCardClick}
-        className={`bg-zinc-900 border border-white rounded-lg p-3 overflow-visible cursor-default ${
-          isCompleted ? "opacity-75" : ""
-        }`}
+        {...listeners}
+        {...attributes}
+        className={`bg-zinc-900 border ${
+          isOverdue ? "border-red-700" : "border-zinc-700"
+        } rounded-lg p-3 overflow-visible hover:border-cyan-600 transition-colors cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-950 ${
+          isDragging ? "opacity-50" : ""
+        } ${isCompleted ? "opacity-75" : ""}`}
       >
         {/* 1. ToDoタイトル（左寄せ）｜難易度ラベル（右寄せ）・日誌カードと同じレイアウト */}
         <div className="flex items-center justify-between gap-2 mb-2">
@@ -1451,6 +1467,13 @@ export default function TodoSummaryTab({
                       key={subtask.id}
                       className={`flex items-center w-full gap-2 p-2 bg-zinc-800 rounded ${isCompleted ? "opacity-75" : ""}`}
                     >
+                      <input
+                        type="checkbox"
+                        checked={subtask.is_completed}
+                        onChange={() => handleToggleSubtaskCompletion(subtask)}
+                        className="w-4 h-4 shrink-0 text-cyan-600 bg-zinc-700 border-zinc-600 rounded focus:ring-cyan-500 cursor-pointer"
+                        aria-label={subtask.subtask_name}
+                      />
                       <span className="flex-1 flex items-center gap-2 flex-wrap min-w-0">
                         <span
                           className={
@@ -1478,8 +1501,9 @@ export default function TodoSummaryTab({
           )
         })()}
 
-        {/* 編集・複製ボタン（カードの一番右下） */}
-        <div className="pt-3 mt-3 border-t border-zinc-700 flex items-center justify-end gap-3">
+        {/* 複製・編集ボタン（カードの一番右下） */}
+        <div className="pt-3 mt-3 border-t border-zinc-700 flex items-center justify-end gap-3" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => handleDuplicateTodo(todo)}
@@ -1498,6 +1522,7 @@ export default function TodoSummaryTab({
             <Edit className="w-3 h-3" />
             編集
           </button>
+          </div>
         </div>
       </div>
     )
@@ -1509,18 +1534,22 @@ export default function TodoSummaryTab({
     todos,
     status,
     renderTodoCard,
+    onAddTask,
   }: {
     id: string
     todos: Todo[]
-    status: "active" | "in_progress"
+    status: "active" | "in_progress" | "completed"
     renderTodoCard: (todo: Todo, isCompleted: boolean) => React.ReactElement
+    onAddTask?: () => void
   }) => {
-    const { setNodeRef } = useDroppable({ id })
-    const columnLabel = status === "active" ? "アクティブタスク" : "進行中"
+    const { setNodeRef, isOver } = useDroppable({ id })
+    const columnLabel =
+      status === "active" ? "アクティブタスク" : status === "in_progress" ? "進行中" : "完了済み"
+    const isCompleted = status === "completed"
 
     return (
-      <div>
-        <div className="bg-zinc-800 rounded-lg p-3 mb-3">
+      <div className="flex flex-col h-full min-h-0">
+        <div className="bg-zinc-800 rounded-lg p-3 mb-3 shrink-0">
           <h3 className="font-medium text-zinc-300 text-base flex items-center justify-between">
             <span>{columnLabel}</span>
             <span
@@ -1531,15 +1560,33 @@ export default function TodoSummaryTab({
             </span>
           </h3>
         </div>
-        <div ref={setNodeRef} className="space-y-3 min-h-[200px]">
+        <div
+          ref={setNodeRef}
+          className={`flex-1 min-h-[200px] space-y-3 rounded-lg p-2 transition-colors ${
+            isOver ? "bg-cyan-900/20 border-2 border-cyan-600 border-dashed" : ""
+          }`}
+        >
           {todos.length === 0 ? (
             <div className="text-center py-8 text-zinc-500 text-base">
               {columnLabel}なタスクはありません
             </div>
           ) : (
-            todos.map((todo) => renderTodoCard(todo, false))
+            todos.map((todo) => renderTodoCard(todo, isCompleted))
           )}
         </div>
+        {onAddTask && (
+          <div className="mt-2 shrink-0">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onAddTask() }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 border border-zinc-700 hover:border-zinc-600 transition-colors text-sm font-medium"
+              aria-label="タスクを追加"
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              タスクを追加
+            </button>
+          </div>
+        )}
       </div>
     )
   }
@@ -1595,9 +1642,6 @@ export default function TodoSummaryTab({
             </Button>
           </div>
         </div>
-        <p className="text-sm text-white mt-[15px]" role="status">
-          この画面ではタスクのドラッグ操作や状態変更はできません。状態の変更は、日誌タブのカンバンで行います。ここでは編集・削除のみできます。
-        </p>
       </div>
 
       {/* フィルターUI */}
@@ -1700,13 +1744,14 @@ export default function TodoSummaryTab({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 overflow-visible">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 overflow-visible items-stretch">
           {/* アクティブカラム */}
           <DroppableColumn
             id="active"
             todos={activeTodos}
             status="active"
             renderTodoCard={renderTodoCard}
+            onAddTask={handleOpenCreateModal}
           />
 
           {/* 進行中カラム */}
@@ -1718,28 +1763,12 @@ export default function TodoSummaryTab({
           />
 
           {/* 完了済みカラム */}
-          <div>
-            <div className="bg-zinc-800 rounded-lg p-3 mb-3">
-              <h3 className="font-medium text-zinc-300 text-base flex items-center justify-between">
-                <span>完了済み</span>
-                <span
-                  className="text-base text-zinc-500"
-                  aria-label={`${completedTodos.length}件のタスク`}
-                >
-                  ({completedTodos.length})
-                </span>
-              </h3>
-            </div>
-            <div className="space-y-3 min-h-[200px]">
-              {completedTodos.length === 0 ? (
-                <div className="text-center py-8 text-zinc-500 text-base">
-                  完了済みのタスクはありません
-                </div>
-              ) : (
-                completedTodos.map((todo) => renderTodoCard(todo, true))
-              )}
-            </div>
-          </div>
+          <DroppableColumn
+            id="completed"
+            todos={completedTodos}
+            status="completed"
+            renderTodoCard={renderTodoCard}
+          />
         </div>
 
         {/* 保留中（3列の下の段） */}
