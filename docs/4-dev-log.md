@@ -59,6 +59,36 @@
 
 ## 2603 --------------
 
+### 260319-木
+
+#### ToDoサマリー・サブタスク機能強化
+
+**実施内容（詳細）:**
+
+- **ToDoの複製機能（todo-summary-tab.tsx）**
+  - 複製ボタンを追加。サブタスク（TodoSubtask）も含めて丸ごと複製する実装
+  - `/api/todos` POST と `/api/todos/[id]/subtasks` POST を連続呼び出しで複製処理
+
+- **サブタスク並び替え改善（todo-summary-tab.tsx）**
+  - ↑↓ボタンを追加してドラッグ不要でも並び替えできるように
+  - D&D ドラッグハンドル `<button>` に `touch-none` を追加してタッチ環境でドラッグが反応しない問題を修正
+
+- **バグ修正: 進行中→アクティブに戻る（todo-summary-tab.tsx line 881付近）**
+  - `status: formData.is_on_hold ? formData.status : "active"` → `status: formData.status` に変更
+  - 原因: `is_on_hold` が false のとき編集保存で status が常に "active" にリセットされていた
+
+- **ToDoサマリー画面のD&DステータスUP**
+  - ToDoサマリー画面でD&Dによるステータス変更（アクティブ・進行中・完了）を実装
+  - サブタスクのチェックも操作可能に
+
+- **確定済み日誌のToDo操作解放**
+  - `is_confirmed` な日誌でも ToDo のステータス変更・サブタスクチェックを許可
+  - ToDo は日誌と独立して管理するため、日誌確定状態に関わらず操作可能とした
+
+- **作業終了**: 2・4番メモに 260319-木 を追記。add・commit・push
+
+---
+
 ### 260318-水
 
 #### カレンダー週末色・日付ナビ・日付セグメントスタイル・cursor rules

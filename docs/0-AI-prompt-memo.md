@@ -7,9 +7,59 @@
 
 ### 260319-Thu -------------
 
+260319-木
+今日はもう終わりにします。
+3番の進捗メモに記載をしておいて！
+4番の詳細作業ログにも記載しておいて！
+
+関連リポジトリに、作業中のファイルが合ったらすべて
+すべてaddして、commitまでおこなって
+
+```
+commitメッセージは
+- の箇条書きがひとつだけのシンプルなもので！！
+実装内容を簡潔にあらわすコミットメッセージを書いて！！
+
+```
+
+対応ブランチにPushしてください！！
+（o-manu-frontendのdemoとmainブランチには直Pushしないでね！！）
+
+Pushに失敗したら、そう教えて！！
+
+お疲れ様でした！！
 
 
 
+
+- Peacock は titleBar.activeBackground や
+  activityBar.background だけを上書きする
+  - アイコンの前景色（activityBar.foreground
+  など）はテーマのデフォルト値のまま
+  - 黄色系など明るい色を選ぶと、背景が明るくなる一方でアイコ
+  ンは白や薄いグレーのまま → 見えなくなる
+
+  対処法：
+
+  Peacock
+  の設定でアイコンの前景色も一緒に変える。settings.json
+  に追記：
+
+  "peacock.affectActivityBar": true,
+  "peacock.affectStatusBar": true,
+
+  これだけだと不十分な場合は、手動で前景色を指定：
+
+  "workbench.colorCustomizations": {
+    "activityBar.foreground": "#000000",
+    "activityBar.inactiveForeground": "#00000099",
+    "titleBar.activeForeground": "#000000"
+  }
+
+  黄色背景なら黒（#000000）を指定すると見やすくなります。
+
+  または Peacock
+  の色選択時に暗めの色を選ぶのが一番手軽です。
 
 
 ■ 相談にのってほしいこと
