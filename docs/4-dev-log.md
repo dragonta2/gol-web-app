@@ -59,6 +59,48 @@
 
 ## 2603 --------------
 
+### 260320-金
+
+#### 統計画面｜進捗サマリー期間拡張・グラフ期間拡張 実装ログ
+
+**記載** ClaudeCode
+
+**修正ファイル:**
+
+- `gol-web/app/dashboard/stats-tab.tsx` — サマリーUI刷新・グラフ期間追加
+
+- `gol-web/app/api/stats/points-exp/route.ts` — 上限 90日 → 365日
+
+- `gol-web/app/api/stats/habits-completion/route.ts` — 上限 90日 → 365日
+
+- `gol-web/app/api/stats/todos-completion/route.ts` — 上限 90日 → 365日
+
+**実装詳細:**
+
+**サマリーUI刷新（stats-tab.tsx）**
+
+- 変更前: 週間/月間 固定2列表示（`WeeklyMonthlySummary` 型）
+
+- 変更後: `PERIOD_OPTIONS`（1週間/1ヶ月/3ヶ月/6ヶ月/1年）のボタン切り替え制
+
+- `summaryPeriod` state（デフォルト30日）を追加
+
+- `fetchSummary(daysCount)` を独立した `useCallback` + `useEffect` に分離（グラフ期間 `days` とは独立）
+
+- `PeriodSummary` インターフェースを新設（`WeeklyMonthlySummary` を廃止）
+
+**グラフ期間拡張（stats-tab.tsx）**
+
+- `<select>` に `<option value={180}>過去180日間</option>` と `<option value={365}>過去1年間</option>` を追加
+
+- 習慣達成率グラフも同じ `days` state に連動しているため自動対応
+
+**API 上限変更（3ファイル共通）**
+
+- `Math.min(Math.max(days, 7), 90)` → `Math.min(Math.max(days, 7), 365)`
+
+---
+
 ### 260320-木
 
 #### 習慣管理 機能強化（7タスク）実装ログ

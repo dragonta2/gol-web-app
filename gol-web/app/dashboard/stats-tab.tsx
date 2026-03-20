@@ -56,24 +56,22 @@ interface TodoCompletionSummary {
   completionRate: number;
 }
 
-interface WeeklyMonthlySummary {
-  weekly: {
-    points: number;
-    expBody: number;
-    expMind: number;
-    expSpirit: number;
-    habitCompletionRate: number;
-    todoCompletionRate: number;
-  };
-  monthly: {
-    points: number;
-    expBody: number;
-    expMind: number;
-    expSpirit: number;
-    habitCompletionRate: number;
-    todoCompletionRate: number;
-  };
+interface PeriodSummary {
+  points: number;
+  expBody: number;
+  expMind: number;
+  expSpirit: number;
+  habitCompletionRate: number;
+  todoCompletionRate: number;
 }
+
+const PERIOD_OPTIONS = [
+  { days: 7, label: '1週間' },
+  { days: 30, label: '1ヶ月' },
+  { days: 90, label: '3ヶ月' },
+  { days: 180, label: '6ヶ月' },
+  { days: 365, label: '1年' },
+] as const;
 
 export default function StatsTab() {
   const [pointsExpData, setPointsExpData] = useState<PointsExpData[]>([]);
@@ -81,7 +79,8 @@ export default function StatsTab() {
   const [habitSummary, setHabitSummary] = useState<HabitCompletionSummary | null>(null);
   const [todoCompletionData, setTodoCompletionData] = useState<TodoCompletionData[]>([]);
   const [todoSummary, setTodoSummary] = useState<TodoCompletionSummary | null>(null);
-  const [weeklySummary, setWeeklySummary] = useState<WeeklyMonthlySummary | null>(null);
+  const [summaryData, setSummaryData] = useState<PeriodSummary | null>(null);
+  const [summaryPeriod, setSummaryPeriod] = useState(30);
   const [aiUsage, setAiUsage] = useState<{
     statistics?: unknown[];
     todayCost?: number;
@@ -126,8 +125,7 @@ export default function StatsTab() {
       setTodoCompletionData(todosResult.data || []);
       setTodoSummary(todosResult.summary || null);
 
-      // 週間・月間サマリーとAI使用量を取得
-      await Promise.all([fetchSummary(), fetchAiUsage()]);
+      await fetchAiUsage();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
       console.error('データ取得エラー:', err);
@@ -136,9 +134,36 @@ export default function StatsTab() {
     }
   }, []);
 
+  const fetchSummary = useCallback(async (daysCount: number) => {
+    try {
+      const [pointsExpResult, habitsResult, todosResult] = await Promise.all([
+        fetch(`/api/stats/points-exp?days=${daysCount}`).then(r => r.json()),
+        fetch(`/api/stats/habits-completion?days=${daysCount}`).then(r => r.json()),
+        fetch(`/api/stats/todos-completion?days=${daysCount}`).then(r => r.json()),
+      ]);
+
+      const expData: PointsExpData[] = pointsExpResult.data || [];
+
+      setSummaryData({
+        points: expData.reduce((sum, d) => sum + d.points, 0),
+        expBody: expData.reduce((sum, d) => sum + d.expBody, 0),
+        expMind: expData.reduce((sum, d) => sum + d.expMind, 0),
+        expSpirit: expData.reduce((sum, d) => sum + d.expSpirit, 0),
+        habitCompletionRate: habitsResult.summary?.averageByType?.good || 0,
+        todoCompletionRate: todosResult.summary?.completionRate || 0,
+      });
+    } catch (err) {
+      console.error('サマリー取得エラー:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchData(days);
   }, [days, fetchData]);
+
+  useEffect(() => {
+    fetchSummary(summaryPeriod);
+  }, [summaryPeriod, fetchSummary]);
 
   const fetchAiUsage = async () => {
     try {
@@ -147,61 +172,15 @@ export default function StatsTab() {
         const data = await response.json();
         setAiUsage(data);
       } else if (response.status === 403) {
-        // 管理者権限がない場合（403 Forbidden）
-        // エラーログは出力せず、静かにセクションを非表示にする
         setAiUsage(null);
       } else {
-        // その他のエラー（500など）
         const errorData = await response.json().catch(() => ({}));
         console.error('AI使用量取得エラー:', response.status, errorData);
         setAiUsage(null);
       }
     } catch (err) {
       console.error('AI使用量取得エラー:', err);
-      // エラー時はnullのまま（セクションを表示しない）
       setAiUsage(null);
-    }
-  };
-
-  const fetchSummary = async () => {
-    try {
-      // 週間データ（7日間）
-      const [weeklyPointsExp, weeklyHabits, weeklyTodos] = await Promise.all([
-        fetch('/api/stats/points-exp?days=7').then(r => r.json()),
-        fetch('/api/stats/habits-completion?days=7').then(r => r.json()),
-        fetch('/api/stats/todos-completion?days=7').then(r => r.json()),
-      ]);
-
-      // 月間データ（30日間）
-      const [monthlyPointsExp, monthlyHabits, monthlyTodos] = await Promise.all([
-        fetch('/api/stats/points-exp?days=30').then(r => r.json()),
-        fetch('/api/stats/habits-completion?days=30').then(r => r.json()),
-        fetch('/api/stats/todos-completion?days=30').then(r => r.json()),
-      ]);
-
-      const weeklyPointsExpData = weeklyPointsExp.data || [];
-      const monthlyPointsExpData = monthlyPointsExp.data || [];
-
-      setWeeklySummary({
-        weekly: {
-          points: weeklyPointsExpData.reduce((sum: number, d: PointsExpData) => sum + d.points, 0),
-          expBody: weeklyPointsExpData.reduce((sum: number, d: PointsExpData) => sum + d.expBody, 0),
-          expMind: weeklyPointsExpData.reduce((sum: number, d: PointsExpData) => sum + d.expMind, 0),
-          expSpirit: weeklyPointsExpData.reduce((sum: number, d: PointsExpData) => sum + d.expSpirit, 0),
-          habitCompletionRate: weeklyHabits.summary?.averageByType?.good || 0,
-          todoCompletionRate: weeklyTodos.summary?.completionRate || 0,
-        },
-        monthly: {
-          points: monthlyPointsExpData.reduce((sum: number, d: PointsExpData) => sum + d.points, 0),
-          expBody: monthlyPointsExpData.reduce((sum: number, d: PointsExpData) => sum + d.expBody, 0),
-          expMind: monthlyPointsExpData.reduce((sum: number, d: PointsExpData) => sum + d.expMind, 0),
-          expSpirit: monthlyPointsExpData.reduce((sum: number, d: PointsExpData) => sum + d.expSpirit, 0),
-          habitCompletionRate: monthlyHabits.summary?.averageByType?.good || 0,
-          todoCompletionRate: monthlyTodos.summary?.completionRate || 0,
-        },
-      });
-    } catch (err) {
-      console.error('サマリー取得エラー:', err);
     }
   };
 
@@ -239,6 +218,8 @@ export default function StatsTab() {
     };
   }, [pointsExpData]);
 
+  const summaryPeriodLabel = PERIOD_OPTIONS.find(o => o.days === summaryPeriod)?.label ?? '';
+
   if (loading) {
     return (
       <div className="p-6 text-center text-zinc-400">
@@ -265,109 +246,80 @@ export default function StatsTab() {
 
   return (
     <div className="space-y-6">
-      {/* 週間・月間サマリー */}
-      {weeklySummary && (
-        <div className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg">
-          <h2 className="text-2xl sm:text-2xl font-semibold text-cyan-400 mb-4 flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 sm:w-7 sm:h-7" />
-            <span>進捗サマリー</span>
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 週間サマリー */}
-            <div className="space-y-4">
-              <h3 className="text-md font-semibold text-zinc-300 border-b border-zinc-700 pb-2">
-                過去7日間
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">ゴルド</p>
-                  <p className="text-2xl font-bold text-cyan-400">
-                    {weeklySummary.weekly.points}
-                  </p>
-                </div>
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">身体EXP</p>
-                  <p className="text-2xl font-bold text-green-400">
-                    {weeklySummary.weekly.expBody}
-                  </p>
-                </div>
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">頭脳EXP</p>
-                  <p className="text-2xl font-bold text-blue-400">
-                    {weeklySummary.weekly.expMind}
-                  </p>
-                </div>
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">精神EXP</p>
-                  <p className="text-2xl font-bold text-purple-400">
-                    {weeklySummary.weekly.expSpirit}
-                  </p>
-                </div>
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">習慣達成率</p>
-                  <p className="text-2xl font-bold text-green-400">
-                    {Math.round(weeklySummary.weekly.habitCompletionRate * 10) / 10}%
-                  </p>
-                </div>
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">ToDo完了率</p>
-                  <p className="text-2xl font-bold text-cyan-400">
-                    {Math.round(weeklySummary.weekly.todoCompletionRate * 10) / 10}%
-                  </p>
-                </div>
-              </div>
-            </div>
+      {/* 進捗サマリー */}
+      <div className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg">
+        <h2 className="text-2xl sm:text-2xl font-semibold text-cyan-400 mb-4 flex items-center gap-2">
+          <BarChart3 className="w-6 h-6 sm:w-7 sm:h-7" />
+          <span>進捗サマリー</span>
+        </h2>
 
-            {/* 月間サマリー */}
-            <div className="space-y-4">
-              <h3 className="text-md font-semibold text-zinc-300 border-b border-zinc-700 pb-2">
-                過去30日間
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">ゴルド</p>
-                  <p className="text-2xl font-bold text-cyan-400">
-                    {weeklySummary.monthly.points}
-                  </p>
-                </div>
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">身体EXP</p>
-                  <p className="text-2xl font-bold text-green-400">
-                    {weeklySummary.monthly.expBody}
-                  </p>
-                </div>
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">頭脳EXP</p>
-                  <p className="text-2xl font-bold text-blue-400">
-                    {weeklySummary.monthly.expMind}
-                  </p>
-                </div>
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">精神EXP</p>
-                  <p className="text-2xl font-bold text-purple-400">
-                    {weeklySummary.monthly.expSpirit}
-                  </p>
-                </div>
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">習慣達成率</p>
-                  <p className="text-2xl font-bold text-green-400">
-                    {Math.round(weeklySummary.monthly.habitCompletionRate * 10) / 10}%
-                  </p>
-                </div>
-                <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                  <p className="text-2xl text-zinc-400 mb-1">ToDo完了率</p>
-                  <p className="text-2xl font-bold text-cyan-400">
-                    {Math.round(weeklySummary.monthly.todoCompletionRate * 10) / 10}%
-                  </p>
-                </div>
+        {/* 期間切り替えボタン */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {PERIOD_OPTIONS.map(option => (
+            <button
+              key={option.days}
+              onClick={() => setSummaryPeriod(option.days)}
+              className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                summaryPeriod === option.days
+                  ? 'bg-cyan-600 text-white'
+                  : 'bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700'
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+
+        {summaryData ? (
+          <div className="space-y-2">
+            <h3 className="text-md font-semibold text-zinc-300 border-b border-zinc-700 pb-2">
+              過去{summaryPeriodLabel}
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+                <p className="text-2xl text-zinc-400 mb-1">ゴルド</p>
+                <p className="text-2xl font-bold text-cyan-400">
+                  {summaryData.points}
+                </p>
+              </div>
+              <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+                <p className="text-2xl text-zinc-400 mb-1">身体EXP</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {summaryData.expBody}
+                </p>
+              </div>
+              <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+                <p className="text-2xl text-zinc-400 mb-1">頭脳EXP</p>
+                <p className="text-2xl font-bold text-blue-400">
+                  {summaryData.expMind}
+                </p>
+              </div>
+              <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+                <p className="text-2xl text-zinc-400 mb-1">精神EXP</p>
+                <p className="text-2xl font-bold text-purple-400">
+                  {summaryData.expSpirit}
+                </p>
+              </div>
+              <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+                <p className="text-2xl text-zinc-400 mb-1">習慣達成率</p>
+                <p className="text-2xl font-bold text-green-400">
+                  {Math.round(summaryData.habitCompletionRate * 10) / 10}%
+                </p>
+              </div>
+              <div className="p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+                <p className="text-2xl text-zinc-400 mb-1">ToDo完了率</p>
+                <p className="text-2xl font-bold text-cyan-400">
+                  {Math.round(summaryData.todoCompletionRate * 10) / 10}%
+                </p>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <p className="text-zinc-500 text-sm">データを読み込み中...</p>
+        )}
+      </div>
 
-      {/* 期間選択 */}
+      {/* 期間選択（グラフ用） */}
       <div className="flex items-center gap-4">
         <label className="text-2xl text-zinc-300">表示期間:</label>
         <select
@@ -378,6 +330,8 @@ export default function StatsTab() {
           <option value={7}>過去7日間</option>
           <option value={30}>過去30日間</option>
           <option value={90}>過去90日間</option>
+          <option value={180}>過去180日間</option>
+          <option value={365}>過去1年間</option>
         </select>
       </div>
 
@@ -386,7 +340,7 @@ export default function StatsTab() {
         <h2 className="text-2xl sm:text-2xl font-semibold text-cyan-400 mb-4">
           📈 ゴルド・EXPの推移
         </h2>
-        
+
         <div className="w-full h-80">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart

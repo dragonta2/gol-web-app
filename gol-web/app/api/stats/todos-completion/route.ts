@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     // URLパラメータから期間を取得（デフォルト: 30日間）
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get('days') || '30', 10);
-    const limit = Math.min(Math.max(days, 7), 90); // 7日〜90日の範囲に制限
+    const limit = Math.min(Math.max(days, 7), 365); // 7日〜365日の範囲に制限
 
     // 開始日を計算
     const endDate = new Date();
