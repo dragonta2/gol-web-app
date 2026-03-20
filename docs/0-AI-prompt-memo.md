@@ -5,274 +5,55 @@
 
 ## 2603- -------------
 
-### 260319-Thu -------------
+### 260320-Fri -------------
 
-260319-木
-今日はもう終わりにします。
-3番の進捗メモに記載をしておいて！
-4番の詳細作業ログにも記載しておいて！
+  検証
 
-関連リポジトリに、作業中のファイルが合ったらすべて
-すべてaddして、commitまでおこなって
+  1. !bp を送信 → 🔓 Bypass mode: ONと表示されるか確認
 
-```
-commitメッセージは
-- の箇条書きがひとつだけのシンプルなもので！！
-実装内容を簡潔にあらわすコミットメッセージを書いて！！
-
-```
-
-対応ブランチにPushしてください！！
-（o-manu-frontendのdemoとmainブランチには直Pushしないでね！！）
-
-Pushに失敗したら、そう教えて！！
-
-お疲れ様でした！！
+  2. ファイル編集を試す →
+  許可ダイアログが出ないか確認
 
 
+ 検証手順
+
+ 1. Claude Code を再起動
+
+ 2. !bp を送信 → 🔓 Bypass mode: ON
+ と表示されることを確認
+
+ 3. ファイル編集やコマンド実行を試みる →
+ 許可ダイアログが出ないことを確認
+
+ 4. !bp を再送信 → 🔒 Bypass mode: OFF
+ と表示されることを確認
+
+ 5. ファイル編集を試みる →
+ 許可ダイアログが出ることを確認
 
 
-- Peacock は titleBar.activeBackground や
-  activityBar.background だけを上書きする
-  - アイコンの前景色（activityBar.foreground
-  など）はテーマのデフォルト値のまま
-  - 黄色系など明るい色を選ぶと、背景が明るくなる一方でアイコ
-  ンは白や薄いグレーのまま → 見えなくなる
+今回に関しては、全て確認を取らないで全部Yesや許可で進めてほしい
 
-  対処法：
+私からの選択・許可が必要な状態になったら、アラート音か何かをパソコンから音を流して知らせてください。
 
-  Peacock
-  の設定でアイコンの前景色も一緒に変える。settings.json
-  に追記：
+これはすべてのプロジェクトで反映させたい。
 
-  "peacock.affectActivityBar": true,
-  "peacock.affectStatusBar": true,
-
-  これだけだと不十分な場合は、手動で前景色を指定：
-
-  "workbench.colorCustomizations": {
-    "activityBar.foreground": "#000000",
-    "activityBar.inactiveForeground": "#00000099",
-    "titleBar.activeForeground": "#000000"
-  }
-
-  黄色背景なら黒（#000000）を指定すると見やすくなります。
-
-  または Peacock
-  の色選択時に暗めの色を選ぶのが一番手軽です。
+どんな音がなるかのテストはできる？？
 
 
-■ 相談にのってほしいこと
+ここでの部分の変更を自律的に行ってください。
 
-- AIの使い分けと整理
-  CursorのPro+ 来月も必要か？
-  Proにダウングレードでもいい？？
+一旦プランモードで進めるので、質問があったら聞いてください。
 
-- ClaudeCodeに仕事用のコードも任せられる？？
+プランに従って実行。
 
+チェックボックス1つが修正終わるたびにコミットをしてください。
 
-- docs系ファイルの作り
-
-まず、相談に乗ってね。
-まだ何もファイルを触ったりはしないでね。
-
-今、よく使うファイルにこんな感じでプレフィックスの連番をつけている。以下参照
-`web-app/docs`
-これは主に2つの意味があって
-
-・並び順のコントロール
-・1番に〇〇を書いてとか、さっと伝えられるように
-
-だからユニークな番号をプロジェクト内（同一ウィンドウ内で利用するものに対して）付けておきたい。
-
-それが、今の以下の中のように、連番がユニークでないと
-`i-3-AI-related/i-Claude/i-docs`
-
-◯番を変更してみたいな指示に対応できなくなる。
-
-なので、以下でやってるみたいに、グループごとにユニークな番号を採番して
-
-100はカーソル
-101はClaude
-とかね。
-
-その中のdocsファイルには101-1-◯◯.md、101-2-◯◯.md
-とかにしていこうかと思っていた。
-`i-3-AI-related/i-docs-ai-related`
-
-
-これについてどう思う？？
-
-Cursor｜100
-ChatGPT｜110
-Google系｜120
-Claude｜130
-
-200｜横断・比較系
-
-```
-/Users/ta2/Library/Mobile Documents/com~apple~CloudDocs/ALL-DTA2-iCloud/1-i-IT/i-3-AI-related/i-docs-ai-related
-```
-
-```
-i-3-AI-related/i-Claude/i-docs
-i-3-AI-related/i-Claude/i-claude-config
-```
-
-
-ClaudeCodeの機能説明を随時追加していきたいんだけど、
-
-'/Users/ta2/Library/MobileDocuments/comappleCloudDocs/ALL-DTA2-iCloud/1-i-IT/i-3-AI-related/i-docs-ai-related/101-Cloude-code-manuau.md'\
-
-ここに書いていくだけだと煩雑になっていくから
-
-新しくこの中にi-claudeというディレクトリを切って、その中に各カテゴリに分けられた機能説明のmdファイルを作りたい。
-
-SukillsとかHooksとかの各機能とか基本機能とか
-
-あまり粒度を細かくしすぎても煩雑になっていくので、何かいいファイル分けを考えて構成してみて！！
-
-中のファイルに記載するルールは
-i-3-AI-related/i-docs-ai-related/101-Cloude-code-manuau.mdこれと同じにしてね
-
-
-
-
-
-
-これこのままでいいよ。変更しなくていいんだけど。
-
-セグメントフォーカス時の背景色、青く見えてるんだけど、これはなんで青く見えてるのかな?
+終わったり、私からの許可が必要な状態になったら、アラート音か何かをパソコンから音を流して知らせてください。
 
 
 さあ、続きからはじめよう！！
-今日の日付は  260319-Thu
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-
-### 260318-Wed -------------
-
-260318-Wed
-今日はもう終わりにします。
-3番の進捗メモに記載をしておいて！
-4番の詳細作業ログにも記載しておいて！
-
-関連リポジトリに、作業中のファイルが合ったらすべて
-すべてaddして、commitまでおこなって
-
-```
-commitメッセージは
-- の箇条書きがひとつだけのシンプルなもので！！
-実装内容を簡潔にあらわすコミットメッセージを書いて！！
-
-```
-
-対応ブランチにPushしてください！！
-（o-manu-frontendのdemoとmainブランチには直Pushしないでね！！）
-
-Pushに失敗したら、そう教えて！！
-
-お疲れ様でした！！
-
-
-
-ここのアクティブ字の文字色を白にして、背景色は入れてくれたグレーでいいので
-
-
-すべて、明度と彩度を落ち着いたDarkトーンで
-
-peacockに、以下の新しい色を追加して
-スコープはユーザー設定で。
-
-百入茶 ももしおちゃ
-#1f3134
-
-栗色 くりいろ
-#762f07
-
-さあ、続きからはじめよう！！
-今日の日付は  260318-Wed
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-
-### 260317-Tue -------------
-
-さあ、続きからはじめよう！！
-今日の日付は  260317-Tue
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-
-### 260316-Mon -------------
-
-さあ、続きからはじめよう！！
-今日の日付は  260316-Mon
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-
-### 260315-Sun -------------
-
-さあ、続きからはじめよう！！
-今日の日付は  260315-Sun
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-
-### 260314-Sat -------------
-
-さあ、続きからはじめよう！！
-今日の日付は  260314-Sat
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-
-### 260313-Fri -------------
-
-さあ、続きからはじめよう！！
-今日の日付は  260313-Fri
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-
-### 260312-Thu -------------
-
-さあ、続きからはじめよう！！
-今日の日付は  260312-Thu
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-### 260311-Wed -------------
-
-さあ、続きからはじめよう！！
-今日の日付は  260311-Wed
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-### 260310-Tue -------------
-
-さあ、続きからはじめよう！！
-今日の日付は  260310-
+今日の日付は 260320-Fri
 
 前回までの作業は進捗用の3番メモを参照して
 
@@ -280,371 +61,136 @@ peacockに、以下の新しい色を追加して
 
 
 
-### 260309-Mon -------------
+### ブラウジングメモ-------------
 
-さあ、続きからはじめよう！！
-今日の日付は  260309-
+「Claude Code」の人気の記事一覧｜note ――つくる、つながる、とどける。
+https://note.com/search?q=Claude%20Code&context=note&mode=search
 
-前回までの作業は進捗用の3番メモを参照して
+Claude Code 超完全ガイド | エンジニアから投資家まで、すべてのユーザーのための実践マニュアル｜FabyΔ
+https://note.com/fabymetal/n/n3f0f2873b56c
 
-今日もよろしくお願いします！！
+# AIがコードを自動で書いてくれる時代が来た｜Claude Code完全入門【初心者向け】｜シゴトスキカナ
+https://note.com/sigotosuki/n/nd427c53fa355
 
+初心者でも挫折しないClaude Codeの始め方｜Cursorと連携すればこわくない｜ぬけみち｜AI×トレード
+https://note.com/xauxbt/n/n1bda5b7d7a4e
 
+クロードコードにクロードコード作ってって言って寝たら，朝起きたらクロードコードが出来てたんだ…｜落合陽一
+https://note.com/ochyai/n/nbe6da995ffac
 
-### 260309-月 -------------
+新しいタブ
+chrome://newtab/
 
-さあ、続きからはじめよう！！
-今日の日付は 260309-�
+【無料】Claude Code チュートリアル全11回を公開しました（インストール・初期設定・メモリ管理・カスタムコマンドまで網羅） #生成AI - Qiita
+https://qiita.com/tomada/items/0928aee676663963915d
 
-前回までの作業は進捗用の3番メモを参照して
+これ読めばOK。私が使ってるものだけの、Claude Code チュートリアル
+https://zenn.dev/pepabo/articles/898cdc4839acb8
 
-今日もよろしくお願いします！！
+Claude Code を初めて使う人向けの実践ガイド
+https://zenn.dev/hokuto_tech/articles/86d1edb33da61a
 
+claudeCode エージェントチームの使い方 - Google 検索
+https://www.google.com/search?q=claudeCode+%E3%82%A8%E3%83%BC%E3%82%B8%E3%82%A7%E3%83%B3%E3%83%88%E3%83%81%E3%83%BC%E3%83%A0%E3%81%AE%E4%BD%BF%E3%81%84%E6%96%B9&oq=claudeCode+%E3%82%A8%E3%83%BC%E3%82%B8%E3%82%A7%E3%83%B3%E3%83%88%E3%83%81%E3%83%BC%E3%83%A0%E3%81%AE%E4%BD%BF%E3%81%84%E6%96%B9&gs_lcrp=EgZjaHJvbWUyBggAEEUYOdIBCTEzNDg0ajBqN6gCALACAA&sourceid=chrome&ie=UTF-8
 
-### 260308-日 -------------
+Claude Code セッションのチームを調整する - Claude Code Docs
+https://code.claude.com/docs/ja/agent-teams
 
-さあ、続きからはじめよう！！
-今日の日付は 260308-日
+Claude Code の Agent Teams 機能を使って、自分の指揮で動く専門家チームを作ってみた | DevelopersIO
+https://dev.classmethod.jp/articles/claude-code-agent-teams-how-to-build/
 
-前回までの作業は進捗用の3番メモを参照して
+Claude Code Agent Teams をどう使うか？ サブエージェントの課題から考える
+https://zenn.dev/storehero/articles/f21d49387577bb
 
-今日もよろしくお願いします！！
+ClaudeCodeのAgent Teamsを体験できる手順書｜すぅ | AI駆動PM
+https://note.com/suh_sunaneko/n/nfe794eac6a23
 
+Claude Code Agent Teamsの衝撃と実際 | gihyo.jp
+https://gihyo.jp/article/2026/02/get-started-claude-code-07
 
-### 260307-土 -------------
+新しいタブ
+chrome://newtab/
 
-今日はもう終わりにします。
-進捗メモに記載をしておいて！
-（もし簡潔記載と詳細記載の2種類の進捗メモがあれば、それぞれに）
+claudeCode skils hook 便利な機能 - Google 検索
+https://www.google.com/search?q=claudeCode+skils+hook+%E4%BE%BF%E5%88%A9%E3%81%AA%E6%A9%9F%E8%83%BD&oq=claudeCode+skils+hook%E3%80%80%E4%BE%BF%E5%88%A9%E3%81%AA%E6%A9%9F%E8%83%BD&gs_lcrp=EgZjaHJvbWUyBggAEEUYOdIBCTIyMTMyajBqN6gCALACAA&sourceid=chrome&ie=UTF-8
 
-お疲れ様でした！！
+Claude Code の Hooks と Skills で自分の作業活動を可視化する
+https://zenn.dev/exwzd/articles/20260123_activity_tracker
 
+Claude Code の Hooks と Skills で自分の作業活動を可視化する
+https://zenn.dev/exwzd/articles/20260123_activity_tracker
 
-あー、そういうことか。
-今までずっとメインで作成してたんで、ブランチ運用してなかったんだけど、今回ブランチを切っていたのか。
+hooks でワークフローを自動化する - Claude Code Docs
+https://code.claude.com/docs/ja/hooks-guide
 
-今後は指示が無い限りは、mainブランチ上で構築して！！！
+Claude Code入門 #5: Skills入門 ― 再利用可能なワークフローをスキルとして定義する #AI - Qiita
+https://qiita.com/dai_chi/items/725d7c644bc860bd1144
 
+Claude Code hooksを作るスキル「hook-forge」開発記 ── 開発ログ自動化への道のり｜Tinkly
+https://note.com/jake_k547/n/nfc4448b8665f
 
-こっちのマイページの方にも反映させて
+Claude Code のベストプラクティス - Claude Code Docs
+https://code.claude.com/docs/ja/best-practices
 
-SupabaseのMCPにつないで、CursorからSQLを実行してもらうのは難しい？？
+Chrome で Claude Code を使用する（ベータ版） - Claude Code Docs
+https://code.claude.com/docs/ja/chrome
 
+新しいタブ
+chrome://newtab/
 
-習慣管理の新規追加・編集画面の添付部分のタイトルを副見出し
-（任意）として
+【超簡単】CursorにClaude Codeを導入する方法 - プログラミング初心者の私でも10分でできた！｜𝓚𝓪𝓻𝓲𝓷 / バイブコーディング
+https://note.com/karin_vibecoder/n/n76c0ad0733a8
 
-その下に「説明」（任意）という新しいテキストエリアをつくって、中のプレースホルダーに
-詳しい説明を記載してください。
+【3分でできる】Claude CodeをCursorで使う方法【簡単】
+https://zenn.dev/ichigoooo/articles/claude-code-cursor-integration
 
-これを追加して
+新しいタブ
+chrome://newtab/
 
+claudeCode note skils - Google 検索
+https://www.google.com/search?q=claudeCode+note+skils&oq=claudeCode+note+skils&gs_lcrp=EgZjaHJvbWUyBggAEEUYOdIBCTEyMzU3ajBqN6gCALACAA&sourceid=chrome&ie=UTF-8
 
-やっぱり理解が合ってないようだね。
+Claude Code Skills - 完全？ガイド｜ハカセ
+https://note.com/mega_gorilla/n/n8921acdc8dbf
 
-`## **固定** 見出し内容`
+(123) プログラミングチュートリアル - YouTube
+https://www.youtube.com/@programming_tutorial_youtube
 
-内容…
+(108) 【AIを社員に】Claude Code Agent Teamsで1人起業する方法を解説します【Claude Opus 4.6】 - YouTube
+https://www.youtube.com/watch?v=6u-euXGNl-o
 
-↑ こういう見出しがあった場合は、その見出しはスキップして
+(119) 【チート級】この5つのClaude Code Skillsは個人開発のチートスキルです【Claude Code】 - YouTube
+https://www.youtube.com/watch?v=gkcUAtAfw1I&t=902s
 
+【ShinCode_Camp】動画ハンズオン形式で実務に近いWeb開発が学べるオンライン動画プログラミングスクール
+https://code-s-school-5bc2.thinkific.com/bundles/shincode-camp#see-more
 
-`## **固定** 見出し内容`
+【一人社長】Claude Codeで会社を作ってAI社員に仕事を任せてみよう！ - YouTube
+https://www.youtube.com/watch?v=cfoE_8Llde0
 
-内容…
+ShinCode Pro | AI駆動開発マスターコース
+https://ai-driven-online-course.vercel.app/
 
-`## 新しい記述の見出し`
+Claude Code Academy(仮)予約フォーム
+https://skinny-talos-8be.notion.site/3121dcf229c280ceb864c45f644cc164
 
-新しい記述の内容
+新しいタブ
+chrome://newtab/
 
-↑ このように書くようにする。
-（固定のブロック内には追記しない）
+Xユーザーの梶谷健人さん: 「ある発想の転換をすることで、Claude Code完結でハイクオリティなスライド資料を作れるようになった」 / X
+https://x.com/kajikent/status/2034420249307824569?s=46
 
+新しいタブ
+chrome://newtab/
 
-ここでの部分のルールの理解が正しいかテストしたいんだけど
+新しいタブ
+chrome://newtab/
 
-2番のメモに新しく以下のような見出しと内容を追記してみて
+reace-best-practice - Google 検索
+https://www.google.com/search?sca_esv=6b914df0baae36ea&sxsrf=ANbL-n7_ZvAAZaoHVf2rv02Kkfar-p1vEQ:1773921771649&q=reace-best-practice&nfpr=1&sa=X&ved=2ahUKEwj5x7vI9auTAxW6dfUHHbHtMPUQvgUoAXoECAsQAg&biw=1835&bih=737&dpr=2
 
-見出しのレベルの書き方を自分が間違えてたので、この場合で試してみて
+Vercel公式「React Best Practices」をAIにインストールして、最強のコードレビュー環境を作る
+https://zenn.dev/imohuke/articles/vercel-react-best-practices-skills
 
-
-```
-## テスト
-
-てすとの内容です
-
-```
-
-ここに基本的には、新しい記述は上から記載していくルールになっているけど、見出しの中に**固定**と記載のあるものは例外的にその記述ブロック移行から追記していくルールを記載しておいて
-
-`/Users/ta2/ALL-DTA2/.automation/README.md`
-ここに移動させたので、関連箇所の参照があったら書き換えておいて。
-
-
-`/Users/ta2/ALL-DTA2/.automation/scripts/README.md`
-
-これをつくって、
-`/Users/ta2/ALL-DTA2/README.md`
-こっちには、概要
-
-`/Users/ta2/ALL-DTA2/.automation/scripts/README.md`
-こっちには、プログラムについての詳細を書き込むようにして
-
-`/Users/ta2/ALL-DTA2/README.md`
-こっちは全体概要に徹してあまり、中身が煩雑にならないようにしたい。
-詳細は`/Users/ta2/ALL-DTA2/.automation/scripts/README.md`
-こっちに記載している旨を書いておく
-
-
-`/Users/ta2/ALL-DTA2/.cursor/rules/docs-markdown-conventions.mdc`
-ここにルールに準拠してリファクタするようにして
-
-
-`/Users/ta2/ALL-DTA2/README.md`
-ここにこのファイルを設置して、今まで説明してくれたシェルスクリプトに関してのことをすべてここに記載しておいて
-
-
-さっき作ってもらったシェルスクリプト関連のこのファイルって
-以下のディレクトリ内に新しいディレクトリを作って
-そこに設置して作動させるっていうのは難しい？
-`/Users/ta2/ALL-DTA2`
-
-
-さあ、続きからはじめよう！！
-今日の日付は  260307-
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-
-さっきのシェルスクリプトに、このファイルも反映されるようにして欲しい作業内容は全く同じままでいいので。
-
-/Users/ta2/ALL-DTA2/Develop/biz-docs/docs-o-manu-frontend/0-1-AI-prompt-memo.md
-
-
-このファイルの
-`## YYMM- -------------`
-
-の下の行に
-
-`## YYMMDD-W -------------`
-
-さあ、続きからはじめよう！！
-今日の日付は YYMMDD-W
-
-前回までの作業は進捗用の3番メモを参照して
-
-今日もよろしくお願いします！！
-
-
-と毎日00時にその日の当日用の欄を毎日追記させることはできる？？
-
-まずは、やり方を教えて提示して！！
-
-
-### 260306-金 -------------
-
-親習慣にする（子習慣を設定する）
-これに文言を変更して。
-
-新しい習慣を追加して、日々の成長を記録しましょう
-ここのカラーもtext-zinc-400にして
-
-
-習慣名のプレースホルダー
-
-例:筋トレ、早起きに変更して
-
-
-ONにすると、親は見出しのみ表示され、子習慣だけチェックできます。各子習慣ごとにゴルド・EXPを設定できます。
-
-ここのフォントカラーの明度をもう２段階上げて
-
-
-良習慣を追加
-
-悪習慣を追加
-
-部分フォーカスリングが書けてしまうので、調整して！！
-
-
-
-追加も削除も実行中のスピナーが出た後、
-Next.js のレンダリング中の表示が画面の左下に出てる間
-削除の場合は削除される対象アイテム
-追加の場合は何も追加されていない
-空白のタイムラグの時間があるので、この時にも何か処理中であることを表示させることはできる？？
-
-
-ToDoのサブタスクを追加したとき、削除したときにタイムラグがあるので、実行中...と表示したり、スピナーを出したりしたい。
-
-本当はタイムラグが生まれないのが理想なんだけど。
-
-さあ、続きからはじめよう！！
-今日の日付は 260306-金
-
-前回までの作業は進捗用のメモを参照して
-
-今日もよろしくお願いします！！
-
-
-### 260305-木 -------------
-
-今日はもう終わりにします。
-進捗メモに記載をしておいて！
-（もし簡潔記載と詳細記載の2種類の進捗メモがあれば、それぞれに）
-
-関連リポジトリに、作業中のファイルが合ったらすべて
-すべてaddして、commitまでおこなって
-
-```
-commitメッセージは
-- の箇条書きがひとつだけのシンプルなもので！！
-実装内容を簡潔にあらわすコミットメッセージを書いて！！
-
-```
-
-対応ブランチにPushしてください！！
-（o-manu-frontendのdemoとmainブランチには直Pushしないでね！！）
-
-Pushに失敗したら、そう教えて！！
-
-お疲れ様でした！！
-
-
-これからの冒険
-これまでの冒険
-辛口コーチングアドバイス
-
-ここに、生成された文字数を日誌・感想の場所のように表示させることはできる?（確定された日誌も含めて）
-
-表示文字サイズは日誌乾燥の場所よりももっと小さくて控えめなサイズがいいです。
-
-
-習慣、本日のゴルドなどで
-幅の関係で項目が...で省略されているものはホバーしたらツールチップで全文表示できるようにして
-
-
-9-wireframe.md
-appendix/wireframe.mdにリネームして参照箇所もリネームして
-
-8-deploy-guide.md
-appendix/deploy-guide.mdにリネーム（移動）して参照箇所もリネームして
-
-6-dta2-memo.md
-5-dta2-memo.mdにリネームして参照箇所もリネームして
-
-
-5-dev-log.md
-4-dev-log.mdにリネームして参照箇所もリネームして
-
-
-7-progress-support.md
-2-support-of-progress.mdにリネームして参照箇所もリネームして
-
-
-4-project-progress.md
-3-project-progress.mdにリネームして参照箇所もリネームして
-
-
-3-wireframe.md
-9-wireframe.mdにリネームして参照箇所もリネームして
-
-2-gol-design-doc.md
-1-spec-sheet.mdにリネームして参照箇所もリネームして
-
-
-1-project-draft.md
-z-project-draft.mdにリネームして参照箇所もリネームして
-
-
-さあ、続きからはじめよう！！
-今日の日付は 260305-木
-
-前回までの作業は進捗用のメモを参照して
-
-今日もよろしくお願いします！！
-
-### 260304-水 -------------
-
-今日はもう終わりにします。
-進捗メモに記載をしておいて！
-（もし簡潔記載と詳細記載の2種類の進捗メモがあれば、それぞれに）
-
-関連リポジトリに、作業中のファイルが合ったらすべて
-すべてaddして、commitまでおこなって
-
-```
-commitメッセージは
-- の箇条書きがひとつだけのシンプルなもので！！
-実装内容を簡潔にあらわすコミットメッセージを書いて！！
-
-```
-
-対応ブランチにPushしてください！！
-（o-manu-frontendのdemoとmainブランチには直Pushしないでね！！）
-
-Pushに失敗したら、そう教えて！！
-
-お疲れ様でした！！
-
-
-日誌と感想にすでに入っているプレースホルダーのテキストを
-以下に変更して、改行も同様に入れて、フォントカラーの明度も2段階上げて
-
-偽プレースホルダーのテキストを以下に変更して！
-
-■ 日誌側
-時系列の行動記録を記載してください。
-
-例）
-0600｜起床
-0610｜日光浴
-0630｜ラン｜2km
-0650｜冷水シャワー
-…
-
-■ 感想側
-その日一日の感想を記載してください。
-
-例）
-今日は早起きができて、良いスタートが切れた！！
-朝、目覚めるとすぐベランダに出て太陽を全身いっぱいに浴びた！！
-さっそく用意していた運動着に着替えて外に出た。
-朝日を浴びながら季節のにおいを感じつつ、走り出すと爽快な気分に…
-
-
-さあ、続きからはじめよう！！
-今日の日付は 260304-水
-
-前回までの作業は進捗用のメモを参照して
-
-今日もよろしくお願いします！！
-
-
-ドラえもん のび太の海底鬼岩城の鑑賞会のお誘い告知文を作って！！
-
-
-あの感動巨編が4DXで帰って来る！！
-映画のドラえもんは、大人がみても涙腺を破壊しにきます！！
-
-日時｜2026/03/08（日）
-
-09:30｜開始
-10：05｜開始
-14:50｜開始
-
-のいずれか
-（映画館側の都合で上映スクリーンと時間が3日前まで確定しないため）
-
-
-場所｜グランドシネマサンシャイン池袋
-
-料金｜3,200円
-通常料金 2,000円 + 4DX鑑賞料金 1,200円
-
-申し込み期限
-2026/3/5 (木) 23:00まで（予約の関係上）
-
-`https://dora-world.com/contents/4142`
+Vercelの「React Best Practices」をrulesカテゴリー毎に理解する #AI - Qiita
+https://qiita.com/Taka_Sei/items/d91652947fbdc4818179
