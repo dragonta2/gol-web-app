@@ -924,6 +924,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           <h3 className="text-base sm:text-lg font-semibold text-zinc-300 flex items-center gap-2">
             <CheckCircle className="w-5 h-5 text-cyan-400 shrink-0" aria-hidden />
             良習慣
+            <span className="text-sm text-zinc-500 font-normal">({goodHabits.length}件)</span>
           </h3>
           {isGoodHabitsExpanded ? (
             <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
@@ -1176,6 +1177,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           <h3 className="text-base sm:text-lg font-semibold text-zinc-200 flex items-center gap-2">
             <AlertCircle className="w-5 h-5 text-red-400 shrink-0" aria-hidden />
             悪習慣
+            <span className="text-sm text-zinc-500 font-normal">({badHabits.length}件)</span>
           </h3>
           {isBadHabitsExpanded ? (
             <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
@@ -1425,6 +1427,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           >
             <h3 className="text-base sm:text-lg font-medium text-zinc-300">
               ボーナス
+              <span className="text-sm text-zinc-500 font-normal ml-2">({bonusHabits.length}件)</span>
             </h3>
             {isBonusExpanded ? (
               <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
