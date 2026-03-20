@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, memo, useEffect } from 'react';
+import React, { useState, useMemo, memo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -10,9 +10,23 @@ import { Modal } from '@/components/ui/modal';
 import { FormInput, FormInputSmall, FormLabel } from '@/components/ui/form-input';
 import { FormCard, FormCardContent } from '@/components/ui/form-card';
 import { toast } from 'sonner';
-import { Settings, Edit, ChevronDown, ChevronUp, Sparkles, CheckCircle, AlertCircle } from 'lucide-react';
+import { Settings, Edit, ChevronDown, ChevronUp, Sparkles, CheckCircle, AlertCircle, GripVertical } from 'lucide-react';
 import { ExpWithIcons } from '@/components/exp-with-icons';
 import { isWeekendOrHoliday } from '@/lib/date-utils';
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Habit {
   id: string;
@@ -61,6 +75,31 @@ interface HabitWithLog extends Habit {
   checked: boolean;
   count: number;
   habitLogId: string | null;
+}
+
+/** 管理モーダル用ソータブルグループラッパー */
+function SortableManagementGroup({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  return (
+    <div ref={setNodeRef} style={style} className={isDragging ? 'opacity-50' : ''}>
+      <div className="flex items-start gap-1">
+        <button
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          type="button"
+          className="mt-3 p-1 text-zinc-500 hover:text-zinc-300 cursor-grab active:cursor-grabbing touch-none shrink-0"
+          aria-label="ドラッグして並び替え"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+        <div className="flex-1">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 /** 親習慣とその子習慣のツリー（表示用）。親は parent_habit_id == null、子は parent_habit_id === 親.id */
@@ -122,6 +161,7 @@ interface ChildHabitRow {
 function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false }: HabitListProps) {
   const router = useRouter();
   const supabase = createClient();
+  const sensors = useSensors(useSensor(PointerSensor));
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -624,6 +664,32 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     try {
       await Promise.all(
         updates.map((u) => supabase.from('habits').update({ display_order: u.display_order }).eq('id', u.id))
+      );
+      toast.success('習慣の順序を変更しました');
+      router.refresh();
+    } catch (err) {
+      console.error('並び替えエラー:', err);
+      toast.error('並び替えに失敗しました', {
+        description: err instanceof Error ? err.message : '予期しないエラーが発生しました',
+      });
+    }
+  };
+
+  // D&D並び替えハンドラー（管理モーダル内・親グループ単位）
+  const handleManagementDragEnd = async (event: DragEndEvent, habitType: 'good' | 'bad' | 'bonus') => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const groups = buildManagementGroups(habits, habitType);
+    const oldIndex = groups.findIndex((g) => g.root.id === active.id);
+    const newIndex = groups.findIndex((g) => g.root.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(groups, oldIndex, newIndex);
+    const flat = reordered.flatMap((g) => g.habits);
+    try {
+      await Promise.all(
+        flat.map((h, i) => supabase.from('habits').update({ display_order: i }).eq('id', h.id))
       );
       toast.success('習慣の順序を変更しました');
       router.refresh();
@@ -2041,149 +2107,143 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         maxWidth="2xl"
       >
         <div className="space-y-6">
-          {/* 良習慣（親→子のツリー、親の↑↓でグループごと移動） */}
+          {/* 良習慣（D&Dと↑↓で並び替え） */}
           <div>
             <h4 className="text-base font-medium text-cyan-400 mb-3">良習慣</h4>
-            <div className="space-y-2">
-              {buildManagementGroups(habits, 'good').map((group, groupIndex, arr) => (
-                <div key={group.root.id} className="space-y-1">
-                  {/* 親行 */}
-                  <div className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                    <div className="flex items-center gap-2 flex-1">
-                      <span className="text-base text-zinc-500 w-8">{groupIndex + 1}</span>
-                      <span className="flex-1 text-base text-zinc-100">{[group.root.habit_name, group.root.description?.trim()].filter(Boolean).join('｜')}</span>
-                      {group.habits.length > 1 && <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>}
-                      <span className="text-base text-zinc-400">
-                        {group.habits.length > 1 ? 'ー' : `${group.root.points}G / ${group.root.exp_body + group.root.exp_mind + group.root.exp_spirit}ex`}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        onClick={() => handleMoveUp(group.root)}
-                        variant="ghost"
-                        size="sm"
-                        disabled={groupIndex === 0}
-                        aria-label={`${group.root.habit_name}を上に移動する`}
-                        className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300"
-                      >
-                        ↑
-                      </Button>
-                      <Button
-                        onClick={() => handleMoveDown(group.root)}
-                        variant="ghost"
-                        size="sm"
-                        disabled={groupIndex === arr.length - 1}
-                        aria-label={`${group.root.habit_name}を下に移動する`}
-                        className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300"
-                      >
-                        ↓
-                      </Button>
-                      <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
-                      {group.root.is_custom && (
-                        <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>
-                      )}
-                    </div>
-                  </div>
-                  {/* 子行（インデント、↑↓なし） */}
-                  {group.habits.slice(1).map((child) => (
-                    <div key={child.id} className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg ml-6">
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-base text-zinc-500 w-8" aria-hidden>-</span>
-                        <span className="flex-1 text-base text-zinc-100">{[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}</span>
-                        <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
+            <DndContext sensors={sensors} onDragEnd={(e) => handleManagementDragEnd(e, 'good')}>
+              <SortableContext items={buildManagementGroups(habits, 'good').map((g) => g.root.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {buildManagementGroups(habits, 'good').map((group, groupIndex, arr) => (
+                    <SortableManagementGroup key={group.root.id} id={group.root.id}>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+                          <div className="flex items-center gap-2 flex-1">
+                            <span className="text-base text-zinc-500 w-8">{groupIndex + 1}</span>
+                            <span className="flex-1 text-base text-zinc-100">{[group.root.habit_name, group.root.description?.trim()].filter(Boolean).join('｜')}</span>
+                            {group.habits.length > 1 && <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>}
+                            <span className="text-base text-zinc-400">
+                              {group.habits.length > 1 ? 'ー' : `${group.root.points}G / ${group.root.exp_body + group.root.exp_mind + group.root.exp_spirit}ex`}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
+                            <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
+                            <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                            {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
+                          </div>
+                        </div>
+                        {group.habits.slice(1).map((child) => (
+                          <div key={child.id} className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg ml-6">
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-base text-zinc-500 w-8" aria-hidden>-</span>
+                              <span className="flex-1 text-base text-zinc-100">{[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}</span>
+                              <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                              {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
-                        {child.is_custom && (
-                          <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>
-                        )}
-                      </div>
-                    </div>
+                    </SortableManagementGroup>
                   ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           </div>
 
           {/* 悪習慣 */}
           <div>
             <h4 className="text-base font-medium text-red-400 mb-3">悪習慣</h4>
-            <div className="space-y-2">
-              {buildManagementGroups(habits, 'bad').map((group, groupIndex, arr) => (
-                <div key={group.root.id} className="space-y-1">
-                  <div className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                    <div className="flex items-center gap-2 flex-1">
-                      <span className="text-base text-zinc-500 w-8">{groupIndex + 1}</span>
-                      <span className="flex-1 text-base text-zinc-100">{[group.root.habit_name, group.root.description?.trim()].filter(Boolean).join('｜')}</span>
-                      {group.habits.length > 1 && <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>}
-                      <span className="text-base text-zinc-400">
-                        {group.habits.length > 1 ? 'ー' : `${group.root.points}G / ${group.root.exp_body + group.root.exp_mind + group.root.exp_spirit}ex`}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
-                      <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
-                      <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
-                      {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
-                    </div>
-                  </div>
-                  {group.habits.slice(1).map((child) => (
-                    <div key={child.id} className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg ml-6">
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-base text-zinc-500 w-8" aria-hidden>-</span>
-                        <span className="flex-1 text-base text-zinc-100">{[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}</span>
-                        <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
+            <DndContext sensors={sensors} onDragEnd={(e) => handleManagementDragEnd(e, 'bad')}>
+              <SortableContext items={buildManagementGroups(habits, 'bad').map((g) => g.root.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-2">
+                  {buildManagementGroups(habits, 'bad').map((group, groupIndex, arr) => (
+                    <SortableManagementGroup key={group.root.id} id={group.root.id}>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+                          <div className="flex items-center gap-2 flex-1">
+                            <span className="text-base text-zinc-500 w-8">{groupIndex + 1}</span>
+                            <span className="flex-1 text-base text-zinc-100">{[group.root.habit_name, group.root.description?.trim()].filter(Boolean).join('｜')}</span>
+                            {group.habits.length > 1 && <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>}
+                            <span className="text-base text-zinc-400">
+                              {group.habits.length > 1 ? 'ー' : `${group.root.points}G / ${group.root.exp_body + group.root.exp_mind + group.root.exp_spirit}ex`}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
+                            <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
+                            <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                            {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
+                          </div>
+                        </div>
+                        {group.habits.slice(1).map((child) => (
+                          <div key={child.id} className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg ml-6">
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-base text-zinc-500 w-8" aria-hidden>-</span>
+                              <span className="flex-1 text-base text-zinc-100">{[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}</span>
+                              <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                              {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
-                        {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
-                      </div>
-                    </div>
+                    </SortableManagementGroup>
                   ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           </div>
 
           {/* ボーナス */}
           {habits.filter((h) => h.habit_type === 'bonus').length > 0 && (
             <div>
               <h4 className="text-base font-medium text-yellow-400 mb-3">ボーナス</h4>
-              <div className="space-y-2">
-                {buildManagementGroups(habits, 'bonus').map((group, groupIndex, arr) => (
-                  <div key={group.root.id} className="space-y-1">
-                    <div className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
-                      <div className="flex items-center gap-2 flex-1">
-                        <span className="text-base text-zinc-500 w-8">{groupIndex + 1}</span>
-                        <span className="flex-1 text-base text-zinc-100">{[group.root.habit_name, group.root.description?.trim()].filter(Boolean).join('｜')}</span>
-                        {group.habits.length > 1 && <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>}
-                        <span className="text-base text-zinc-400">
-                          {group.habits.length > 1 ? 'ー' : `${group.root.points}G / ${group.root.exp_body + group.root.exp_mind + group.root.exp_spirit}ex`}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
-                        <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
-                        <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
-                        {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
-                      </div>
-                    </div>
-                    {group.habits.slice(1).map((child) => (
-                      <div key={child.id} className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg ml-6">
-                        <div className="flex items-center gap-2 flex-1">
-                          <span className="text-base text-zinc-500 w-8" aria-hidden>-</span>
-                          <span className="flex-1 text-base text-zinc-100">{[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}</span>
-                          <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
+              <DndContext sensors={sensors} onDragEnd={(e) => handleManagementDragEnd(e, 'bonus')}>
+                <SortableContext items={buildManagementGroups(habits, 'bonus').map((g) => g.root.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-2">
+                    {buildManagementGroups(habits, 'bonus').map((group, groupIndex, arr) => (
+                      <SortableManagementGroup key={group.root.id} id={group.root.id}>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg">
+                            <div className="flex items-center gap-2 flex-1">
+                              <span className="text-base text-zinc-500 w-8">{groupIndex + 1}</span>
+                              <span className="flex-1 text-base text-zinc-100">{[group.root.habit_name, group.root.description?.trim()].filter(Boolean).join('｜')}</span>
+                              {group.habits.length > 1 && <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded">親</span>}
+                              <span className="text-base text-zinc-400">
+                                {group.habits.length > 1 ? 'ー' : `${group.root.points}G / ${group.root.exp_body + group.root.exp_mind + group.root.exp_spirit}ex`}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
+                              <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
+                              <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                              {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
+                            </div>
+                          </div>
+                          {group.habits.slice(1).map((child) => (
+                            <div key={child.id} className="flex items-center gap-3 p-3 bg-zinc-800 border border-zinc-700 rounded-lg ml-6">
+                              <div className="flex items-center gap-2 flex-1">
+                                <span className="text-base text-zinc-500 w-8" aria-hidden>-</span>
+                                <span className="flex-1 text-base text-zinc-100">{[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}</span>
+                                <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
+                                {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
-                          {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
-                        </div>
-                      </div>
+                      </SortableManagementGroup>
                     ))}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
             </div>
           )}
         </div>
