@@ -59,6 +59,77 @@
 
 ## 2603 --------------
 
+### 260320-木
+
+#### 習慣管理 機能強化（7タスク）実装ログ
+
+**修正ファイル:**
+- `gol-web/app/api/habits/route.ts` — API バグ修正・is_active 対応
+- `gol-web/app/dashboard/habit-list.tsx` — 日誌画面UI・D&D
+- `gol-web/app/settings/habits/page.tsx` — マイページUI・D&D
+- `gol-web/lib/types.ts` — Habit 型に is_active 追加
+- `docs/appendix/DB-related/sql-snippet/add-is-active-to-habits.sql` — 新規作成
+
+**実装詳細:**
+
+**Task 1: API description バグ修正（route.ts line 230-233）**
+- 修正前: `if (descValue !== null) { updatePayload.description = descValue; }` — null のときスキップ
+- 修正後: `updatePayload.description = descValue;` — 常に含める（note と同じパターン）
+- 理由: null でも updatePayload に含めないと DB が更新されない
+
+**Task 2: トースト文言統一（habit-list.tsx line 300, 322）**
+- 週末除外・Comp対象外どちらも「変更しました」に統一
+- 修正前: 'オンにしました' / '解除しました' など複数文言混在
+- 修正後: toggle 共通で `showToast('変更しました', 'success')`
+
+**Task 4: 件数表示（habit-list.tsx）**
+- アコーディオン見出しに `<span className="text-sm text-zinc-500 font-normal">({goodHabits.length}件)</span>` を追加
+- 3セクション（良習慣・悪習慣・ボーナス）全てに適用
+
+**Task 5: 親習慣設定解放（habit-list.tsx + settings/habits/page.tsx）**
+- 習慣編集モーダルから `disabled={isParentWithChildren}` を削除
+- 警告文「親習慣には設定できません」を削除
+- マイページの HabitCard で exclude_weekends / exclude_from_complete をテキストからボタンに変更
+- cursor-pointer も付与
+
+**Task 6: is_active 機能実装**
+- SQL: `ALTER TABLE habits ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT TRUE;`
+- 型: `Habit` interface に `is_active: boolean` 追加
+- API (route.ts):
+  - GET: `select(['*'])` で自動取得
+  - POST: `is_active: true` をデフォルト挿入
+  - PUT: `updatePayload.is_active = body.is_active ?? habit.is_active;` で boolean として含める
+- UI (habit-list.tsx): filter に `h.is_active !== false` を追加（null と false 両対応）
+- UI (settings/habits/page.tsx): HabitCard に toggle ボタン追加、is_active 状態で opacity-50 スタイル適用
+
+**Task 7: D&D 実装（dnd-kit）**
+- マイページ (settings/habits/page.tsx):
+  - `DndContext` + `SortableContext` + `verticalListSortingStrategy` でラップ
+  - `useSortable` で HabitCard をラップ、GripVertical ハンドル
+  - `handleDragEnd` で `/api/habits` PATCH で `display_order` 更新
+  - 良習慣・悪習慣各セクション独立した context
+
+- 日誌画面・習慣管理モーダル (habit-list.tsx):
+  - `SortableManagementGroup` コンポーネント新規
+  - `DndContext` + `SortableContext` + `useSensor(PointerSensor)` で設定
+  - `handleManagementDragEnd` で `display_order` 更新 API 呼び出し
+  - 既存の ↑↓ ボタンと共存
+
+**チェックリスト ワークフロー確立:**
+- `~/.claude/CLAUDE.md` Rule 11 に記載
+- `/Users/ta2/Library/Mobile Documents/com~apple~CloudDocs/ALL-DTA2-iCloud/1-i-IT/i-3-AI-related/i-130-Claude/i-docs/130-2-ui-features.md` に「260320-木｜チェックリスト実装のワークフロー」セクション追記
+- パターン:
+  - 実装完了 → `- [] 項目名 \`YYMMDD実装済み\`` (チェックなし、日付タグのみ)
+  - ユーザー確認OK → `- [x] 項目名 \`YYMMDD実装済み\`` (チェックマーク付加)
+
+**検証:**
+- `npm run build` エラーなし
+- 日誌画面で非 active 習慣が非表示確認
+- マイページで D&D 並び替え・is_active toggle 動作確認
+- API 呼び出しで display_order 更新 → 画面リロード後も順序維持確認
+
+---
+
 ### 260319-木
 
 #### ToDoサマリー・サブタスク機能強化
