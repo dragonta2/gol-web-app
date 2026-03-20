@@ -185,6 +185,23 @@ export default function HabitsSettingsPage() {
     }
   };
 
+  // 週末除外・Comp対象外トグル
+  const toggleHabitBoolField = async (habit: Habit, field: 'exclude_weekends' | 'exclude_from_complete') => {
+    const next = !habit[field];
+    try {
+      const { error } = await supabase
+        .from('habits')
+        .update({ [field]: next })
+        .eq('id', habit.id);
+      if (error) throw error;
+      toast.success('変更しました');
+      fetchHabits();
+    } catch (err) {
+      toast.error('更新に失敗しました');
+      console.error(err);
+    }
+  };
+
   // 習慣を削除
   const handleDeleteHabit = async (habit: Habit) => {
     if (!habit.is_custom) {
@@ -291,8 +308,22 @@ export default function HabitsSettingsPage() {
               )}
             </>
           )}
-          {habit.exclude_weekends && <div>土日除外: 有効</div>}
-          {habit.exclude_from_complete && <div>完了除外: 有効</div>}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => toggleHabitBoolField(habit, 'exclude_weekends')}
+              className={`text-xs px-2 py-0.5 rounded transition-colors cursor-pointer ${habit.exclude_weekends ? 'text-cyan-300 bg-cyan-900/40 hover:bg-cyan-900/60' : 'text-zinc-500 bg-zinc-700 hover:bg-zinc-600'}`}
+            >
+              週末除外: {habit.exclude_weekends ? '有効' : '無効'}
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleHabitBoolField(habit, 'exclude_from_complete')}
+              className={`text-xs px-2 py-0.5 rounded transition-colors cursor-pointer ${habit.exclude_from_complete ? 'text-yellow-400 bg-yellow-900/40 hover:bg-yellow-900/60' : 'text-zinc-500 bg-zinc-700 hover:bg-zinc-600'}`}
+            >
+              Comp対象外: {habit.exclude_from_complete ? '有効' : '無効'}
+            </button>
+          </div>
           {isChild && <div className="text-zinc-500">子習慣（親の報酬で1回のみ加算）</div>}
         </div>
       </div>
