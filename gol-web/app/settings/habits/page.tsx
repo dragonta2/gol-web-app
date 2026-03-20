@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -11,6 +11,20 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from 'sonner';
 import { ArrowLeft, Plus, Edit, Trash2, GripVertical, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { isSubmitShortcut } from '@/lib/utils';
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface Habit {
   id: string;
@@ -47,6 +61,30 @@ function buildHabitTree(habits: Habit[]): { parent: Habit; children: Habit[] }[]
   });
 }
 
+function SortableGroupWrapper({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  return (
+    <div ref={setNodeRef} style={style} className={isDragging ? 'opacity-50' : ''}>
+      <div className="flex items-start gap-1">
+        <button
+          ref={setActivatorNodeRef}
+          {...attributes}
+          {...listeners}
+          type="button"
+          className="mt-3 p-1 text-zinc-500 hover:text-zinc-300 cursor-grab active:cursor-grabbing touch-none"
+          aria-label="ドラッグして並び替え"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+        <div className="flex-1">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HabitsSettingsPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -56,6 +94,8 @@ export default function HabitsSettingsPage() {
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
   const [openGoodAccordion, setOpenGoodAccordion] = useState(true);
   const [openBadAccordion, setOpenBadAccordion] = useState(true);
+
+  const sensors = useSensors(useSensor(PointerSensor));
 
   // フォーム状態
   const [formData, setFormData] = useState({
@@ -102,6 +142,31 @@ export default function HabitsSettingsPage() {
   useEffect(() => {
     fetchHabits();
   }, []);
+
+  // D&D並び替えハンドラー（親グループ単位で移動）
+  const handleDragEnd = async (event: DragEndEvent, habitType: 'good' | 'bad') => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const typeHabits = habits.filter((h) => h.habit_type === habitType);
+    const groups = buildHabitTree(typeHabits);
+    const oldIndex = groups.findIndex((g) => g.parent.id === active.id);
+    const newIndex = groups.findIndex((g) => g.parent.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(groups, oldIndex, newIndex);
+    const flat = reordered.flatMap((g) => [g.parent, ...g.children]);
+    try {
+      await Promise.all(
+        flat.map((h, i) => supabase.from('habits').update({ display_order: i }).eq('id', h.id))
+      );
+      toast.success('順序を変更しました');
+      fetchHabits();
+    } catch (err) {
+      toast.error('並び替えに失敗しました');
+      console.error(err);
+    }
+  };
 
   // フォームをリセット
   const resetForm = () => {
@@ -606,16 +671,22 @@ export default function HabitsSettingsPage() {
                       良習慣が登録されていません
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {goodTree.map(({ parent, children }) => (
-                        <div key={parent.id} className="space-y-2">
-                          <HabitCard habit={parent} hasChildren={children.length > 0} />
-                          {children.map((child) => (
-                            <HabitCard key={child.id} habit={child} isChild />
+                    <DndContext sensors={sensors} onDragEnd={(e) => handleDragEnd(e, 'good')}>
+                      <SortableContext items={goodTree.map((g) => g.parent.id)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-3">
+                          {goodTree.map(({ parent, children }) => (
+                            <SortableGroupWrapper key={parent.id} id={parent.id}>
+                              <div className="space-y-2">
+                                <HabitCard habit={parent} hasChildren={children.length > 0} />
+                                {children.map((child) => (
+                                  <HabitCard key={child.id} habit={child} isChild />
+                                ))}
+                              </div>
+                            </SortableGroupWrapper>
                           ))}
                         </div>
-                      ))}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
               )}
@@ -643,16 +714,22 @@ export default function HabitsSettingsPage() {
                       悪習慣が登録されていません
                     </div>
                   ) : (
-                    <div className="space-y-3">
-                      {badTree.map(({ parent, children }) => (
-                        <div key={parent.id} className="space-y-2">
-                          <HabitCard habit={parent} hasChildren={children.length > 0} />
-                          {children.map((child) => (
-                            <HabitCard key={child.id} habit={child} isChild />
+                    <DndContext sensors={sensors} onDragEnd={(e) => handleDragEnd(e, 'bad')}>
+                      <SortableContext items={badTree.map((g) => g.parent.id)} strategy={verticalListSortingStrategy}>
+                        <div className="space-y-3">
+                          {badTree.map(({ parent, children }) => (
+                            <SortableGroupWrapper key={parent.id} id={parent.id}>
+                              <div className="space-y-2">
+                                <HabitCard habit={parent} hasChildren={children.length > 0} />
+                                {children.map((child) => (
+                                  <HabitCard key={child.id} habit={child} isChild />
+                                ))}
+                              </div>
+                            </SortableGroupWrapper>
                           ))}
                         </div>
-                      ))}
-                    </div>
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
               )}
