@@ -303,10 +303,10 @@ function JournalImpressionSections({
       {/* 今日の日誌と一言感想（同一の背景枠内・エリア全体で折りたたみ） */}
       {(!isPastDate || dailyLog) && (
         <>
-          <div className="mb-[13px] sm:mb-[17px] flex items-center justify-between gap-2">
+          <div className="mb-[13px] sm:mb-[17px] flex items-center gap-2">
             <button
               onClick={() => setSectionExpanded(!isSectionExpanded)}
-              className="flex-1 text-left flex items-center justify-between gap-2 hover:opacity-80 transition-opacity min-w-0"
+              className="text-left flex items-center gap-2 hover:opacity-80 transition-opacity min-w-0"
               aria-expanded={isSectionExpanded}
               aria-controls="journal-impression-content"
             >
@@ -314,12 +314,8 @@ function JournalImpressionSections({
                 <Edit className="w-7 h-7 sm:w-8 sm:h-8" />
                 <span>日誌・感想</span>
               </h3>
-              {isSectionExpanded ? (
-                <ChevronUp className="w-6 h-6 text-zinc-400 shrink-0" />
-              ) : (
-                <ChevronDown className="w-6 h-6 text-cyan-400 shrink-0" />
-              )}
             </button>
+            <div className="flex-1" />
             {notionImportAllowed && (
               <Button
                 type="button"
@@ -338,6 +334,18 @@ function JournalImpressionSections({
                 <span className="sr-only sm:not-sr-only sm:ml-1">Notionから日誌と感想を取り込む</span>
               </Button>
             )}
+            <button
+              onClick={() => setSectionExpanded(!isSectionExpanded)}
+              className="hover:opacity-80 transition-opacity shrink-0"
+              aria-expanded={isSectionExpanded}
+              aria-controls="journal-impression-content"
+            >
+              {isSectionExpanded ? (
+                <ChevronUp className="w-6 h-6 text-zinc-400" />
+              ) : (
+                <ChevronDown className="w-6 h-6 text-cyan-400" />
+              )}
+            </button>
           </div>
           {isSectionExpanded && (
             <div

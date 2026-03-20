@@ -177,7 +177,7 @@ export default function RightsSettingsPage() {
             className="inline-flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>マイページに戻る</span>
+            <span>ダッシュボードに戻る</span>
           </Link>
           <div>
             <h1 className="text-3xl font-bold text-cyan-400">権利設定</h1>

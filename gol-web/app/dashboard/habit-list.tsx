@@ -368,6 +368,27 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     }
   };
 
+  // 活性/非活性トグル
+  const toggleIsActive = async (habitId: string) => {
+    const habit = habitsWithLogs.find((h) => h.id === habitId);
+    if (!habit) return;
+
+    const next = habit.is_active !== false;
+    try {
+      const { error } = await supabase
+        .from('habits')
+        .update({ is_active: !next })
+        .eq('id', habitId);
+
+      if (error) throw error;
+      toast.success('変更しました');
+      router.refresh();
+    } catch (err) {
+      toast.error('更新に失敗しました');
+      console.error(err);
+    }
+  };
+
   // チェックボックス切り替え
   const toggleCheck = async (habitId: string) => {
     const habit = habitsWithLogs.find((h) => h.id === habitId);
@@ -2128,6 +2149,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                           <div className="flex items-center gap-1">
                             <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
                             <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
+                            <button type="button" onClick={() => toggleIsActive(group.root.id)} title={group.root.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${group.root.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{group.root.is_active !== false ? '活性' : '非活性'}</button>
                             <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                             {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
                           </div>
@@ -2140,6 +2162,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                               <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
                             </div>
                             <div className="flex items-center gap-1">
+                              <button type="button" onClick={() => toggleIsActive(child.id)} title={child.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{child.is_active !== false ? '活性' : '非活性'}</button>
                               <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                               {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
                             </div>
@@ -2174,6 +2197,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                           <div className="flex items-center gap-1">
                             <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
                             <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
+                            <button type="button" onClick={() => toggleIsActive(group.root.id)} title={group.root.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${group.root.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{group.root.is_active !== false ? '活性' : '非活性'}</button>
                             <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                             {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
                           </div>
@@ -2186,6 +2210,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                               <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
                             </div>
                             <div className="flex items-center gap-1">
+                              <button type="button" onClick={() => toggleIsActive(child.id)} title={child.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{child.is_active !== false ? '活性' : '非活性'}</button>
                               <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                               {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
                             </div>
@@ -2221,6 +2246,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                             <div className="flex items-center gap-1">
                               <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
                               <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
+                              <button type="button" onClick={() => toggleIsActive(group.root.id)} title={group.root.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${group.root.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{group.root.is_active !== false ? '活性' : '非活性'}</button>
                               <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                               {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
                             </div>
@@ -2233,6 +2259,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                                 <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
                               </div>
                               <div className="flex items-center gap-1">
+                                <button type="button" onClick={() => toggleIsActive(child.id)} title={child.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{child.is_active !== false ? '活性' : '非活性'}</button>
                                 <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                                 {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
                               </div>
