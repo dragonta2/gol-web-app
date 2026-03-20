@@ -18,6 +18,24 @@
 
 ---
 
+### 260320-Fri --------------
+
+#### 260320-Fri｜`:bp` バイパスモード実装・ステータスライン表示対応
+
+**記載** ClaudeCode
+
+**実施内容:**
+
+- `:bp` コマンドで全許可を自動承認するバイパスモードのトグル機能を実装（`~/.claude/hooks/bypass-toggle.sh` / `bypass-permission.sh`）
+
+- `settings.json` に `UserPromptSubmit` / `PermissionRequest` フックを追加、`Stop` 時のアラート音（Glass.aiff）も設定
+
+- トリガーを `!bp`（シェルコマンド扱いで動作しない）→ `:bp` に修正
+
+- ステータスラインに bp:ON 状態を `🔓 bp:ON` として表示する機能を追加（`~/.claude/statusline-command.sh`）
+
+---
+
 ### 260320-木 --------------
 
 #### 260320-木｜習慣管理UI・機能強化パック（7タスク完了）
