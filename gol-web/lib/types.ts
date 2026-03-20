@@ -46,6 +46,8 @@ export interface Habit {
   exclude_weekends: boolean;
   /** 完了判定から除外するか */
   exclude_from_complete: boolean;
+  /** 活性状態（false の場合、日誌画面から非表示） */
+  is_active: boolean;
   /** 副見出し（habitsテーブルの description カラム。習慣カードにも表示） */
   description?: string | null;
   /** 説明（habitsテーブルの note カラム。モーダル内のみ表示） */

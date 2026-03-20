@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
       exclude_from_complete: exclude_from_complete || false,
       is_custom: true,
       display_order: displayOrder,
+      is_active: true,
     };
     const descValue = typeof description === 'string' && description.trim() ? description.trim() : null;
     if (descValue !== null) {
@@ -173,6 +174,7 @@ export async function PUT(request: NextRequest) {
       exclude_weekends,
       exclude_from_complete,
       parent_habit_id,
+      is_active,
     } = body;
 
     // バリデーション
@@ -227,6 +229,9 @@ export async function PUT(request: NextRequest) {
       exclude_weekends: exclude_weekends || false,
       exclude_from_complete: exclude_from_complete || false,
     };
+    if (typeof is_active === 'boolean') {
+      updatePayload.is_active = is_active;
+    }
     const descValue = typeof description === 'string' && description.trim() ? description.trim() : null;
     updatePayload.description = descValue;
     const noteValue = typeof note === 'string' && note.trim() ? note.trim() : null;

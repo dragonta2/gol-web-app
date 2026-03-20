@@ -29,6 +29,7 @@ interface Habit {
   input_type: 'checkbox' | 'number';
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
+  is_active: boolean;
   description?: string | null;
   note?: string | null;
   difficulty?: string;
@@ -195,10 +196,10 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
 
   const isWeekendOrHolidayToday = isWeekendOrHoliday(logDate);
 
-  // 良習慣、悪習慣、ボーナスに分類（フィルター適用後）
-  const goodHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'good'));
-  const badHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'bad'));
-  const bonusHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'bonus'));
+  // 良習慣、悪習慣、ボーナスに分類（フィルター適用後。非活性習慣は除外）
+  const goodHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'good' && h.is_active !== false));
+  const badHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'bad' && h.is_active !== false));
+  const bonusHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'bonus' && h.is_active !== false));
 
   // 表示用ツリー（親→子のネスト）
   const goodTree = useMemo(() => buildHabitTree(goodHabits), [goodHabits]);

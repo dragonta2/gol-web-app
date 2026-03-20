@@ -27,6 +27,7 @@ interface Habit {
   input_type: 'checkbox' | 'number';
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
+  is_active: boolean;
   description?: string | null;
   note?: string | null;
   created_at: string;
@@ -185,8 +186,8 @@ export default function HabitsSettingsPage() {
     }
   };
 
-  // 週末除外・Comp対象外トグル
-  const toggleHabitBoolField = async (habit: Habit, field: 'exclude_weekends' | 'exclude_from_complete') => {
+  // is_active / 週末除外 / Comp対象外トグル
+  const toggleHabitBoolField = async (habit: Habit, field: 'exclude_weekends' | 'exclude_from_complete' | 'is_active') => {
     const next = !habit[field];
     try {
       const { error } = await supabase
@@ -280,7 +281,7 @@ export default function HabitsSettingsPage() {
 
   // 習慣カードコンポーネント（子の場合はインデント。親で子を持つ場合はラベルとゴルド/EXPを「ー」表示）
   const HabitCard = ({ habit, isChild = false, hasChildren = false }: { habit: Habit; isChild?: boolean; hasChildren?: boolean }) => (
-    <div className={`bg-zinc-800 border border-zinc-700 rounded-lg p-4 flex items-start justify-between gap-4 ${isChild ? 'ml-6' : ''}`}>
+    <div className={`bg-zinc-800 border border-zinc-700 rounded-lg p-4 flex items-start justify-between gap-4 ${isChild ? 'ml-6' : ''} ${habit.is_active === false ? 'opacity-50' : ''}`}>
       <div className="flex-1">
         <div className="flex items-center gap-2 mb-2">
           <GripVertical className="w-4 h-4 text-zinc-500" />
@@ -309,6 +310,13 @@ export default function HabitsSettingsPage() {
             </>
           )}
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => toggleHabitBoolField(habit, 'is_active')}
+              className={`text-xs px-2 py-0.5 rounded transition-colors cursor-pointer ${habit.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}
+            >
+              {habit.is_active !== false ? '活性' : '非活性'}
+            </button>
             <button
               type="button"
               onClick={() => toggleHabitBoolField(habit, 'exclude_weekends')}
