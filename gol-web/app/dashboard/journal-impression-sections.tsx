@@ -100,6 +100,7 @@ function JournalImpressionSections({
   const [journalText, setJournalText] = useState(dailyLog?.journal_text || '');
   const [impressionText, setImpressionText] = useState(dailyLog?.one_line_comment || '');
 
+
   const journalImpressionRef = useRef({ journalText: '', impressionText: '' });
   journalImpressionRef.current = { journalText, impressionText };
 

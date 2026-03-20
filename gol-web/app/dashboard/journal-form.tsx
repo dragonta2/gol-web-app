@@ -15,6 +15,7 @@ import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 import type { DailyLog } from '@/lib/types';
 import type { ScoreBreakdown } from '@/lib/score-calculator';
 import { applyAiTextLineBreaks, insertBlankLineEveryTwoLines, isSubmitShortcut } from '@/lib/utils';
+import { useSpeech, SPEECH_RATES } from '@/lib/use-speech';
 import {
   STORAGE_AI_PERSONALITY_TYPE,
   STORAGE_AI_STRICT_COACH_ENABLED,
@@ -22,7 +23,7 @@ import {
   DEFAULT_STRICT_COACH_ENABLED,
   isValidPersonalityTypeId,
 } from '@/lib/ai/personality-types';
-import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp, Settings, Check, Unlock } from 'lucide-react';
+import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp, Settings, Check, Unlock, Volume2, VolumeX } from 'lucide-react';
 import { ExpWithIcons } from '@/components/exp-with-icons';
 
 /** 権利の利用回数上限（スライダー・＋ボタン用） */
@@ -35,6 +36,7 @@ interface Right {
   points: number;
   unit?: string;
   count: number;
+  is_active?: boolean;
 }
 
 export type JournalFormExpandedStates = {
@@ -180,11 +182,12 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       .trim();
   };
 
-  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines: 2行ごとに空行（これまでの冒険・これからの冒険・アドバイス用）。連続空行は1行に統一。 */
-  const renderAiText = (text: string, options?: { blankEveryTwoLines?: boolean }) => {
+  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines: 2行ごとに空行（これまでの冒険・これからの冒険・アドバイス用）。collapseFirstBlank: 1行目直後の空行を詰める（アドバイス名前行用）。連続空行は1行に統一。 */
+  const renderAiText = (text: string, options?: { blankEveryTwoLines?: boolean; collapseFirstBlank?: boolean }) => {
     let formatted = applyAiTextLineBreaks(text);
     if (options?.blankEveryTwoLines) formatted = insertBlankLineEveryTwoLines(formatted);
     formatted = formatted.replace(/\n{3,}/g, '\n\n');
+    if (options?.collapseFirstBlank) formatted = formatted.replace(/^([^\n]+)\n\n+/, '$1\n');
     if (!userName) return formatted;
     const parts = formatted.split(userName);
     if (parts.length <= 1) return formatted;
@@ -200,7 +203,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   const isEditable = !isConfirmed;
 
   // 権利設定を取得（配列形式）
-  const [rightsList, setRightsList] = useState<Array<{ code: string; name: string; points: number; unit: string }>>([]);
+  const [rightsList, setRightsList] = useState<Array<{ code: string; name: string; points: number; unit: string; is_active?: boolean }>>([]);
 
   useEffect(() => {
     const fetchRights = async () => {
@@ -228,7 +231,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         name: r.name,
         points: r.points,
         unit: r.unit,
-        count: (dailyLog as unknown as Record<string, number>)?.[RIGHT_COLUMNS_BY_INDEX[index]] ?? 0,
+        is_active: r.is_active,
+        count: r.is_active === false ? 0 : ((dailyLog as unknown as Record<string, number>)?.[RIGHT_COLUMNS_BY_INDEX[index]] ?? 0),
       })) as Right[],
     };
   }, [dailyLog, rightsList]);
@@ -262,6 +266,9 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
   // AIアドバイス
   const [aiAdvice, setAIAdvice] = useState<string | null>(dailyLog?.ai_advice || null);
+
+  // 音声読み上げ
+  const { speakingTarget, speak, speechRate, setSpeechRate } = useSpeech((msg) => toast.error(msg));
 
   // AIあらすじ（これまでの冒険 / これからの冒険）
   const [aiStoryPast, setAIStoryPast] = useState<string | null>(dailyLog?.ai_story_past || null);
@@ -589,7 +596,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           {isRightsExpanded && (
             <div id="rights-content" className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 sm:p-4 space-y-3">
               <ul className="list-none space-y-3 pl-0">
-              {rights.map((right) => (
+              {rights.filter((right) => right.is_active !== false).map((right) => (
                 <li key={right.id} className="flex flex-wrap items-center gap-2 text-base sm:flex-nowrap">
                   <span className="text-zinc-400 shrink-0" aria-hidden>-</span>
                   {/* 権利名・使用単位 */}
@@ -840,8 +847,33 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             </div>
             {aiJudgmentResult.reasoning && (
               <div>
-                <h4 className="text-base font-medium text-cyan-400 mb-1">総評</h4>
-                <div className="text-lg text-zinc-300 bg-zinc-900 rounded p-3">
+                <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                  <h4 className="text-base font-medium text-cyan-400">総評</h4>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      {SPEECH_RATES.map(({ label, rate }) => (
+                        <button
+                          key={rate}
+                          type="button"
+                          onClick={() => setSpeechRate(rate)}
+                          className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${speechRate === rate ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => speak(aiJudgmentResult.reasoning, 'reasoning')}
+                      className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
+                      aria-label={speakingTarget === 'reasoning' ? '読み上げを停止' : '総評を音声で読み上げ'}
+                    >
+                      {speakingTarget === 'reasoning' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                      <span className="hidden sm:inline">{speakingTarget === 'reasoning' ? '停止' : '読み上げ'}</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="text-base text-zinc-300 bg-zinc-900 rounded p-3">
                   {aiJudgmentResult.reasoning}
                 </div>
               </div>
@@ -981,7 +1013,28 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                     <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
                       <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryPast, { blankEveryTwoLines: true })}</p>
                     </div>
-                    <div className="mt-1.5 text-right" aria-live="polite">
+                    <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
+                      <div className="flex items-center gap-1">
+                        {SPEECH_RATES.map(({ label, rate }) => (
+                          <button
+                            key={rate}
+                            type="button"
+                            onClick={() => setSpeechRate(rate)}
+                            className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${speechRate === rate ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => speak(aiStoryPast, 'storyPast')}
+                        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
+                        aria-label={speakingTarget === 'storyPast' ? '読み上げを停止' : 'これまでの冒険を音声で読み上げ'}
+                      >
+                        {speakingTarget === 'storyPast' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{speakingTarget === 'storyPast' ? '停止' : '読み上げ'}</span>
+                      </button>
                       <span className="text-xs text-zinc-600">{(aiStoryPast ?? '').length}文字</span>
                     </div>
                   </>
@@ -998,7 +1051,28 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                     <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
                       <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(stripFutureAdventureHeading(aiStoryFuture), { blankEveryTwoLines: true })}</p>
                     </div>
-                    <div className="mt-1.5 text-right" aria-live="polite">
+                    <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
+                      <div className="flex items-center gap-1">
+                        {SPEECH_RATES.map(({ label, rate }) => (
+                          <button
+                            key={rate}
+                            type="button"
+                            onClick={() => setSpeechRate(rate)}
+                            className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${speechRate === rate ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => speak(stripFutureAdventureHeading(aiStoryFuture), 'storyFuture')}
+                        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
+                        aria-label={speakingTarget === 'storyFuture' ? '読み上げを停止' : 'これからの冒険を音声で読み上げ'}
+                      >
+                        {speakingTarget === 'storyFuture' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{speakingTarget === 'storyFuture' ? '停止' : '読み上げ'}</span>
+                      </button>
                       <span className="text-xs text-zinc-600">{(aiStoryFuture ?? '').length}文字</span>
                     </div>
                   </>
@@ -1039,9 +1113,30 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               ) : aiAdvice ? (
                 <>
                   <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true })}</p>
+                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true, collapseFirstBlank: true })}</p>
                   </div>
-                  <div className="mt-1.5 text-right" aria-live="polite">
+                  <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
+                    <div className="flex items-center gap-1">
+                      {SPEECH_RATES.map(({ label, rate }) => (
+                        <button
+                          key={rate}
+                          type="button"
+                          onClick={() => setSpeechRate(rate)}
+                          className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${speechRate === rate ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => speak(aiAdvice, 'advice')}
+                      className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
+                      aria-label={speakingTarget === 'advice' ? '読み上げを停止' : 'アドバイスを音声で読み上げ'}
+                    >
+                      {speakingTarget === 'advice' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                      <span className="hidden sm:inline">{speakingTarget === 'advice' ? '停止' : '読み上げ'}</span>
+                    </button>
                     <span className="text-xs text-zinc-600">{(aiAdvice ?? '').length}文字</span>
                   </div>
                 </>

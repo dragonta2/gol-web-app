@@ -320,12 +320,12 @@ export default function StatsTab() {
       </div>
 
       {/* 期間選択（グラフ用） */}
-      <div className="flex items-center gap-4">
-        <label className="text-2xl text-zinc-300">表示期間:</label>
+      <div className="flex items-center gap-4 flex-wrap">
+        <label className="text-base text-zinc-300">表示期間:</label>
         <select
           value={days}
           onChange={(e) => setDays(Number(e.target.value))}
-          className="pl-3 pr-8 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-2xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          className="pl-3 pr-8 py-1.5 bg-zinc-800 border border-zinc-700 rounded text-zinc-100 text-base focus:outline-none focus:ring-2 focus:ring-cyan-500"
         >
           <option value={7}>過去7日間</option>
           <option value={30}>過去30日間</option>
@@ -333,6 +333,7 @@ export default function StatsTab() {
           <option value={180}>過去180日間</option>
           <option value={365}>過去1年間</option>
         </select>
+        <span className="text-sm text-zinc-300">※ ゴルド・EXP推移グラフと習慣達成率グラフ、両方の期間を切り替えます</span>
       </div>
 
       {/* ゴルド・EXPの推移グラフ */}

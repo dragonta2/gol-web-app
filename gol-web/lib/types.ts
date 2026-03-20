@@ -385,6 +385,8 @@ export interface Right {
   unit?: string;
   /** 使用回数 */
   count: number;
+  /** 活性フラグ（false のとき日誌画面に表示しない） */
+  is_active?: boolean;
 }
 
 // ============================================================================

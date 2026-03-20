@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { validatePoints } from '@/lib/validation';
 import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 
-export type RightItem = { code: string; name: string; points: number; unit: string };
+export type RightItem = { code: string; name: string; points: number; unit: string; is_active?: boolean };
 
 /** 権利記号はアルファベットのみ。最大文字数 */
 const CODE_MAX_LENGTH = 10;
@@ -39,6 +39,7 @@ function toRightsArray(config: unknown): RightItem[] {
           name: typeof row.name === 'string' ? row.name : '',
           points: typeof row.points === 'number' ? row.points : 0,
           unit: typeof row.unit === 'string' ? row.unit : '',
+          is_active: typeof row.is_active === 'boolean' ? row.is_active : true,
         };
       });
   }
@@ -125,9 +126,10 @@ export async function PUT(request: NextRequest) {
         ? pointsRaw
         : parseInt(String(pointsRaw ?? 0), 10) || 0;
       const unit = typeof r.unit === 'string' ? r.unit.trim() : '';
+      const isActive = typeof r.is_active === 'boolean' ? r.is_active : true;
       const pointCheck = validatePoints(points);
       if (!pointCheck.valid) continue;
-      validated.push({ code: code || `R${i + 1}`, name, points, unit: unit || '1回' });
+      validated.push({ code: code || `R${i + 1}`, name, points, unit: unit || '1回', is_active: isActive });
     }
 
     const payload = { rights: validated };

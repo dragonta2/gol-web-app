@@ -22,6 +22,7 @@ interface RightItem {
   name: string;
   points: number;
   unit: string;
+  is_active?: boolean;
 }
 
 const DEFAULT_RIGHTS: RightItem[] = [
@@ -69,6 +70,13 @@ export default function RightsSettingsPage() {
   }, []);
 
   const canAddMore = rights.length < MAX_RIGHTS;
+
+  const toggleRightActive = (index: number) => {
+    setRights((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, is_active: r.is_active === false ? true : false } : r))
+    );
+    setHasChanges(true);
+  };
 
   const updateRight = (index: number, field: keyof RightItem, value: string | number) => {
     const normalized = field === 'code' && typeof value === 'string' ? normalizeRightCode(value) : value;
@@ -173,7 +181,7 @@ export default function RightsSettingsPage() {
       <div className="max-w-4xl mx-auto">
         <div className="mb-4">
           <Link
-            href="/mypage"
+            href="/dashboard"
             className="inline-flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -250,7 +258,7 @@ export default function RightsSettingsPage() {
             {rights.map((right, index) => (
               <div
                 key={`right-${index}`}
-                className="bg-zinc-900 border border-zinc-800 rounded-lg p-4"
+                className={`bg-zinc-900 border border-zinc-800 rounded-lg p-4 ${right.is_active === false ? 'opacity-50' : ''}`}
               >
                 <div className="flex items-center justify-between gap-4 mb-3">
                   <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-l-4 border-blue-500 pl-2 py-0.5">
@@ -273,17 +281,26 @@ export default function RightsSettingsPage() {
                       </span>
                     )}
                   </div>
-                  <Button
+                  <div className="flex items-center gap-2">
+                    <button
                       type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveRight(index)}
-                      className="text-red-400 hover:text-red-300 hover:bg-red-950"
-                      aria-label="この権利を削除"
+                      onClick={() => toggleRightActive(index)}
+                      className={`text-xs px-2 py-0.5 rounded transition-colors cursor-pointer ${right.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}
                     >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    削除
-                  </Button>
+                      {right.is_active !== false ? '活性' : '非活性'}
+                    </button>
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveRight(index)}
+                        className="text-red-400 hover:text-red-300 hover:bg-red-950"
+                        aria-label="この権利を削除"
+                      >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      削除
+                    </Button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                   <div>
