@@ -297,7 +297,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         .eq('id', habitId);
 
       if (error) throw error;
-      toast.success(next ? '週末除外を有効にしました' : '週末除外を解除しました');
+      toast.success('変更しました');
       router.refresh();
     } catch (err) {
       toast.error('更新に失敗しました');
@@ -319,7 +319,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         .eq('id', habitId);
 
       if (error) throw error;
-      toast.success(next ? 'Complete対象外にしました' : 'Complete対象に含めました');
+      toast.success('変更しました');
       router.refresh();
     } catch (err) {
       toast.error('更新に失敗しました');
