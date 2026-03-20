@@ -215,7 +215,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // 習慣を更新（description は値があるときだけ送る＝マイグレーション未実施でも更新できるようにする）
+    // 習慣を更新
     const updatePayload: Record<string, unknown> = {
       habit_name: habit_name.trim(),
       habit_type,
@@ -228,9 +228,7 @@ export async function PUT(request: NextRequest) {
       exclude_from_complete: exclude_from_complete || false,
     };
     const descValue = typeof description === 'string' && description.trim() ? description.trim() : null;
-    if (descValue !== null) {
-      updatePayload.description = descValue;
-    }
+    updatePayload.description = descValue;
     const noteValue = typeof note === 'string' && note.trim() ? note.trim() : null;
     if (noteValue !== null) {
       updatePayload.note = noteValue;
