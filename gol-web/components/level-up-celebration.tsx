@@ -46,6 +46,7 @@ export function LevelUpCelebration({
 }) {
   const hasPlayed = useRef(false)
   const endTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [showMessage, setShowMessage] = useState(false)
 
   const runConfetti = useCallback(() => {
     const container = document.getElementById("level-up-confetti-container")
@@ -75,6 +76,7 @@ export function LevelUpCelebration({
   useEffect(() => {
     if (!show) {
       hasPlayed.current = false
+      setShowMessage(false)
       return
     }
     if (hasPlayed.current) return
@@ -82,12 +84,12 @@ export function LevelUpCelebration({
     playLevelUpSound()
     runConfetti()
     endTimer.current = setTimeout(() => {
-      onEnd?.()
+      setShowMessage(true)
     }, 4200)
     return () => {
       if (endTimer.current) clearTimeout(endTimer.current)
     }
-  }, [show, runConfetti, onEnd])
+  }, [show, runConfetti])
 
   if (!show) return null
 
@@ -111,6 +113,21 @@ export function LevelUpCelebration({
             <p className="mt-3 text-2xl sm:text-3xl text-zinc-300">
               Lv.{newLevel}
             </p>
+          )}
+          {showMessage && (
+            <div className="mt-8 animate-in fade-in duration-500">
+              <p className="text-lg sm:text-xl text-amber-100 mb-6">
+                おめでとうございます！
+                <br />
+                あなたの成長を感じます。
+              </p>
+              <button
+                onClick={onEnd}
+                className="px-6 py-2 sm:px-8 sm:py-3 bg-cyan-500 hover:bg-cyan-600 text-white font-semibold rounded-lg transition-colors duration-200"
+              >
+                ダッシュボードに戻る
+              </button>
+            </div>
           )}
         </div>
       </div>

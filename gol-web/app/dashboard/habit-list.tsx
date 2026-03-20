@@ -1250,7 +1250,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           })}
 
           {/* ボタン */}
-          <div className="flex gap-3 pt-2 mt-3 border-t border-zinc-800">
+          <div className="flex items-center justify-end gap-3 pt-2 mt-3 border-t border-zinc-800">
             <Button
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleOpenModal('good')}
@@ -1524,7 +1524,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           })}
 
           {/* ボタン */}
-          <div className="flex gap-3 pt-2 mt-3 border-t border-zinc-800">
+          <div className="flex items-center justify-end gap-3 pt-2 mt-3 border-t border-zinc-800">
             <Button
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => handleOpenModal('bad')}

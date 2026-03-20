@@ -59,6 +59,77 @@
 
 ## 2603 --------------
 
+### 260321-土
+
+#### 260321-土｜統計画面・権利非活性化・AI読み上げ 実装ログ
+
+**記載** ClaudeCode
+
+**修正ファイル:**
+
+- `gol-web/app/dashboard/stats-tab.tsx` — 表示期間セレクターのフォントサイズ調整・注釈追加
+
+- `gol-web/app/settings/account/account-settings-client.tsx` — ダッシュボード戻りリンク修正
+
+- `gol-web/app/settings/todos/page.tsx` — ダッシュボード戻りリンク修正
+
+- `gol-web/app/settings/rights/page.tsx` — ダッシュボード戻りリンク修正・非活性化トグル追加
+
+- `gol-web/app/settings/habits/page.tsx` — ダッシュボード戻りリンク修正
+
+- `gol-web/app/api/settings/rights/route.ts` — `is_active` フィールドの保存対応
+
+- `gol-web/lib/types.ts` — `Right` interface に `is_active?: boolean` 追加
+
+- `gol-web/app/dashboard/journal-form.tsx` — 権利フィルタリング・AI読み上げ・速度コントロール追加
+
+- `gol-web/app/dashboard/journal-impression-sections.tsx` — 音声読み上げ機能削除（ユーザー指示）
+
+- `gol-web/lib/use-speech.ts` — 新規作成（TTS共通フック）
+
+**実装詳細:**
+
+**統計画面 表示期間セレクター（stats-tab.tsx）**
+
+- セレクターのフォントサイズを `text-2xl` → `text-base` に変更
+- セレクター横に注釈テキスト追加: `text-zinc-300` で「習慣達成率・ポイント/経験値グラフの表示期間」
+- `flex-wrap` 追加でレイアウト崩れ防止
+
+**settings 各ページのリンク修正**
+
+- 4ファイルの `href="/mypage"` → `href="/dashboard"` に修正
+- テキストは「ダッシュボードに戻る」になっていたがリンク先が `/mypage` だった
+
+**権利の非活性化・活性化機能**
+
+- DBスキーマ変更なし: `rights_config` JSON の各エントリに `is_active?: boolean` フィールドで管理
+- `RightItem` 型に `is_active?: boolean` 追加（route.ts・settings/rights/page.tsx）
+- `toggleRightActive()` 関数を追加（PUT リクエストで更新）
+- 非活性カードは `opacity-50` で表示、トグルボタンは習慣と同スタイル（green/zinc）
+- `journal-form.tsx`: 非活性権利はフィルタリングして表示しない + `initialValues` で count を 0 に
+
+**journal-form.tsx TypeScript エラー修正**
+
+- `journal-form.tsx` は `lib/types.ts` の `Right` をインポートしておらずファイル内ローカル定義を使用
+- ローカルの `Right` interface（line 31）に `is_active?: boolean` を追加して解決
+
+**AI読み上げ機能（TTS）**
+
+- `lib/use-speech.ts` を新規作成
+  - `SPEECH_RATES` 定数（1.0x / 1.3x / 2.0x）
+  - `useSpeech` フック: `speakingTarget`, `speak`, `stop`, `speechRate`, `setSpeechRate`
+  - `SpeechSynthesisUtterance` の `lang = 'ja-JP'`・`rate` 設定
+- 読み上げボタンを設置した箇所: 総評・これまでの冒険・これからの冒険・アドバイス
+- 速度ボタン（1.0x / 1.3x / 2.0x）を各セクションに配置
+- `journal-impression-sections.tsx`（日誌・感想）の読み上げはユーザー指示で削除
+
+**アドバイス名前行直後の空き詰め（renderAiText）**
+
+- `collapseFirstBlank` オプションを追加
+- 正規表現: `formatted.replace(/^([^\n]+)\n\n+/, '$1\n')` で名前行直後の `\n\n` を `\n` に変換
+
+---
+
 ### 260320-金
 
 #### 統計画面｜進捗サマリー期間拡張・グラフ期間拡張 実装ログ

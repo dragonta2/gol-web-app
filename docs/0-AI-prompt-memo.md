@@ -5,9 +5,28 @@
 
 ## 2603- -------------
 
-`claude --dangerouslySkipPermissions`
+### 260321-Sat -------------
+
+さあ、続きからはじめよう！！
+今日の日付は  260321-Sat
+
+前回までの作業は進捗用の3番メモを参照して
+
+今日もよろしくお願いします！！
+
+
+`claude --dangerously-skip-permissions`
 
 ### 260320-Fri -------------
+
+
+
+
+これをまず確認して実装して
+不明な点があったら実装後に聞いて
+
+
+こんにちは。おはようございます。元気ですか。私は中村タツヒコ大先生です。
 
 
 今日はもう終わりにします。
@@ -101,8 +120,13 @@ Status
 今日もよろしくお願いします！！
 
 
-
 ### ブラウジングメモ-------------
+
+・Claude Code の --dangerously-skip-permissions を安全に使う Hooks 設定 | ポートフォリオ
+`https://wasabeef.jp/blog/claude-code-secure-bash`
+
+ --------------​
+
 
 「Claude Code」の人気の記事一覧｜note ――つくる、つながる、とどける。
 https://note.com/search?q=Claude%20Code&context=note&mode=search
