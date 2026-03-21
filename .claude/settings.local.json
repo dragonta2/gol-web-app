@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(CONFIG=\"/Users/ta2/Library/Mobile Documents/com~apple~CloudDocs/ALL-DTA2-iCloud/1-i-IT/i-3-AI-related/i-130-Claude/i-claude-config\")",
+      "Read(//Users/ta2/ALL-DTA2/Develop/dta2/gol/web-app/$CONFIG/**)",
+      "Bash(CONFIG=\"/Users/ta2/Library/Mobile Documents/com~apple~CloudDocs/ALL-DTA2-iCloud/1-i-IT/i-3-AI-related/i-130-Claude/i-claude-config\" __NEW_LINE_f06380753e5def25__ rm -f ~/.claude/CLAUDE.md rm -f ~/.claude/keybindings.json rm -f ~/.claude/settings.json rm -f ~/.claude/statusline-command.sh rm -rf ~/.claude/plugins rm -rf ~/.claude/projects __NEW_LINE_f06380753e5def25__ ln -s \"$CONFIG/CLAUDE.md\" ~/.claude/CLAUDE.md ln -s \"$CONFIG/keybindings.json\" ~/.claude/keybindings.json ln -s \"$CONFIG/settings.json\" ~/.claude/settings.json ln -s \"$CONFIG/statusline-command.sh\" ~/.claude/statusline-command.sh ln -s \"$CONFIG/plugins\" ~/.claude/plugins ln -s \"$CONFIG/projects\" ~/.claude/projects __NEW_LINE_f06380753e5def25__ echo \"完了！\" ls -la ~/.claude/)",
+      "Bash(grep -v \"^$\")"
+    ]
+  }
+}
