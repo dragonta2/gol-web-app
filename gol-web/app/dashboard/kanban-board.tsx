@@ -71,7 +71,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
       aria-label={`${todo.task_name}をドラッグして移動する`}
       aria-describedby={isOverdue ? `overdue-${todo.id}` : undefined}
       className={`bg-zinc-900 border ${
-        isOverdue ? 'border-red-700' : 'border-zinc-700'
+        isOverdue ? 'border-rose-300' : 'border-zinc-700'
       } rounded-lg p-3 hover:border-cyan-600 transition-colors cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-950 ${
         isDragging ? 'opacity-50' : ''
       }`}

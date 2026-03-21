@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,6 +39,10 @@ const DEFAULT_RIGHTS: RightItem[] = [
 ];
 
 export default function RightsSettingsPage() {
+  const searchParams = useSearchParams();
+  const returnDate = searchParams.get('returnDate');
+  const backHref = returnDate ? `/dashboard?date=${returnDate}` : '/dashboard';
+
   const [rights, setRights] = useState<RightItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -181,7 +186,7 @@ export default function RightsSettingsPage() {
       <div className="max-w-4xl mx-auto">
         <div className="mb-4">
           <Link
-            href="/dashboard"
+            href={backHref}
             className="inline-flex items-center gap-2 text-zinc-400 hover:text-zinc-100 transition-colors mb-4"
           >
             <ArrowLeft className="w-4 h-4" />

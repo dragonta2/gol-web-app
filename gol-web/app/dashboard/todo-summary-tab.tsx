@@ -1360,7 +1360,7 @@ export default function TodoSummaryTab({
         {...listeners}
         {...attributes}
         className={`bg-zinc-900 border ${
-          isOverdue ? "border-red-700" : "border-zinc-700"
+          isOverdue ? "border-rose-300" : "border-zinc-700"
         } rounded-lg p-3 overflow-visible hover:border-cyan-600 transition-colors cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-950 ${
           isDragging ? "opacity-50" : ""
         } ${isCompleted ? "opacity-75" : ""}`}

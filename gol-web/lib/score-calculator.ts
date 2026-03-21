@@ -302,9 +302,10 @@ function toPointsNumber(v: unknown): number {
  */
 function parseRightsPoints(config: unknown): number[] {
   if (Array.isArray(config)) {
-    const arr = config.slice(0, RIGHT_COLUMNS_BY_INDEX.length).map((r: unknown) =>
-      toPointsNumber((r as { points?: unknown })?.points)
-    );
+    const arr = config.slice(0, RIGHT_COLUMNS_BY_INDEX.length).map((r: unknown) => {
+      const item = r as { points?: unknown; is_active?: boolean };
+      return item.is_active === false ? 0 : toPointsNumber(item?.points);
+    });
     if (arr.length > 0) return arr;
   }
   if (config && typeof config === 'object') {
@@ -313,7 +314,10 @@ function parseRightsPoints(config: unknown): number[] {
     if (Array.isArray(obj.rights) && obj.rights.length > 0) {
       return obj.rights
         .slice(0, RIGHT_COLUMNS_BY_INDEX.length)
-        .map((r: unknown) => toPointsNumber((r as { points?: unknown })?.points));
+        .map((r: unknown) => {
+          const item = r as { points?: unknown; is_active?: boolean };
+          return item.is_active === false ? 0 : toPointsNumber(item?.points);
+        });
     }
     // レガシー形式: { A: { points }, B: { points }, ... }
     const LEGACY_ORDER = ['A', 'B', 'C', 'D', 'E', 'F', 'O', 'U', 'X'];

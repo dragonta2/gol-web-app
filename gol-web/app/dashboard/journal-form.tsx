@@ -680,13 +680,25 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
               {/* 権利設定へのリンク */}
               <div className="pt-3 mt-3 border-t border-zinc-800 flex justify-end">
-                <Link
-                  href="/settings/rights"
+                <button
+                  type="button"
+                  onClick={() => {
+                    const hasUnsaved = rights.some((r, i) => {
+                      const saved = (dailyLog as unknown as Record<string, number>)?.[RIGHT_COLUMNS_BY_INDEX[i]] ?? 0;
+                      return r.count !== saved;
+                    });
+                    if (hasUnsaved) {
+                      const ok = window.confirm('権利の入力内容が未保存です。\n設定に移動すると入力内容がリセットされます。移動しますか？');
+                      if (!ok) return;
+                    }
+                    const date = logDate || dailyLog?.log_date;
+                    router.push(date ? `/settings/rights?returnDate=${date}` : '/settings/rights');
+                  }}
                   className="inline-flex items-center gap-1.5 text-sm text-cyan-400 hover:text-cyan-300 hover:underline"
                 >
                   <Settings className="w-4 h-4" />
                   権利設定
-                </Link>
+                </button>
               </div>
             </div>
           )}
