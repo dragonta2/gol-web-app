@@ -13,6 +13,99 @@
 
 ## 2603 --------------
 
+### 260323-月
+
+#### 260323-月｜PR作成・CI構築・テスト修正・ドキュメント整備
+
+**記載** ClaudeCode
+
+---
+
+##### PR #2 作成
+
+```bash
+gh pr create \
+  --base main \
+  --head refactor/260322-apply-react-best-practice \
+  --title "refactor: React best practices 準拠・速度改善..."
+# → https://github.com/dragonta2/gol-web-app/pull/2
+```
+
+下書きファイル: `docs/appendix/git-draft/ID2-pr-draft.md`
+
+---
+
+##### CI テスト修正（announcements）
+
+**症状**: `app/api/announcements/__tests__/route.test.ts` の GET テストが `expected [] to have a length of 1 but got +0` で失敗
+
+**原因**: モックチェーンの設定ミス。`order()` は1回しか呼ばれないのに `mockReturnValueOnce(chain)` が先についており、1回目の呼び出しで chain オブジェクトが返ってしまいデータが取れなかった
+
+**修正**:
+
+```ts
+// Before
+chain.order.mockReturnValueOnce(chain).mockResolvedValueOnce({ data: mockRows, error: null });
+// After
+chain.order.mockResolvedValue({ data: mockRows, error: null });
+```
+
+---
+
+##### 未使用 import 削除（Cursor Bugbot 指摘対応）
+
+`todo-summary-tab.tsx` から削除:
+
+- `CSS`（@dnd-kit/utilities）
+- `useSortable`（@dnd-kit/sortable）
+- `isSubmitShortcut`（@/lib/utils）
+- `GripVertical`・`Loader2`・`ChevronUp`・`ChevronDown`（lucide-react）
+- `SubtaskEditRow`（./subtask-rows）
+
+`habit-list.tsx` から削除:
+
+- `CSS`（@dnd-kit/utilities）
+
+---
+
+##### GitHub Actions × Supabase Secrets 設定
+
+**症状**: E2E テストが `Error: Your project's URL and Key are required` で失敗
+
+**原因**: CI 環境に `.env.local` がなく Supabase 接続情報がない
+
+**対応**:
+
+1. `.github/workflows/ci.yml` の E2E ステップに Secrets 注入を追加
+
+```yaml
+env:
+  CI: '1'
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+```
+
+2. GitHub の `Settings > Secrets and variables > Actions` に2つ登録（ユーザー操作）
+
+→ CI グリーン達成（ユニット26件 + E2E pass）
+
+---
+
+##### ドキュメント整備
+
+- `README.md` — テーブル形式をリスト形式に修正・ブランチ運用更新・CI/デプロイ構成セクション新設
+- `docs/1-spec-sheet.md` — CI セクションを1行に圧縮（詳細は README 参照）
+- `docs/_INDEX.md` — README・git-draft エントリ追加・責務の棲み分け明記・整形
+
+---
+
+##### マージ・デプロイ
+
+- PR #2 を main にマージ（ユーザー操作）
+- Vercel が自動で本番デプロイ完了（`This branch was successfully deployed`）
+
+---
+
 ### 260322-日
 
 #### 260322-日｜大型リファクタリング：react-best-practices 準拠・速度改善
