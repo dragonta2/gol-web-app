@@ -6,11 +6,9 @@
 
 ## 構成
 
-| 場所 | 内容 |
-|------|------|
-| `gol-web/` | Next.js アプリ本体。起動・ビルド・環境変数は [gol-web/README.md](./gol-web/README.md) を参照 |
-| `docs/` | 設計・進捗・DBスキーマ・運用メモなど |
-| `PROJECT_STRUCTURE.md` | ディレクトリ構造の説明 |
+- `gol-web/` — Next.js アプリ本体。起動・ビルド・環境変数は `gol-web/README.md` を参照
+- `docs/` — 設計・進捗・DBスキーマ・運用メモなど
+- `PROJECT_STRUCTURE.md` — ディレクトリ構造の説明
 
 ## クイックスタート
 
@@ -146,8 +144,37 @@ tail -f ~/Library/Logs/com.gol.web-app.git-auto-commit.log
 
 ## ブランチ運用
 
-このプロジェクトは**個人プロジェクト**のため、シンプルな運用を採用しています。
+個人プロジェクトだが、ある程度のブランチ運用・PR フローを採用している。
 
-- **mainブランチへの直接push**: PR（プルリクエスト）は不要で、mainブランチに直接pushします
-- **ブランチ分けは不要**: 実験的な機能や複数人での開発がないため、ブランチを分ける必要はありません
-- **シンプルさを優先**: 個人運用では複雑なブランチ戦略よりも、シンプルな運用が効率的です
+- `main` — 本番ブランチ。直接 push は小規模修正のみ
+- `feature/xxx` / `refactor/xxx` — 機能追加・リファクタリング用。PR を通して main にマージ
+- PR 下書きは `docs/appendix/git-draft/` に保存
+
+## CI / デプロイ構成
+
+### GitHub Actions（`.github/workflows/ci.yml`）
+
+`main` への push・PR 作成時に自動実行される。
+
+- ユニットテスト（Vitest）
+- E2E テスト（Playwright / Chromium）
+
+**E2E テストの実行に GitHub Secrets の登録が必要:**
+
+```
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+```
+
+登録場所: `Settings > Secrets and variables > Actions`
+
+### Vercel
+
+GitHub リポジトリと連携済み。PR ごとにプレビューデプロイを自動生成。
+
+- 本番URL: `https://gol-web-app.vercel.app/`
+- プレビューURL: PR ごとに自動発行
+
+### Cursor Bugbot
+
+Cursor ダッシュボードで連携済み。PR 作成時にコードレビューを自動実行。

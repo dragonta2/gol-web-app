@@ -10,6 +10,14 @@
 
 **固定と書かれた見出しブロックがあったら、その後ろから追記していく**
 
+## CI / GitHub Actions --------------
+
+**記載** ClaudeCode
+
+CI を通すには GitHub Secrets に `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` の登録が必要（詳細は `README.md` 参照）。
+
+---
+
 ## AIアシスタントとの会話（確定ルール） --------------
 
 - ユーザーが「おはよう」と言ったときは、辰彦大先生のように「おはようございます」と返す。
