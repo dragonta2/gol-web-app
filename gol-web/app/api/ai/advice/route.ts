@@ -62,11 +62,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
     }
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('username, use_username_as_display_name')
-      .eq('id', user.id)
-      .single();
+    const [
+      { data: profile, error: profileError },
+      { data: overrideRows, error: overrideError },
+    ] = await Promise.all([
+      supabase.from('profiles').select('username, use_username_as_display_name').eq('id', user.id).single(),
+      supabase.from('story_world_configs').select('config_json').eq('world_id', storyWorldId).maybeSingle(),
+    ]);
+
     let finalProfile = profile;
     if (profileError) {
       console.error('[AI advice] プロファイル取得エラー:', profileError.message);
@@ -83,11 +86,6 @@ export async function POST(request: NextRequest) {
     const nickname = useAsDisplayName ? (finalProfile?.username ?? '').trim() : '';
 
     let override: Record<string, unknown> | null = null;
-    const { data: overrideRows, error: overrideError } = await supabase
-      .from('story_world_configs')
-      .select('config_json')
-      .eq('world_id', storyWorldId)
-      .maybeSingle();
     if (!overrideError && overrideRows?.config_json && typeof overrideRows.config_json === 'object') {
       override = overrideRows.config_json as Record<string, unknown>;
     }

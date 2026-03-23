@@ -14,6 +14,24 @@
 
 ---
 
+### 260322-Sun --------------
+
+#### 260322-Sun｜権利スコア計算・タスク枠線・日付保持・React パフォーマンス改善
+
+**記載** ClaudeCode
+
+**実施内容:**
+
+- **権利スコア計算 `is_active` 対応**: 非活性権利を `score-calculator.ts` の `parseRightsPoints()` でスキップ（ポイント 0 返す）。前日実装の `is_active` フラグをスコア計算にも反映
+
+- **期限切れタスク枠線色変更**: `border-red-700` → `border-rose-300` に変更（`todo-summary-tab.tsx`・`kanban-board.tsx`）。赤の強すぎる配色をソフトなローズに調整
+
+- **日誌→権利設定遷移の改善**: 未保存の権利カウントがある場合に確認ダイアログを表示。`returnDate` クエリパラメータで「設定→ダッシュボードに戻る」時の日付を保持
+
+- **大型リファクタリング** (`refactor/260322-apply-react-best-practice` ブランチ): `memo()` 追加・`lazy()+Suspense` 導入・`useMemo` 化・`Promise.all()` 並列化・コンポーネント分離（`subtask-rows.tsx`・`habit-list-utils.tsx` 新規作成）
+
+---
+
 ### 260321-Sat --------------
 
 #### 260321-Sat｜権利の非活性化・AI読み上げ・UI改善

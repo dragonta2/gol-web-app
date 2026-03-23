@@ -43,17 +43,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'この日誌はすでに確定済みです' }, { status: 400 });
     }
 
-    const deltas = await calculateDayDeltas(supabase, dailyLogId);
+    const [deltas, { data: profile, error: profileError }] = await Promise.all([
+      calculateDayDeltas(supabase, dailyLogId),
+      supabase.from('profiles').select('points, exp_body, exp_mind, exp_spirit').eq('id', user.id).single(),
+    ]);
+
     if (!deltas) {
       return NextResponse.json({ error: 'スコアの計算に失敗しました' }, { status: 500 });
     }
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('points, exp_body, exp_mind, exp_spirit')
-      .eq('id', user.id)
-      .single();
-
     if (profileError || !profile) {
       return NextResponse.json({ error: 'プロファイルの取得に失敗しました' }, { status: 500 });
     }

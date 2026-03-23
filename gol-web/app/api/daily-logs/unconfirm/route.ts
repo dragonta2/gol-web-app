@@ -26,13 +26,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { data: dailyLog, error: fetchError } = await supabase
-      .from('daily_logs')
-      .select(
-        'id, user_id, is_confirmed, confirmed_points_delta, confirmed_exp_body_delta, confirmed_exp_mind_delta, confirmed_exp_spirit_delta'
-      )
-      .eq('id', dailyLogId)
-      .single();
+    const [
+      { data: dailyLog, error: fetchError },
+      { data: profile, error: profileError },
+    ] = await Promise.all([
+      supabase
+        .from('daily_logs')
+        .select('id, user_id, is_confirmed, confirmed_points_delta, confirmed_exp_body_delta, confirmed_exp_mind_delta, confirmed_exp_spirit_delta')
+        .eq('id', dailyLogId)
+        .single(),
+      supabase.from('profiles').select('points, exp_body, exp_mind, exp_spirit').eq('id', user.id).single(),
+    ]);
 
     if (fetchError || !dailyLog) {
       return NextResponse.json({ error: '日誌が見つかりません' }, { status: 404 });
@@ -43,21 +47,14 @@ export async function POST(request: NextRequest) {
     if (!dailyLog.is_confirmed) {
       return NextResponse.json({ error: 'この日誌は未確定です' }, { status: 400 });
     }
+    if (profileError || !profile) {
+      return NextResponse.json({ error: 'プロファイルの取得に失敗しました' }, { status: 500 });
+    }
 
     const pts = dailyLog.confirmed_points_delta ?? 0;
     const bodyExp = dailyLog.confirmed_exp_body_delta ?? 0;
     const mindExp = dailyLog.confirmed_exp_mind_delta ?? 0;
     const spiritExp = dailyLog.confirmed_exp_spirit_delta ?? 0;
-
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('points, exp_body, exp_mind, exp_spirit')
-      .eq('id', user.id)
-      .single();
-
-    if (profileError || !profile) {
-      return NextResponse.json({ error: 'プロファイルの取得に失敗しました' }, { status: 500 });
-    }
 
     const newPoints = Math.max(0, (profile.points ?? 0) - pts);
     const newExpBody = Math.max(0, (profile.exp_body ?? 0) - bodyExp);

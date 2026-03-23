@@ -5,9 +5,7 @@ import KanbanBoard from "./kanban-board"
 import HabitList from "./habit-list"
 import JournalForm from "./journal-form"
 import JournalImpressionSections from "./journal-impression-sections"
-import TodoSummaryTab from "./todo-summary-tab"
 import JournalList from "@/components/journal-list"
-import { AnnouncementsContent } from "@/components/announcements-content"
 import type { DashboardTabsProps } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,8 +23,12 @@ import {
   FileText,
 } from "lucide-react"
 
-// 統計タブを動的インポート（コード分割・パフォーマンス最適化）
+// 非デフォルトタブは動的インポートでコード分割（初期バンドル削減）
 const StatsTab = lazy(() => import("./stats-tab"))
+const TodoSummaryTab = lazy(() => import("./todo-summary-tab"))
+const AnnouncementsContent = lazy(() =>
+  import("@/components/announcements-content").then((m) => ({ default: m.AnnouncementsContent }))
+)
 
 type TabType = "journal" | "todo-summary" | "stats" | "journals" | "announcements"
 
@@ -390,17 +392,19 @@ export default function DashboardTabs({
             aria-labelledby="tab-todo-summary"
             className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg"
           >
-            <TodoSummaryTab
-              userId={userId}
-              todos={todos}
-              todoLogs={todoLogs}
-              todoSubtasks={todoSubtasks}
-              dailyLogId={dailyLogId}
-              initialEditTodoId={editTodoId}
-              onInitialEditConsumed={() => setEditTodoId(null)}
-              initialOpenCreateModal={openCreateModalOnSwitch}
-              onInitialOpenCreateConsumed={() => setOpenCreateModalOnSwitch(false)}
-            />
+            <Suspense fallback={<div className="py-8 text-center text-zinc-400">読み込み中...</div>}>
+              <TodoSummaryTab
+                userId={userId}
+                todos={todos}
+                todoLogs={todoLogs}
+                todoSubtasks={todoSubtasks}
+                dailyLogId={dailyLogId}
+                initialEditTodoId={editTodoId}
+                onInitialEditConsumed={() => setEditTodoId(null)}
+                initialOpenCreateModal={openCreateModalOnSwitch}
+                onInitialOpenCreateConsumed={() => setOpenCreateModalOnSwitch(false)}
+              />
+            </Suspense>
           </div>
         )}
 
@@ -446,7 +450,9 @@ export default function DashboardTabs({
             aria-labelledby="tab-announcements"
             className="p-4 sm:p-6 bg-zinc-900 border border-zinc-800 rounded-lg"
           >
-            <AnnouncementsContent canManageAnnouncements={canManageAnnouncements} />
+            <Suspense fallback={<div className="py-8 text-center text-zinc-400">読み込み中...</div>}>
+              <AnnouncementsContent canManageAnnouncements={canManageAnnouncements} />
+            </Suspense>
           </div>
         )}
       </div>

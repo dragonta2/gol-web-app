@@ -62,7 +62,7 @@ describe('/api/announcements', () => {
         order: vi.fn(),
       };
       chain.select.mockReturnValue(chain);
-      chain.order.mockReturnValueOnce(chain).mockResolvedValueOnce({ data: mockRows, error: null });
+      chain.order.mockResolvedValue({ data: mockRows, error: null });
       mockSupabase.from.mockReturnValue(chain);
 
       const res = await GET();

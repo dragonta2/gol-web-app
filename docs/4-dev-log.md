@@ -13,6 +13,134 @@
 
 ## 2603 --------------
 
+### 260322-日
+
+#### 260322-日｜大型リファクタリング：react-best-practices 準拠・速度改善
+
+**記載** ClaudeCode
+
+**ブランチ**: `refactor/apply-react-best-practice`
+
+---
+
+##### Phase 1A: `memo()` 追加
+
+- `gol-web/app/dashboard/todo-summary-tab.tsx`
+  - `import React, { memo, ... }` に `memo` を追加
+  - `export default function TodoSummaryTab` → `function TodoSummaryTab` + 末尾に `export default memo(TodoSummaryTab)`
+  - `KanbanBoard`・`HabitList` はすでに `memo()` 済みだったため対応不要
+
+##### Phase 1B: dynamic import（非デフォルトタブ）
+
+- `gol-web/app/dashboard/dashboard-tabs.tsx`
+  - `TodoSummaryTab` の static import を削除 → `lazy(() => import('./todo-summary-tab'))` に変更
+  - `AnnouncementsContent` の static import を削除 → `lazy(() => import('@/components/announcements-content').then(m => ({ default: m.AnnouncementsContent })))` に変更
+  - 両コンポーネントの使用箇所を `<Suspense fallback={...}>` でラップ
+  - `StatsTab` はすでに `lazy` 対応済みだったため変更なし
+  - ジャーナルタブ内の `KanbanBoard`・`HabitList`・`JournalForm` はデフォルトタブのため static 維持（遅延させるとUXが悪化するため）
+
+##### Phase 1C: JSX内IIFE → useMemo
+
+- `gol-web/app/dashboard/journal-form.tsx`
+  - line 897 付近: `{scoreBreakdown && (() => { ... })()}` というJSX内のIIFEを除去
+  - コンポーネント本体（return より前）に `const scoreDisplay = useMemo(...)` として計算をキャッシュ
+  - JSX内は `scoreDisplay.xxx` を参照する形に変更
+  - 計算内容: `adjustedTotalPoints`, `pointsAdd`, `pointsSub`, `expBody/Mind/SpiritAdd/Sub`, `hasAnyExp`
+
+##### Phase 2A: `confirm/route.ts` — Promise.all() 並列化
+
+- `gol-web/app/api/daily-logs/confirm/route.ts`
+  - `calculateDayDeltas(...)` と `supabase.from('profiles').select(...)` が逐次 await だった
+  - `Promise.all([calculateDayDeltas(...), supabase.from('profiles')...])` に変更
+  - 両処理はどちらも dailyLogId と user.id だけで独立して動くため安全
+
+##### Phase 2B: `unconfirm/route.ts` — Promise.all() 並列化
+
+- `gol-web/app/api/daily-logs/unconfirm/route.ts`
+  - `dailyLog` fetch と `profile` fetch を `Promise.all()` で並列化
+  - dailyLog のバリデーション（user_id チェック・is_confirmed チェック）は fetch 後に実施
+  - profile fetch は user.id だけ依存のため dailyLog と独立
+
+##### Phase 2C: `advice/route.ts` — Promise.all() 並列化
+
+- `gol-web/app/api/ai/advice/route.ts`
+  - `profiles` fetch と `story_world_configs` fetch が逐次 await だった
+  - `Promise.all([profiles, story_world_configs])` に変更
+  - profile の fallback fetch（profileError 時）は並列化対象外（エラー時のみ実行）
+
+##### Phase 2D: `story/route.ts` — Promise.all() 並列化
+
+- `gol-web/app/api/ai/story/route.ts`
+  - `story_world_configs` fetch → `profiles` fetch の順で逐次だった
+  - `Promise.all([story_world_configs, profiles])` に変更
+
+##### Phase 3A: `subtask-rows.tsx` 切り出し
+
+- 新規ファイル: `gol-web/app/dashboard/subtask-rows.tsx`
+  - `todo-summary-tab.tsx` から `SubtaskEditRow`・`NewSubtaskInput`・`SortableSubtaskRow` を切り出し
+  - 切り出し時に `memo()` を追加（元の定義には `memo` なし）
+  - `todo-summary-tab.tsx` 側は `import { SubtaskEditRow, NewSubtaskInput, SortableSubtaskRow } from './subtask-rows'` に変更
+  - `isSubmitShortcut` の利用は `subtask-rows.tsx` に移動
+
+##### Phase 3B: `habit-list-utils.tsx` 切り出し
+
+- 新規ファイル: `gol-web/app/dashboard/habit-list-utils.tsx`
+  - `habit-list.tsx` から以下を切り出し:
+    - 型: `Habit`, `HabitLog`, `HabitListProps`, `HabitWithLog`, `HabitFormData`, `ChildHabitRow`
+    - ユーティリティ関数: `buildHabitTree`, `buildManagementGroups`, `isParentCompleted`
+    - コンポーネント: `SortableManagementGroup`（切り出し時に `memo()` 追加）
+  - `habit-list.tsx` 側はすべて `import ... from './habit-list-utils'` に変更
+  - 不要になった `GripVertical`・`useSortable` のインポートを削除
+
+---
+
+**TSエラー確認**: テストファイルの既存エラーのみ。今回の変更に起因するエラーなし。
+
+**影響ファイル一覧:**
+
+- `app/dashboard/dashboard-tabs.tsx`
+- `app/dashboard/todo-summary-tab.tsx`
+- `app/dashboard/habit-list.tsx`
+- `app/dashboard/journal-form.tsx`
+- `app/dashboard/subtask-rows.tsx`（新規）
+- `app/dashboard/habit-list-utils.tsx`（新規）
+- `app/api/daily-logs/confirm/route.ts`
+- `app/api/daily-logs/unconfirm/route.ts`
+- `app/api/ai/advice/route.ts`
+- `app/api/ai/story/route.ts`
+
+---
+
+#### 260322-日｜権利スコア計算・タスク枠線色・日付保持
+
+**記載** ClaudeCode
+
+**ブランチ**: `main`
+
+**修正ファイル:**
+
+- `gol-web/lib/score-calculator.ts`
+  - `parseRightsPoints()` 内で `is_active === false` の権利を 0 扱いに変更
+  - 配列形式・`{ rights: [...] }` 形式の両ブランチに対応
+
+- `gol-web/app/dashboard/todo-summary-tab.tsx`
+  - 期限切れタスクの枠線色: `border-red-700` → `border-rose-300`
+  - サブタスク「進行中→アクティブに戻るバグ」修正: `status: formData.is_on_hold ? ... : 'active'` → `status: formData.status`
+
+- `gol-web/app/dashboard/kanban-board.tsx`
+  - 期限切れタスクの枠線色: `border-red-700` → `border-rose-300`
+
+- `gol-web/app/dashboard/journal-form.tsx`
+  - 権利設定への `<Link>` を `<button>` + `router.push()` に変更
+  - 未保存権利がある場合に `window.confirm()` でアラートを表示
+  - 遷移先 URL に `?returnDate=${logDate}` を付与
+
+- `gol-web/app/settings/rights/page.tsx`
+  - `useSearchParams()` で `returnDate` を取得
+  - 「ダッシュボードに戻る」href を `returnDate` がある場合 `/dashboard?date=YYYY-MM-DD` に動的変更
+
+---
+
 ### 260321-土
 
 #### 260321-土｜統計画面・権利非活性化・AI読み上げ 実装ログ

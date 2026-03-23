@@ -564,6 +564,23 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   // 合計消費ポイント計算
   const totalPoints = rights.reduce((sum, right) => sum + (right.points * right.count), 0);
 
+  // 獲得スコア表示用の計算（IIFEをuseMemoに変換）
+  const scoreDisplay = useMemo(() => {
+    if (!scoreBreakdown) return null;
+    const displayRightsDelta = -totalPoints;
+    const adjustedTotalPoints = scoreBreakdown.total.points_delta - scoreBreakdown.rights.points_delta + displayRightsDelta;
+    const pointsAdd = scoreBreakdown.todo.points_delta + scoreBreakdown.habits_good.points_delta + scoreBreakdown.ai.points_delta;
+    const pointsSub = Math.abs(scoreBreakdown.habits_bad.points_delta) + totalPoints;
+    const expBodyAdd = scoreBreakdown.todo.exp_body_delta + scoreBreakdown.habits_good.exp_body_delta + scoreBreakdown.ai.exp_body_delta;
+    const expBodySub = Math.abs(Math.min(0, scoreBreakdown.habits_bad.exp_body_delta));
+    const expMindAdd = scoreBreakdown.todo.exp_mind_delta + scoreBreakdown.habits_good.exp_mind_delta + scoreBreakdown.ai.exp_mind_delta;
+    const expMindSub = Math.abs(Math.min(0, scoreBreakdown.habits_bad.exp_mind_delta));
+    const expSpiritAdd = scoreBreakdown.todo.exp_spirit_delta + scoreBreakdown.habits_good.exp_spirit_delta + scoreBreakdown.ai.exp_spirit_delta;
+    const expSpiritSub = Math.abs(Math.min(0, scoreBreakdown.habits_bad.exp_spirit_delta));
+    const hasAnyExp = scoreBreakdown.total.exp_body_delta !== 0 || scoreBreakdown.total.exp_mind_delta !== 0 || scoreBreakdown.total.exp_spirit_delta !== 0;
+    return { adjustedTotalPoints, pointsAdd, pointsSub, expBodyAdd, expBodySub, expMindAdd, expMindSub, expSpiritAdd, expSpiritSub, hasAnyExp };
+  }, [scoreBreakdown, totalPoints]);
+
   return (
     <div
       className="space-y-4 sm:space-y-6 lg:space-y-8"
@@ -894,20 +911,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         ) : null}
 
         {/* 獲得スコア（内訳・総計）。ToDo・習慣・悪習慣・AI・権利を含む。権利消費は「本日消費ゴルド合計」と整合させるためクライアントの totalPoints を使用 */}
-        {scoreBreakdown && (() => {
-          const displayRightsDelta = -totalPoints;
-          const adjustedTotalPoints = scoreBreakdown.total.points_delta - scoreBreakdown.rights.points_delta + displayRightsDelta;
-          // 総加算・総減算（表示用）。ゴルドは権利をクライアントの totalPoints で計算
-          const pointsAdd = scoreBreakdown.todo.points_delta + scoreBreakdown.habits_good.points_delta + scoreBreakdown.ai.points_delta;
-          const pointsSub = Math.abs(scoreBreakdown.habits_bad.points_delta) + totalPoints;
-          const expBodyAdd = scoreBreakdown.todo.exp_body_delta + scoreBreakdown.habits_good.exp_body_delta + scoreBreakdown.ai.exp_body_delta;
-          const expBodySub = Math.abs(Math.min(0, scoreBreakdown.habits_bad.exp_body_delta));
-          const expMindAdd = scoreBreakdown.todo.exp_mind_delta + scoreBreakdown.habits_good.exp_mind_delta + scoreBreakdown.ai.exp_mind_delta;
-          const expMindSub = Math.abs(Math.min(0, scoreBreakdown.habits_bad.exp_mind_delta));
-          const expSpiritAdd = scoreBreakdown.todo.exp_spirit_delta + scoreBreakdown.habits_good.exp_spirit_delta + scoreBreakdown.ai.exp_spirit_delta;
-          const expSpiritSub = Math.abs(Math.min(0, scoreBreakdown.habits_bad.exp_spirit_delta));
-          const hasAnyExp = scoreBreakdown.total.exp_body_delta !== 0 || scoreBreakdown.total.exp_mind_delta !== 0 || scoreBreakdown.total.exp_spirit_delta !== 0;
-          return (
+        {scoreBreakdown && scoreDisplay && (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-2">
             <h3 className="text-lg font-medium text-cyan-400">獲得スコア</h3>
             <p className="text-zinc-300 text-xs">日誌確定後にスコアは獲得されます</p>
@@ -951,28 +955,28 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             <div className="pt-3 mt-3 border-t border-zinc-600 text-base space-y-1.5">
               <div className="text-zinc-300">
                 <span className="text-zinc-300">総加算ゴルド</span>
-                <span className="text-green-400 font-medium mx-1">+ {pointsAdd}G</span>
+                <span className="text-green-400 font-medium mx-1">+ {scoreDisplay.pointsAdd}G</span>
                 <span className="text-zinc-500 mx-1">−</span>
                 <span className="text-zinc-300">総減算ゴルド</span>
-                <span className="text-red-400 font-medium mx-1">- {pointsSub}G</span>
+                <span className="text-red-400 font-medium mx-1">- {scoreDisplay.pointsSub}G</span>
                 <span className="text-zinc-500 mx-1">=</span>
                 <span className="inline-flex items-center text-[18px]">
                   <span className="text-zinc-300 font-bold">今回の獲得ゴルド</span>
-                  <span className={`font-bold ml-1 ${adjustedTotalPoints >= 0 ? 'text-yellow-400' : 'text-red-400'}`}>
-                    {adjustedTotalPoints >= 0 ? '+' : '-'} {Math.abs(adjustedTotalPoints)}G
+                  <span className={`font-bold ml-1 ${scoreDisplay.adjustedTotalPoints >= 0 ? 'text-yellow-400' : 'text-red-400'}`}>
+                    {scoreDisplay.adjustedTotalPoints >= 0 ? '+' : '-'} {Math.abs(scoreDisplay.adjustedTotalPoints)}G
                   </span>
                 </span>
               </div>
-              {hasAnyExp && (
+              {scoreDisplay.hasAnyExp && (
                 <div className="text-zinc-300 text-base flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="text-zinc-300 shrink-0">総加算EXP</span>
                   <span className="text-cyan-400">
-                    <ExpWithIcons body={expBodyAdd} mind={expMindAdd} spirit={expSpiritAdd} />
+                    <ExpWithIcons body={scoreDisplay.expBodyAdd} mind={scoreDisplay.expMindAdd} spirit={scoreDisplay.expSpiritAdd} />
                   </span>
                   <span className="text-zinc-500 shrink-0">−</span>
                   <span className="text-zinc-300 shrink-0">総減算EXP</span>
                   <span className="text-cyan-400">
-                    <ExpWithIcons body={expBodySub} mind={expMindSub} spirit={expSpiritSub} minus />
+                    <ExpWithIcons body={scoreDisplay.expBodySub} mind={scoreDisplay.expMindSub} spirit={scoreDisplay.expSpiritSub} minus />
                   </span>
                   <span className="text-zinc-500 shrink-0">=</span>
                   <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[18px] font-bold shrink-0">
@@ -990,8 +994,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               )}
             </div>
           </div>
-          );
-        })()}
+        )}
 
         {/* AIあらすじ（一括生成で判定・あらすじ・アドバイスをまとめて生成）・アコーディオン */}
         <div className="space-y-3">

@@ -53,22 +53,20 @@ export async function POST(request: NextRequest) {
     const storyWorldId: StoryWorldId =
       rawWorldId === 'dq' || rawWorldId === 'ghost' ? rawWorldId : 'ghost';
 
+    const [
+      { data: overrideRows, error: overrideError },
+      { data: profile, error: profileError },
+    ] = await Promise.all([
+      supabase.from('story_world_configs').select('config_json').eq('world_id', storyWorldId).maybeSingle(),
+      supabase.from('profiles').select('username, use_username_as_display_name').eq('id', user.id).single(),
+    ]);
+
     let override: Record<string, unknown> | null = null;
-    const { data: overrideRows, error: overrideError } = await supabase
-      .from('story_world_configs')
-      .select('config_json')
-      .eq('world_id', storyWorldId)
-      .maybeSingle();
     if (!overrideError && overrideRows?.config_json && typeof overrideRows.config_json === 'object') {
       override = overrideRows.config_json as Record<string, unknown>;
     }
     const worldConfig = mergeStoryWorldConfig(storyWorldId, override);
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('username, use_username_as_display_name')
-      .eq('id', user.id)
-      .single();
     let finalProfile = profile;
     if (profileError) {
       console.error('[AI story] プロファイル取得エラー:', profileError.message);
