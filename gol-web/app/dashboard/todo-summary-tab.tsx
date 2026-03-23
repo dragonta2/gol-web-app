@@ -21,7 +21,7 @@ import { FormInput, FormLabel } from "@/components/ui/form-input"
 import { DatePickerField } from "@/components/date-picker-field"
 import { FormCard } from "@/components/ui/form-card"
 import { toast } from "sonner"
-import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, GripVertical, Loader2, ChevronUp, ChevronDown, Copy, Plus } from "lucide-react"
+import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, Copy, Plus } from "lucide-react"
 import {
   DndContext,
   DragEndEvent,
@@ -33,15 +33,12 @@ import {
   closestCenter,
 } from "@dnd-kit/core"
 import { useDraggable, useDroppable } from "@dnd-kit/core"
-import { CSS } from "@dnd-kit/utilities"
 import {
   arrayMove,
   SortableContext,
-  useSortable,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
-import { isSubmitShortcut } from "@/lib/utils"
-import { SubtaskEditRow, NewSubtaskInput, SortableSubtaskRow } from "./subtask-rows"
+import { NewSubtaskInput, SortableSubtaskRow } from "./subtask-rows"
 
 /** ToDoサマリーは日誌の確定・未確定に依存しない独立タブ。新規ToDoの作成・編集・一覧はいつでも可能 */
 interface TodoSummaryTabProps {
