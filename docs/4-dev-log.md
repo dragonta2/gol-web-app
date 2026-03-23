@@ -111,6 +111,36 @@
 
 ---
 
+#### 260322-日｜権利スコア計算・タスク枠線色・日付保持
+
+**記載** ClaudeCode
+
+**ブランチ**: `main`
+
+**修正ファイル:**
+
+- `gol-web/lib/score-calculator.ts`
+  - `parseRightsPoints()` 内で `is_active === false` の権利を 0 扱いに変更
+  - 配列形式・`{ rights: [...] }` 形式の両ブランチに対応
+
+- `gol-web/app/dashboard/todo-summary-tab.tsx`
+  - 期限切れタスクの枠線色: `border-red-700` → `border-rose-300`
+  - サブタスク「進行中→アクティブに戻るバグ」修正: `status: formData.is_on_hold ? ... : 'active'` → `status: formData.status`
+
+- `gol-web/app/dashboard/kanban-board.tsx`
+  - 期限切れタスクの枠線色: `border-red-700` → `border-rose-300`
+
+- `gol-web/app/dashboard/journal-form.tsx`
+  - 権利設定への `<Link>` を `<button>` + `router.push()` に変更
+  - 未保存権利がある場合に `window.confirm()` でアラートを表示
+  - 遷移先 URL に `?returnDate=${logDate}` を付与
+
+- `gol-web/app/settings/rights/page.tsx`
+  - `useSearchParams()` で `returnDate` を取得
+  - 「ダッシュボードに戻る」href を `returnDate` がある場合 `/dashboard?date=YYYY-MM-DD` に動的変更
+
+---
+
 ### 260321-土
 
 #### 260321-土｜統計画面・権利非活性化・AI読み上げ 実装ログ
