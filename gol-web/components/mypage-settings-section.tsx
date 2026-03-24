@@ -10,7 +10,6 @@ import {
   Key,
   Bot,
   BookOpen,
-  ClipboardList,
   Settings as SettingsIcon,
   Download,
   Upload,
@@ -254,19 +253,6 @@ export function MypageSettingsSection() {
           )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link href="/settings/todos">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
-              <div className="flex items-center gap-3 mb-2">
-                <ClipboardList className="w-6 h-6 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">
-                  ToDo管理
-                </h3>
-              </div>
-              <p className="text-sm text-zinc-400">
-                ToDoタスクの追加・編集・削除・SP設定
-              </p>
-            </div>
-          </Link>
           <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
             <div className="flex items-center gap-3 mb-2">
               <Download className="w-6 h-6 text-cyan-400" />
