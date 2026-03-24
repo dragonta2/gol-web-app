@@ -101,3 +101,5 @@ NEXT_PUBLIC_ADMIN_EMAILS=
 - Server components by default; add `'use client'` only when needed
 - API routes always validate auth and ownership before DB access
 - Unit tests live in `app/api/**/__tests__/`; E2E tests in `e2e/`
+
+◯番メモと言われたらこのプロジェクトの `docs/` 内の該当ファイルを参照する。

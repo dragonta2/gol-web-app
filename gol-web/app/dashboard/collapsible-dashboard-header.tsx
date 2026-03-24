@@ -11,6 +11,8 @@ import {
   User,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Home,
   ClipboardList,
   BarChart3,
@@ -65,7 +67,7 @@ export default function CollapsibleDashboardHeader({
   isConfirmed = false,
 }: CollapsibleDashboardHeaderProps) {
   const TabIcon = activeTab ? TAB_ICONS[activeTab] : null
-  const { openCalendar } = useCalendarDialog() ?? { openCalendar: () => {} }
+  const { openCalendar, navigateToDate } = useCalendarDialog() ?? { openCalendar: () => {}, navigateToDate: () => {} }
   // タイトルバー（ヘッダー）は常に展開して表示。折りたたみ状態は保存するが、次回表示時は展開で開始する。
   const [collapsed, setCollapsed] = useState(false)
 
@@ -84,6 +86,23 @@ export default function CollapsibleDashboardHeader({
       }
       return next
     })
+  }
+
+  const goPrevDay = () => {
+    if (!selectedDate) return
+    const [y, m, d] = selectedDate.split("-").map(Number)
+    const date = new Date(y, m - 1, d - 1)
+    const prev = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+    navigateToDate(prev)
+  }
+
+  const goNextDay = () => {
+    if (!selectedDate || isToday) return
+    const [y, m, d] = selectedDate.split("-").map(Number)
+    const date = new Date(y, m - 1, d + 1)
+    const next = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+    if (next > getTodayJST()) return
+    navigateToDate(next)
   }
 
   const dateLabel = selectedDate
@@ -129,11 +148,28 @@ export default function CollapsibleDashboardHeader({
                     <span className="text-zinc-500 mx-2">｜</span>
                     <button
                       type="button"
+                      onClick={(e) => { e.stopPropagation(); goPrevDay() }}
+                      className="text-zinc-400 hover:text-cyan-400 focus:outline-none shrink-0"
+                      aria-label="前日へ"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={handleDateClick}
-                      className="text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 rounded"
+                      className="text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 rounded mx-[5px]"
                       aria-label="日付を選ぶ"
                     >
                       {dateLabel}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); goNextDay() }}
+                      disabled={isToday}
+                      className="text-zinc-400 hover:text-cyan-400 disabled:opacity-30 focus:outline-none shrink-0"
+                      aria-label="翌日へ"
+                    >
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                     {isToday && (
                       <span
@@ -159,6 +195,23 @@ export default function CollapsibleDashboardHeader({
                         <span className="translate-y-[1px]">確定済み</span>
                       </span>
                     )}
+                    {pendingDeltas && (
+                      <span className="text-xs text-zinc-400 shrink-0" role="status" aria-label="未確定スコア">
+                        未確定:
+                        {pendingDeltas.points_delta !== 0 && (
+                          <span className="ml-1">{pendingDeltas.points_delta >= 0 ? "+" : ""}{pendingDeltas.points_delta}G</span>
+                        )}
+                        {pendingDeltas.exp_body_delta !== 0 && (
+                          <span className="ml-1 text-exp-body">身{pendingDeltas.exp_body_delta > 0 ? "+" : ""}{pendingDeltas.exp_body_delta}</span>
+                        )}
+                        {pendingDeltas.exp_mind_delta !== 0 && (
+                          <span className="ml-1 text-exp-intelligence">頭{pendingDeltas.exp_mind_delta > 0 ? "+" : ""}{pendingDeltas.exp_mind_delta}</span>
+                        )}
+                        {pendingDeltas.exp_spirit_delta !== 0 && (
+                          <span className="ml-1 text-exp-mind">精{pendingDeltas.exp_spirit_delta > 0 ? "+" : ""}{pendingDeltas.exp_spirit_delta}</span>
+                        )}
+                      </span>
+                    )}
                   </>
                 )}
               </>
@@ -166,11 +219,28 @@ export default function CollapsibleDashboardHeader({
               <>
                 <button
                   type="button"
+                  onClick={(e) => { e.stopPropagation(); goPrevDay() }}
+                  className="text-zinc-400 hover:text-cyan-400 focus:outline-none shrink-0"
+                  aria-label="前日へ"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
                   onClick={handleDateClick}
-                  className="text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 rounded"
+                  className="text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 rounded mx-[5px]"
                   aria-label="日付を選ぶ"
                 >
                   {dateLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); goNextDay() }}
+                  disabled={isToday}
+                  className="text-zinc-400 hover:text-cyan-400 disabled:opacity-30 focus:outline-none shrink-0"
+                  aria-label="翌日へ"
+                >
+                  <ChevronRight className="w-4 h-4" />
                 </button>
                 {isToday && (
                   <span
@@ -194,6 +264,23 @@ export default function CollapsibleDashboardHeader({
                     aria-label="確定済み"
                   >
                     <span className="translate-y-[1px]">確定済み</span>
+                  </span>
+                )}
+                {pendingDeltas && (
+                  <span className="text-xs text-zinc-400 shrink-0" role="status" aria-label="未確定スコア">
+                    未確定:
+                    {pendingDeltas.points_delta !== 0 && (
+                      <span className="ml-1">{pendingDeltas.points_delta >= 0 ? "+" : ""}{pendingDeltas.points_delta}G</span>
+                    )}
+                    {pendingDeltas.exp_body_delta !== 0 && (
+                      <span className="ml-1 text-exp-body">身{pendingDeltas.exp_body_delta > 0 ? "+" : ""}{pendingDeltas.exp_body_delta}</span>
+                    )}
+                    {pendingDeltas.exp_mind_delta !== 0 && (
+                      <span className="ml-1 text-exp-intelligence">頭{pendingDeltas.exp_mind_delta > 0 ? "+" : ""}{pendingDeltas.exp_mind_delta}</span>
+                    )}
+                    {pendingDeltas.exp_spirit_delta !== 0 && (
+                      <span className="ml-1 text-exp-mind">精{pendingDeltas.exp_spirit_delta > 0 ? "+" : ""}{pendingDeltas.exp_spirit_delta}</span>
+                    )}
                   </span>
                 )}
               </>
@@ -265,11 +352,19 @@ export default function CollapsibleDashboardHeader({
 
             <div className="flex items-center justify-between gap-4">
               {selectedDate && (
-                <div className="flex items-baseline gap-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={goPrevDay}
+                    className="text-zinc-400 hover:text-cyan-400 focus:outline-none shrink-0"
+                    aria-label="前日へ"
+                  >
+                    <ChevronLeft className="w-6 h-6" />
+                  </button>
                   <button
                     type="button"
                     onClick={handleDateClick}
-                    className="text-[22px] sm:text-[26px] lg:text-[32px] font-bold text-white text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 rounded"
+                    className="text-[22px] sm:text-[26px] lg:text-[32px] font-bold text-white text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 rounded mx-[5px]"
                     aria-label="日付を選ぶ"
                   >
                     {dateLabel}
@@ -298,6 +393,15 @@ export default function CollapsibleDashboardHeader({
                       <span className="translate-y-[1px]">確定済み</span>
                     </span>
                   )}
+                  <button
+                    type="button"
+                    onClick={goNextDay}
+                    disabled={isToday}
+                    className="text-zinc-400 hover:text-cyan-400 disabled:opacity-30 focus:outline-none shrink-0"
+                    aria-label="翌日へ"
+                  >
+                    <ChevronRight className="w-6 h-6" />
+                  </button>
                 </div>
               )}
               <div className="flex items-center gap-3 sm:gap-6 text-lg sm:text-xl font-semibold ml-auto">
