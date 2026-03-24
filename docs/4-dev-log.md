@@ -13,6 +13,56 @@
 
 ## 2603 --------------
 
+### 260324-Tue
+
+#### 260324-Tue｜ヘッダー日付ナビ・未確定スコア・習慣低頻度エリア
+
+**記載** ClaudeCode
+
+---
+
+##### ヘッダー日付ナビゲーション追加
+
+変更ファイル: `gol-web/app/dashboard/collapsible-dashboard-header.tsx`
+
+- `navigateToDate` を `useCalendarDialog` から取得
+- `goPrevDay` / `goNextDay` 関数を追加（JST 対応）
+- 展開状態（`!collapsed`）・折りたたみ状態（`collapsed`）両方にボタンを設置
+- 折りたたみ時に未確定スコア（ゴルド・EXP）を日付横に表示
+
+---
+
+##### UIスタイル調整
+
+- 日付ボタン: `mx-[5px]`（左右余白）
+- 右矢印〜未確定テキスト間: `ml-[15px]`
+- 未確定テキスト垂直位置: `translate-y-[2px]`
+- 頭脳EXP左余白: `ml-1` → `ml-[9px]`
+
+---
+
+##### 習慣 低頻度エリア分離
+
+変更ファイル:
+
+- `gol-web/lib/types.ts` — `is_low_frequency?: boolean` を Habit 型に追加
+- `gol-web/app/dashboard/habit-list-utils.tsx` — 同フィールドを追加
+- `gol-web/app/settings/habits/page.tsx` — フォームに「低頻度に設定する」チェックボックス追加（`exclude_weekends` の上）。formData・resetForm・openAddDialog・openEditDialog・toggleHabitBoolField に対応
+- `gol-web/app/api/habits/route.ts` — POST/PUT ハンドラーに `is_low_frequency` 追加
+- `gol-web/app/dashboard/habit-list.tsx` — 良習慣・悪習慣を高頻度/低頻度に分割。管理モーダルに「高頻度/低頻度」トグルボタン追加
+
+DBマイグレーション:
+
+```sql
+ALTER TABLE habits ADD COLUMN IF NOT EXISTS is_low_frequency BOOLEAN NOT NULL DEFAULT FALSE;
+```
+
+SQL ファイル: `docs/appendix/DB-related/sql-snippet/add-is-low-frequency-to-habits.sql`
+
+スキーマキャッシュ更新: Supabase Dashboard → Settings → API → Reload schema
+
+---
+
 ### 260323-月
 
 #### 260323-月｜PR作成・CI構築・テスト修正・ドキュメント整備
