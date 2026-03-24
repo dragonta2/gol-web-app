@@ -23,6 +23,7 @@ export interface Habit {
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
   is_active: boolean;
+  is_low_frequency?: boolean;
   description?: string | null;
   note?: string | null;
   difficulty?: string;

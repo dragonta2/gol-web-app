@@ -110,6 +110,8 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   const [isGoodHabitsExpanded, setIsGoodHabitsExpanded] = useState(true);
   const [isBadHabitsExpanded, setIsBadHabitsExpanded] = useState(true);
   const [isBonusExpanded, setIsBonusExpanded] = useState(true);
+  const [isGoodLowFreqExpanded, setIsGoodLowFreqExpanded] = useState(false);
+  const [isBadLowFreqExpanded, setIsBadLowFreqExpanded] = useState(false);
 
   // フィルター適用（習慣では難易度フィルターなし）
   const applyFilters = (habits: HabitWithLog[]) => habits;
@@ -122,8 +124,14 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   const bonusHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'bonus' && h.is_active !== false));
 
   // 表示用ツリー（親→子のネスト）
-  const goodTree = useMemo(() => buildHabitTree(goodHabits), [goodHabits]);
-  const badTree = useMemo(() => buildHabitTree(badHabits), [badHabits]);
+  const goodHighHabits = useMemo(() => goodHabits.filter((h) => !h.is_low_frequency), [goodHabits]);
+  const goodLowHabits = useMemo(() => goodHabits.filter((h) => h.is_low_frequency), [goodHabits]);
+  const badHighHabits = useMemo(() => badHabits.filter((h) => !h.is_low_frequency), [badHabits]);
+  const badLowHabits = useMemo(() => badHabits.filter((h) => h.is_low_frequency), [badHabits]);
+  const goodTree = useMemo(() => buildHabitTree(goodHighHabits), [goodHighHabits]);
+  const goodLowTree = useMemo(() => buildHabitTree(goodLowHabits), [goodLowHabits]);
+  const badTree = useMemo(() => buildHabitTree(badHighHabits), [badHighHabits]);
+  const badLowTree = useMemo(() => buildHabitTree(badLowHabits), [badLowHabits]);
   const bonusTree = useMemo(() => buildHabitTree(bonusHabits), [bonusHabits]);
 
   // habit_logsを更新または作成（API経由でサーバー側認証を使用）
@@ -237,6 +245,27 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
       const { error } = await supabase
         .from('habits')
         .update({ exclude_from_complete: next })
+        .eq('id', habitId);
+
+      if (error) throw error;
+      toast.success('変更しました');
+      router.refresh();
+    } catch (err) {
+      toast.error('更新に失敗しました');
+      console.error(err);
+    }
+  };
+
+  // 低頻度トグル
+  const toggleIsLowFrequency = async (habitId: string) => {
+    const habit = habitsWithLogs.find((h) => h.id === habitId);
+    if (!habit) return;
+
+    const next = !habit.is_low_frequency;
+    try {
+      const { error } = await supabase
+        .from('habits')
+        .update({ is_low_frequency: next })
         .eq('id', habitId);
 
       if (error) throw error;
@@ -893,6 +922,9 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
             <CheckCircle className="w-5 h-5 text-cyan-400 shrink-0" aria-hidden />
             良習慣
             <span className="text-sm text-zinc-500 font-normal">({goodHabits.length}件)</span>
+            {goodLowHabits.length > 0 && (
+              <span className="text-xs text-zinc-600 font-normal">低頻度 {goodLowHabits.length}件含む</span>
+            )}
           </h3>
           {isGoodHabitsExpanded ? (
             <ChevronUp className="w-5 h-5 text-zinc-400 flex-shrink-0" />
@@ -1128,6 +1160,102 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               </div>
             );
           })}
+
+          {/* 低頻度エリア（良習慣） */}
+          {goodLowTree.length > 0 && (
+            <div className="mt-3 border-t border-zinc-700">
+              <button
+                type="button"
+                onClick={() => setIsGoodLowFreqExpanded(!isGoodLowFreqExpanded)}
+                className="w-full text-left py-2 flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
+                aria-expanded={isGoodLowFreqExpanded}
+              >
+                <span className="text-sm text-zinc-500 flex items-center gap-1">
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isGoodLowFreqExpanded ? 'rotate-180' : ''}`} />
+                  低頻度 ({goodLowHabits.length}件)
+                </span>
+              </button>
+              {isGoodLowFreqExpanded && (
+                <div className="space-y-3 w-full min-w-0 overflow-x-auto pl-3">
+                  {goodLowTree.map(({ parent, children }) => {
+                    const parentChecked = isParentCompleted(parent, children);
+                    const hasChildren = children.length > 0;
+                    return (
+                      <div key={parent.id} className="space-y-1">
+                        {hasChildren ? (
+                          <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
+                              <span className="text-[calc(1em-2px)] text-zinc-400 truncate min-w-0" title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
+                                {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
+                            <button
+                              id={`habit-${parent.id}`}
+                              onClick={() => !isConfirmed && toggleCheck(parent.id)}
+                              onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(parent.id); } }}
+                              aria-label={`${parent.habit_name}を${parentChecked ? '未完了' : '完了'}にする`}
+                              aria-checked={parentChecked}
+                              aria-disabled={isConfirmed}
+                              role="checkbox"
+                              tabIndex={isConfirmed ? -1 : 0}
+                              disabled={isConfirmed}
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${parentChecked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                            >
+                              {parentChecked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
+                            </button>
+                            <label htmlFor={`habit-${parent.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`} title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
+                              {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                            </label>
+                            <div className="flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
+                              <div className="w-16" />
+                              <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]">
+                                <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(parent).g}</span>
+                                {(getHabitPointsExpParts(parent).body !== 0 || getHabitPointsExpParts(parent).mind !== 0 || getHabitPointsExpParts(parent).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(parent).body} mind={getHabitPointsExpParts(parent).mind} spirit={getHabitPointsExpParts(parent).spirit} signed /></>)}
+                              </div>
+                              <div className="w-[10rem] min-w-[10rem]" />
+                            </div>
+                          </div>
+                        )}
+                        {children.map((child) => (
+                          <div key={child.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full pl-6">
+                            <button
+                              id={`habit-${child.id}`}
+                              onClick={() => !isConfirmed && toggleCheck(child.id)}
+                              onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(child.id); } }}
+                              aria-label={`${child.habit_name}を${child.checked ? '未完了' : '完了'}にする`}
+                              aria-checked={child.checked}
+                              aria-disabled={isConfirmed}
+                              role="checkbox"
+                              tabIndex={isConfirmed ? -1 : 0}
+                              disabled={isConfirmed}
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${child.checked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                            >
+                              {child.checked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
+                            </button>
+                            <label htmlFor={`habit-${child.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}>
+                              {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
+                            </label>
+                            <div className="flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
+                              <div className="w-16" />
+                              <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]">
+                                <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(child).g}</span>
+                                {(getHabitPointsExpParts(child).body !== 0 || getHabitPointsExpParts(child).mind !== 0 || getHabitPointsExpParts(child).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(child).body} mind={getHabitPointsExpParts(child).mind} spirit={getHabitPointsExpParts(child).spirit} signed /></>)}
+                              </div>
+                              <div className="w-[10rem] min-w-[10rem]" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ボタン */}
           <div className="flex items-center justify-end gap-3 pt-2 mt-3 border-t border-zinc-800">
@@ -1402,6 +1530,102 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               </div>
             );
           })}
+
+          {/* 低頻度エリア（悪習慣） */}
+          {badLowTree.length > 0 && (
+            <div className="mt-3 border-t border-zinc-700">
+              <button
+                type="button"
+                onClick={() => setIsBadLowFreqExpanded(!isBadLowFreqExpanded)}
+                className="w-full text-left py-2 flex items-center justify-between gap-2 hover:opacity-80 transition-opacity"
+                aria-expanded={isBadLowFreqExpanded}
+              >
+                <span className="text-sm text-zinc-500 flex items-center gap-1">
+                  <ChevronDown className={`w-4 h-4 transition-transform ${isBadLowFreqExpanded ? 'rotate-180' : ''}`} />
+                  低頻度 ({badLowHabits.length}件)
+                </span>
+              </button>
+              {isBadLowFreqExpanded && (
+                <div className="space-y-3 w-full min-w-0 overflow-x-auto pl-3">
+                  {badLowTree.map(({ parent, children }) => {
+                    const parentChecked = isParentCompleted(parent, children);
+                    const hasChildren = children.length > 0;
+                    return (
+                      <div key={parent.id} className="space-y-1">
+                        {hasChildren ? (
+                          <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
+                              <span className="text-[calc(1em-2px)] text-zinc-400 truncate min-w-0" title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
+                                {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
+                            <button
+                              id={`habit-${parent.id}`}
+                              onClick={() => !isConfirmed && toggleCheck(parent.id)}
+                              onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(parent.id); } }}
+                              aria-label={`${parent.habit_name}を${parentChecked ? '未完了' : '完了'}にする`}
+                              aria-checked={parentChecked}
+                              aria-disabled={isConfirmed}
+                              role="checkbox"
+                              tabIndex={isConfirmed ? -1 : 0}
+                              disabled={isConfirmed}
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${parentChecked ? 'bg-red-500 border-red-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                            >
+                              {parentChecked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
+                            </button>
+                            <label htmlFor={`habit-${parent.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`} title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
+                              {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                            </label>
+                            <div className="flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
+                              <div className="w-16" />
+                              <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]">
+                                <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(parent).g}</span>
+                                {(getHabitPointsExpParts(parent).body !== 0 || getHabitPointsExpParts(parent).mind !== 0 || getHabitPointsExpParts(parent).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(parent).body} mind={getHabitPointsExpParts(parent).mind} spirit={getHabitPointsExpParts(parent).spirit} signed /></>)}
+                              </div>
+                              <div className="w-[10rem] min-w-[10rem]" />
+                            </div>
+                          </div>
+                        )}
+                        {children.map((child) => (
+                          <div key={child.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full pl-6">
+                            <button
+                              id={`habit-${child.id}`}
+                              onClick={() => !isConfirmed && toggleCheck(child.id)}
+                              onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(child.id); } }}
+                              aria-label={`${child.habit_name}を${child.checked ? '未完了' : '完了'}にする`}
+                              aria-checked={child.checked}
+                              aria-disabled={isConfirmed}
+                              role="checkbox"
+                              tabIndex={isConfirmed ? -1 : 0}
+                              disabled={isConfirmed}
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${child.checked ? 'bg-red-500 border-red-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                            >
+                              {child.checked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
+                            </button>
+                            <label htmlFor={`habit-${child.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}>
+                              {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
+                            </label>
+                            <div className="flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
+                              <div className="w-16" />
+                              <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]">
+                                <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(child).g}</span>
+                                {(getHabitPointsExpParts(child).body !== 0 || getHabitPointsExpParts(child).mind !== 0 || getHabitPointsExpParts(child).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(child).body} mind={getHabitPointsExpParts(child).mind} spirit={getHabitPointsExpParts(child).spirit} signed /></>)}
+                              </div>
+                              <div className="w-[10rem] min-w-[10rem]" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ボタン */}
           <div className="flex items-center justify-end gap-3 pt-2 mt-3 border-t border-zinc-800">
@@ -2029,6 +2253,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                           <div className="flex items-center gap-1">
                             <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
                             <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
+                            <button type="button" onClick={() => toggleIsLowFrequency(group.root.id)} title={group.root.is_low_frequency ? '低頻度（クリックで解除）' : '高頻度（クリックで低頻度に）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${group.root.is_low_frequency ? 'text-yellow-400 bg-yellow-900/40 hover:bg-yellow-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}>{group.root.is_low_frequency ? '低頻度' : '高頻度'}</button>
                             <button type="button" onClick={() => toggleIsActive(group.root.id)} title={group.root.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${group.root.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{group.root.is_active !== false ? '活性' : '非活性'}</button>
                             <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                             {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
@@ -2042,6 +2267,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                               <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
                             </div>
                             <div className="flex items-center gap-1">
+                              <button type="button" onClick={() => toggleIsLowFrequency(child.id)} title={child.is_low_frequency ? '低頻度（クリックで解除）' : '高頻度（クリックで低頻度に）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_low_frequency ? 'text-yellow-400 bg-yellow-900/40 hover:bg-yellow-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}>{child.is_low_frequency ? '低頻度' : '高頻度'}</button>
                               <button type="button" onClick={() => toggleIsActive(child.id)} title={child.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{child.is_active !== false ? '活性' : '非活性'}</button>
                               <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                               {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
@@ -2077,6 +2303,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                           <div className="flex items-center gap-1">
                             <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
                             <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
+                            <button type="button" onClick={() => toggleIsLowFrequency(group.root.id)} title={group.root.is_low_frequency ? '低頻度（クリックで解除）' : '高頻度（クリックで低頻度に）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${group.root.is_low_frequency ? 'text-yellow-400 bg-yellow-900/40 hover:bg-yellow-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}>{group.root.is_low_frequency ? '低頻度' : '高頻度'}</button>
                             <button type="button" onClick={() => toggleIsActive(group.root.id)} title={group.root.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${group.root.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{group.root.is_active !== false ? '活性' : '非活性'}</button>
                             <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                             {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
@@ -2090,6 +2317,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                               <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
                             </div>
                             <div className="flex items-center gap-1">
+                              <button type="button" onClick={() => toggleIsLowFrequency(child.id)} title={child.is_low_frequency ? '低頻度（クリックで解除）' : '高頻度（クリックで低頻度に）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_low_frequency ? 'text-yellow-400 bg-yellow-900/40 hover:bg-yellow-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}>{child.is_low_frequency ? '低頻度' : '高頻度'}</button>
                               <button type="button" onClick={() => toggleIsActive(child.id)} title={child.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{child.is_active !== false ? '活性' : '非活性'}</button>
                               <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                               {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
@@ -2126,7 +2354,8 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                             <div className="flex items-center gap-1">
                               <Button onClick={() => handleMoveUp(group.root)} variant="ghost" size="sm" disabled={groupIndex === 0} aria-label={`${group.root.habit_name}を上に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↑</Button>
                               <Button onClick={() => handleMoveDown(group.root)} variant="ghost" size="sm" disabled={groupIndex === arr.length - 1} aria-label={`${group.root.habit_name}を下に移動する`} className="h-7 w-7 p-0 text-zinc-400 hover:text-zinc-300">↓</Button>
-                              <button type="button" onClick={() => toggleIsActive(group.root.id)} title={group.root.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${group.root.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{group.root.is_active !== false ? '活性' : '非活性'}</button>
+                              <button type="button" onClick={() => toggleIsLowFrequency(group.root.id)} title={group.root.is_low_frequency ? '低頻度（クリックで解除）' : '高頻度（クリックで低頻度に）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${group.root.is_low_frequency ? 'text-yellow-400 bg-yellow-900/40 hover:bg-yellow-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}>{group.root.is_low_frequency ? '低頻度' : '高頻度'}</button>
+                            <button type="button" onClick={() => toggleIsActive(group.root.id)} title={group.root.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${group.root.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{group.root.is_active !== false ? '活性' : '非活性'}</button>
                               <Button onClick={() => handleOpenEditModal(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                               {group.root.is_custom && <Button onClick={() => handleDeleteHabit(group.root)} variant="ghost" size="sm" aria-label={`${group.root.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
                             </div>
@@ -2139,7 +2368,8 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                                 <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <button type="button" onClick={() => toggleIsActive(child.id)} title={child.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{child.is_active !== false ? '活性' : '非活性'}</button>
+                                <button type="button" onClick={() => toggleIsLowFrequency(child.id)} title={child.is_low_frequency ? '低頻度（クリックで解除）' : '高頻度（クリックで低頻度に）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_low_frequency ? 'text-yellow-400 bg-yellow-900/40 hover:bg-yellow-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}>{child.is_low_frequency ? '低頻度' : '高頻度'}</button>
+                              <button type="button" onClick={() => toggleIsActive(child.id)} title={child.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{child.is_active !== false ? '活性' : '非活性'}</button>
                                 <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                                 {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
                               </div>

@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
       input_type,
       exclude_weekends,
       exclude_from_complete,
+      is_low_frequency,
       parent_habit_id,
     } = body;
 
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
       exclude_weekends: exclude_weekends || false,
       exclude_from_complete: exclude_from_complete || false,
       is_custom: true,
+      is_low_frequency: is_low_frequency || false,
       display_order: displayOrder,
       is_active: true,
     };
@@ -173,6 +175,7 @@ export async function PUT(request: NextRequest) {
       input_type,
       exclude_weekends,
       exclude_from_complete,
+      is_low_frequency,
       parent_habit_id,
       is_active,
     } = body;
@@ -231,6 +234,9 @@ export async function PUT(request: NextRequest) {
     };
     if (typeof is_active === 'boolean') {
       updatePayload.is_active = is_active;
+    }
+    if (typeof is_low_frequency === 'boolean') {
+      updatePayload.is_low_frequency = is_low_frequency;
     }
     const descValue = typeof description === 'string' && description.trim() ? description.trim() : null;
     updatePayload.description = descValue;

@@ -48,6 +48,8 @@ export interface Habit {
   exclude_from_complete: boolean;
   /** 活性状態（false の場合、日誌画面から非表示） */
   is_active: boolean;
+  /** 低頻度フラグ（true の場合、日誌画面で低頻度エリアに分類・折りたたみ可） */
+  is_low_frequency?: boolean;
   /** 副見出し（habitsテーブルの description カラム。習慣カードにも表示） */
   description?: string | null;
   /** 説明（habitsテーブルの note カラム。モーダル内のみ表示） */

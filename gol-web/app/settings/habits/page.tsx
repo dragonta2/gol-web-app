@@ -42,6 +42,7 @@ interface Habit {
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
   is_active: boolean;
+  is_low_frequency?: boolean;
   description?: string | null;
   note?: string | null;
   created_at: string;
@@ -110,6 +111,7 @@ export default function HabitsSettingsPage() {
     input_type: 'checkbox' as 'checkbox' | 'number',
     exclude_weekends: false,
     exclude_from_complete: false,
+    is_low_frequency: false,
     parent_habit_id: '' as string,
   });
 
@@ -182,6 +184,7 @@ export default function HabitsSettingsPage() {
       input_type: 'checkbox',
       exclude_weekends: false,
       exclude_from_complete: false,
+      is_low_frequency: false,
       parent_habit_id: '',
     });
     setEditingHabit(null);
@@ -252,7 +255,7 @@ export default function HabitsSettingsPage() {
   };
 
   // is_active / 週末除外 / Comp対象外トグル
-  const toggleHabitBoolField = async (habit: Habit, field: 'exclude_weekends' | 'exclude_from_complete' | 'is_active') => {
+  const toggleHabitBoolField = async (habit: Habit, field: 'exclude_weekends' | 'exclude_from_complete' | 'is_active' | 'is_low_frequency') => {
     const next = !habit[field];
     try {
       const { error } = await supabase
@@ -313,6 +316,7 @@ export default function HabitsSettingsPage() {
       input_type: 'checkbox',
       exclude_weekends: false,
       exclude_from_complete: false,
+      is_low_frequency: false,
       parent_habit_id: '',
     });
     setIsDialogOpen(true);
@@ -333,6 +337,7 @@ export default function HabitsSettingsPage() {
       input_type: 'checkbox',
       exclude_weekends: habit.exclude_weekends,
       exclude_from_complete: habit.exclude_from_complete,
+      is_low_frequency: habit.is_low_frequency ?? false,
       parent_habit_id: habit.parent_habit_id ?? '',
     });
     setIsDialogOpen(true);
@@ -600,6 +605,18 @@ export default function HabitsSettingsPage() {
 
                   {/* オプション */}
                   <div className="space-y-2">
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formData.is_low_frequency}
+                          onChange={(e) => setFormData({ ...formData, is_low_frequency: e.target.checked })}
+                          className="w-4 h-4 text-cyan-600"
+                        />
+                        <span className="text-zinc-300">低頻度に設定する</span>
+                      </label>
+                      <p className="text-xs text-zinc-500 mt-1 ml-6">低頻度エリアに入った習慣は折りたたんで見えなくすることができます</p>
+                    </div>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
                         type="checkbox"
