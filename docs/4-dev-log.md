@@ -10,6 +10,42 @@
 
 ### 260324-Tue
 
+#### 260324-Tue｜設定ページ削除・導線統一
+
+**記載** ClaudeCode
+
+---
+
+##### 習慣管理・ToDo管理設定ページ削除
+
+削除ファイル:
+
+- `gol-web/app/settings/habits/page.tsx`（ディレクトリごと削除）
+- `gol-web/app/settings/todos/page.tsx`（ディレクトリごと削除）
+
+変更ファイル: `gol-web/components/mypage-settings-section.tsx`
+
+- 「習慣管理」「権利設定」「ToDo管理」の3カードを削除
+- 不要になった `ListChecks`・`ClipboardList` のインポートを削除
+
+バックアップブランチ: `bk/260324-before-2way-habits&right-config`
+
+デッドコード調査の結果: 削除後に残った孤立ファイルなし（API ルート・ユーティリティはすべて dashboard から継続使用中）
+
+---
+
+##### 管理者アカウント追加
+
+ファイル: `gol-web/.env.local`
+
+```
+NEXT_PUBLIC_ADMIN_EMAILS=dragon5555555@gmail.com,dta2.web@gmail.com
+```
+
+Vercel 環境変数にも同値を設定済み（ユーザー作業）
+
+---
+
 #### 260324-Tue｜ヘッダー日付ナビ・未確定スコア・習慣低頻度エリア
 
 **記載** ClaudeCode
