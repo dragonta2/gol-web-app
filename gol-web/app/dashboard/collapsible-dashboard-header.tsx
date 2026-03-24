@@ -196,7 +196,7 @@ export default function CollapsibleDashboardHeader({
                       </span>
                     )}
                     {pendingDeltas && (
-                      <span className="text-xs text-zinc-400 shrink-0" role="status" aria-label="未確定スコア">
+                      <span className="text-xs text-zinc-400 shrink-0 ml-[15px] translate-y-[2px]" role="status" aria-label="未確定スコア">
                         未確定:
                         {pendingDeltas.points_delta !== 0 && (
                           <span className="ml-1">{pendingDeltas.points_delta >= 0 ? "+" : ""}{pendingDeltas.points_delta}G</span>
@@ -205,7 +205,7 @@ export default function CollapsibleDashboardHeader({
                           <span className="ml-1 text-exp-body">身{pendingDeltas.exp_body_delta > 0 ? "+" : ""}{pendingDeltas.exp_body_delta}</span>
                         )}
                         {pendingDeltas.exp_mind_delta !== 0 && (
-                          <span className="ml-1 text-exp-intelligence">頭{pendingDeltas.exp_mind_delta > 0 ? "+" : ""}{pendingDeltas.exp_mind_delta}</span>
+                          <span className="ml-[9px] text-exp-intelligence">頭{pendingDeltas.exp_mind_delta > 0 ? "+" : ""}{pendingDeltas.exp_mind_delta}</span>
                         )}
                         {pendingDeltas.exp_spirit_delta !== 0 && (
                           <span className="ml-1 text-exp-mind">精{pendingDeltas.exp_spirit_delta > 0 ? "+" : ""}{pendingDeltas.exp_spirit_delta}</span>
@@ -276,7 +276,7 @@ export default function CollapsibleDashboardHeader({
                       <span className="ml-1 text-exp-body">身{pendingDeltas.exp_body_delta > 0 ? "+" : ""}{pendingDeltas.exp_body_delta}</span>
                     )}
                     {pendingDeltas.exp_mind_delta !== 0 && (
-                      <span className="ml-1 text-exp-intelligence">頭{pendingDeltas.exp_mind_delta > 0 ? "+" : ""}{pendingDeltas.exp_mind_delta}</span>
+                      <span className="ml-[9px] text-exp-intelligence">頭{pendingDeltas.exp_mind_delta > 0 ? "+" : ""}{pendingDeltas.exp_mind_delta}</span>
                     )}
                     {pendingDeltas.exp_spirit_delta !== 0 && (
                       <span className="ml-1 text-exp-mind">精{pendingDeltas.exp_spirit_delta > 0 ? "+" : ""}{pendingDeltas.exp_spirit_delta}</span>
