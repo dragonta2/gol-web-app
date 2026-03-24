@@ -10,7 +10,6 @@ import {
   Key,
   Bot,
   BookOpen,
-  ListChecks,
   ClipboardList,
   Settings as SettingsIcon,
   Download,
@@ -255,19 +254,6 @@ export function MypageSettingsSection() {
           )}
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Link href="/settings/habits">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
-              <div className="flex items-center gap-3 mb-2">
-                <ListChecks className="w-6 h-6 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">
-                  習慣管理
-                </h3>
-              </div>
-              <p className="text-sm text-zinc-400">
-                良習慣・悪習慣・ボーナス習慣の追加・編集・削除
-              </p>
-            </div>
-          </Link>
           <Link href="/settings/todos">
             <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
               <div className="flex items-center gap-3 mb-2">
@@ -279,17 +265,6 @@ export function MypageSettingsSection() {
               <p className="text-sm text-zinc-400">
                 ToDoタスクの追加・編集・削除・SP設定
               </p>
-            </div>
-          </Link>
-          <Link href="/settings/rights">
-            <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 hover:border-cyan-600 transition-colors cursor-pointer">
-              <div className="flex items-center gap-3 mb-2">
-                <SettingsIcon className="w-6 h-6 text-cyan-400" />
-                <h3 className="text-base font-semibold text-zinc-100">
-                  権利設定
-                </h3>
-              </div>
-              <p className="text-sm text-zinc-400">権利のゴルド消費量の設定</p>
             </div>
           </Link>
           <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
