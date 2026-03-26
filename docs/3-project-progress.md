@@ -10,6 +10,24 @@
 
 ---
 
+### 260325-Wed --------------
+
+#### 260325-Wed｜モバイルレスポンシブ対応（日誌・カンバン・Playwright設定）
+
+**記載** ClaudeCode
+
+**実施内容:**
+
+- **Playwright モバイル設定**: Pixel 5 / iPhone 12 プロジェクト追加。`npm run test:e2e:mobile` コマンド追加。`gol-web/e2e/mobile-visual.spec.ts` 新規作成
+
+- **日誌インプレッションエリア**: `journal-impression-sections.tsx` のテキストエリア固定高さ `h-[800px]` をレスポンシブ対応に変更
+
+- **AI判定結果エリア**: `journal-form.tsx` の grid レイアウト `grid-cols-2` → `grid-cols-1 sm:grid-cols-2` に変更（モバイルでは1列、small以上で2列）
+
+- **カンバンボード**: `todo-summary-tab.tsx` の3列カンバン `md:grid-cols-3` → `sm:grid-cols-2 md:grid-cols-3` に変更（モバイルでは2列、medium以上で3列）
+
+---
+
 ### 260324-Tue --------------
 
 #### 260324-Tue｜設定ページ削除・導線統一・管理者アカウント追加

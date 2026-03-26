@@ -13,6 +13,40 @@
 - 実装が完了したら末尾に日付を書く
 - チェックが完了したら `[x]` をつける（ユーザーがつけることもある）
 
+---
+
+## 260325-Wen スマートフォン UI 対応 -------------
+
+**記載** ClaudeCode
+
+### Playwright モバイル設定
+
+- [] `playwright.config.ts` にモバイルプロジェクト（Pixel 5 / iPhone 12）を追加 `260325実装済み`
+
+- [] `gol-web/package.json` に `test:e2e:local` / `test:e2e:mobile` コマンドを追加 `260325実装済み`
+
+- [] `e2e/mobile-visual.spec.ts` を新規作成（ログインページ等のスクリーンショット確認テスト） `260325実装済み`
+
+### 高優先度
+
+- [] `journal-impression-sections.tsx` line 374 & 418｜`h-[800px]` 固定高さをレスポンシブに変更 `260325実装済み`
+
+- [] `journal-form.tsx` line 845 & 861｜`grid grid-cols-2` → `grid grid-cols-1 sm:grid-cols-2` に変更 `260325実装済み`
+
+### 中優先度
+
+- [] `todo-summary-tab.tsx` line 1528｜`grid-cols-1 md:grid-cols-3` → `grid-cols-1 sm:grid-cols-2 md:grid-cols-3` に変更 `260325実装済み`
+
+- [] `habit-list.tsx`｜`min-w-[41rem]` 固定幅ブロック（39箇所）のモバイル対応方針を決定・実装
+
+- [] タッチターゲットサイズ確認（ボタン・チェックボックス 44px 以上）
+
+### 低優先度
+
+- [] `habit-list.tsx` 子習慣インデント `pl-6` → `pl-3 sm:pl-6` に変更（5箇所）
+
+---
+
 ### カレンダー
 
 **記載** ClaudeCode
@@ -155,6 +189,21 @@ ToDoリストの粒度について
 
 ### スマートフォン対応
 
+**記載** ClaudeCode
+
+- [] Playwright モバイル設定（Pixel 5 / iPhone 12 プロジェクト追加・`test:e2e:mobile` コマンド追加・`mobile-visual.spec.ts` 作成） `260325実装済み`
+
+- [] `journal-impression-sections.tsx`｜日誌・インプレッションのテキストエリア固定高さ `h-[800px]` をレスポンシブ対応 `260325実装済み`
+
+- [] `journal-form.tsx`｜AI判定結果エリアの `grid-cols-2` → `grid-cols-1 sm:grid-cols-2` に変更 `260325実装済み`
+
+- [] `todo-summary-tab.tsx`｜3列カンバン `md:grid-cols-3` → `sm:grid-cols-2 md:grid-cols-3` に変更 `260325実装済み`
+
+- [] `habit-list.tsx`｜`min-w-[41rem]` 固定幅（39箇所）のモバイル対応方針を決定・実装
+
+- [] `habit-list.tsx`｜子習慣インデント `pl-6` → `pl-3 sm:pl-6` に変更（5箇所）
+
+- [] タッチターゲットサイズ確認（ボタン・チェックボックス 44px 以上）
 
 
 ## 260320-金 項目数表示・コード調査メモ -------------

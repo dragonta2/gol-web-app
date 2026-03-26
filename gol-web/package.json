@@ -10,7 +10,9 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "test:e2e": "node -e \"if (!process.env.CI) { console.log('E2E: CI でのみ実行します。ローカルではスキップします。'); process.exit(0); }\" && playwright test"
+    "test:e2e": "node -e \"if (!process.env.CI) { console.log('E2E: CI でのみ実行します。ローカルではスキップします。'); process.exit(0); }\" && playwright test",
+    "test:e2e:local": "playwright test",
+    "test:e2e:mobile": "playwright test --project=mobile-chrome --project=mobile-safari"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

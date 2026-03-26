@@ -7,6 +7,8 @@
     "start": "npm run start --prefix gol-web",
     "test": "npm run test --prefix gol-web",
     "test:e2e": "npm run test:e2e --prefix gol-web",
+    "test:e2e:local": "npm run test:e2e:local --prefix gol-web",
+    "test:e2e:mobile": "npm run test:e2e:mobile --prefix gol-web",
     "lint": "npm run lint --prefix gol-web"
   }
 }

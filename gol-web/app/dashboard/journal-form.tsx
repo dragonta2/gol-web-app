@@ -842,7 +842,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         {isJudging ? (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-4">
             <h3 className="text-lg font-medium text-cyan-400">判定結果</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <Skeleton className="h-4 w-20 mb-2 bg-zinc-700" />
                 <Skeleton className="h-8 w-24 bg-zinc-700" />
@@ -858,7 +858,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         ) : aiJudgmentResult ? (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-4">
             <h3 className="text-lg font-medium text-cyan-400">判定結果</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <div className="text-lg text-zinc-400 mb-1">体調スコア</div>
                 <div className="text-2xl font-bold text-cyan-400">

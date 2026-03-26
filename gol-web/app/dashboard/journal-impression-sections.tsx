@@ -371,14 +371,13 @@ function JournalImpressionSections({
                       aria-label="日誌を入力する"
                       aria-describedby="journal-text-count"
                       disabled={!isEditable}
-                      className={`relative z-0 bg-zinc-800 border-zinc-600 focus:border-cyan-500 resize-none disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px] px-3 py-2 rounded-md ${
+                      className={`relative z-0 bg-zinc-800 border-zinc-600 focus:border-cyan-500 resize-none disabled:cursor-not-allowed w-full h-[50vh] min-h-[300px] sm:h-[600px] md:h-[800px] overflow-y-auto text-[17px] md:text-[15px] px-3 py-2 rounded-md ${
                         isConfirmed ? 'text-zinc-50 disabled:opacity-100' : 'text-zinc-100 disabled:opacity-60'
                       }`}
                     />
                     {!journalText && (
                       <div
                         className="absolute inset-0 z-10 pointer-events-none px-3 py-2 flex items-start overflow-hidden rounded-md border border-transparent text-[17px] md:text-[15px] text-[#71717a] whitespace-pre-line"
-                        style={{ height: '800px' }}
                         aria-hidden
                       >
                         {`時系列の行動記録を記載してください。
@@ -415,14 +414,13 @@ function JournalImpressionSections({
                       aria-label="感想を入力する"
                       aria-describedby="impression-text-count"
                       disabled={!isEditable}
-                      className={`relative z-0 bg-zinc-800 border-zinc-600 focus:border-cyan-500 resize-none disabled:cursor-not-allowed w-full h-[800px] overflow-y-auto text-[17px] md:text-[15px] px-3 py-2 rounded-md ${
+                      className={`relative z-0 bg-zinc-800 border-zinc-600 focus:border-cyan-500 resize-none disabled:cursor-not-allowed w-full h-[50vh] min-h-[300px] sm:h-[600px] md:h-[800px] overflow-y-auto text-[17px] md:text-[15px] px-3 py-2 rounded-md ${
                         isConfirmed ? 'text-zinc-50 disabled:opacity-100' : 'text-zinc-100 disabled:opacity-60'
                       }`}
                     />
                     {!impressionText && (
                       <div
                         className="absolute inset-0 z-10 pointer-events-none px-3 py-2 flex items-start overflow-hidden rounded-md border border-transparent text-[17px] md:text-[15px] text-[#71717a] whitespace-pre-line"
-                        style={{ height: '800px' }}
                         aria-hidden
                       >
                         {`その日一日の感想を記載してください。

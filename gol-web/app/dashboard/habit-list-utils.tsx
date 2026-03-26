@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { GripVertical } from 'lucide-react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { ExpWithIcons } from '@/components/exp-with-icons';
 
 // ─── 型定義 ─────────────────────────────────────────────
 
@@ -113,6 +114,63 @@ export function buildManagementGroups(habits: Habit[], habitType: 'good' | 'bad'
 /** 親習慣の表示用「完了」: 親のチェック or いずれかの子のチェック */
 export function isParentCompleted(parent: HabitWithLog, children: HabitWithLog[]): boolean {
   return parent.checked || children.some((c) => c.checked);
+}
+
+// ─── ユーティリティ関数（モバイル対応用） ────────────────
+
+/** 習慣のゴルド・EXPの加減算設定値を返す純粋関数 */
+export function getHabitPointsExpPartsUtil(habit: HabitWithLog): { g: string; body: number; mind: number; spirit: number } {
+  const sign = habit.habit_type === 'bad' ? -1 : 1;
+  const g = `${habit.habit_type === 'bad' ? '-' : '+'} ${habit.points}G`;
+  return {
+    g,
+    body: habit.exp_body > 0 ? habit.exp_body * sign : 0,
+    mind: habit.exp_mind > 0 ? habit.exp_mind * sign : 0,
+    spirit: habit.exp_spirit > 0 ? habit.exp_spirit * sign : 0,
+  };
+}
+
+interface HabitMobileDetailProps {
+  habit: HabitWithLog;
+  isConfirmed: boolean;
+  onToggleExcludeWeekends: (id: string) => void;
+  onToggleExcludeFromComplete: (id: string) => void;
+}
+
+/** モバイル展開エリア：ゴルド/EXP表示 + 週末除外・Comp対象外ボタン */
+export function HabitMobileDetail({ habit, isConfirmed, onToggleExcludeWeekends, onToggleExcludeFromComplete }: HabitMobileDetailProps) {
+  const pts = getHabitPointsExpPartsUtil(habit);
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <div className="flex items-baseline gap-1 text-xs text-zinc-400 flex-wrap">
+        <span>{pts.g}</span>
+        {(pts.body !== 0 || pts.mind !== 0 || pts.spirit !== 0) && (
+          <>
+            <span>｜</span>
+            <ExpWithIcons body={pts.body} mind={pts.mind} spirit={pts.spirit} signed />
+          </>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggleExcludeWeekends(habit.id); }}
+        disabled={isConfirmed}
+        title="土日祝は任意（進捗に影響しません）"
+        className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${habit.exclude_weekends ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+      >
+        週末除外
+      </button>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onToggleExcludeFromComplete(habit.id); }}
+        disabled={isConfirmed}
+        title="Completeボーナス対象外"
+        className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${habit.exclude_from_complete ? 'text-yellow-400 bg-yellow-900/30' : 'text-zinc-500 bg-zinc-800 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+      >
+        Comp対象外
+      </button>
+    </div>
+  );
 }
 
 // ─── コンポーネント ─────────────────────────────────────
