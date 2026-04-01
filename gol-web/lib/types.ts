@@ -441,6 +441,8 @@ export interface DashboardTabsProps {
   canManageAnnouncements?: boolean;
   /** 1日分のスコア内訳（ToDo・習慣・AI・権利ごと）。確定表示用 */
   scoreBreakdown?: ScoreBreakdown | null;
+  /** 今日（JST）の日誌ID。過去日誌確定後にToDoを完了させた場合、今日の日誌に報酬を記録するために使用 */
+  todayDailyLogId?: string | null;
 }
 
 /**
@@ -499,6 +501,8 @@ export interface KanbanBoardProps {
   onOpenCreateModal?: () => void;
   /** 日誌確定済みのとき true（カードの完了チェック・ドラッグを無効化） */
   isConfirmed?: boolean;
+  /** 今日（JST）の日誌ID。確定済みの日誌でToDoを完了させた場合、今日の日誌に報酬を記録するために使用 */
+  todayDailyLogId?: string | null;
 }
 
 // ============================================================================
