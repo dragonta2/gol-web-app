@@ -584,7 +584,9 @@ function DroppableColumn({
   );
 }
 
-function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtasks, dailyLogId, isExpanded: externalIsExpanded, onExpandedChange, onEditTodo, onOpenCreateModal, isConfirmed = false }: KanbanBoardProps) {
+function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtasks, dailyLogId, todayDailyLogId, isExpanded: externalIsExpanded, onExpandedChange, onEditTodo, onOpenCreateModal, isConfirmed = false }: KanbanBoardProps) {
+  // 確定済みの日誌を見ているときは今日の日誌IDに記録する。未確定 or 今日表示中はそのまま
+  const effectiveDailyLogId = isConfirmed ? (todayDailyLogId ?? dailyLogId) : dailyLogId
 
   // ローカル状態でtodosを管理（ドラッグ&ドロップで即座に反映）
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
@@ -894,7 +896,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
 
   // タスク完了時の報酬計算・反映処理
   const handleTaskCompletion = async (todo: Todo) => {
-    if (!dailyLogId) {
+    if (!effectiveDailyLogId) {
       console.warn('dailyLogIdが存在しないため、報酬を記録できません');
       return;
     }
@@ -910,7 +912,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
         .from('todo_logs')
         .upsert(
           {
-            daily_log_id: dailyLogId,
+            daily_log_id: effectiveDailyLogId,
             todo_id: todo.id,
             points_earned: reward.points,
             exp_body_earned: reward.exp_body,
@@ -934,7 +936,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
 
   // タスク未完了時: todo_logs から記録を削除（profiles の反映は確定時に一括なのでここでは削除のみ）
   const handleTaskUncompletion = async (todo: Todo) => {
-    if (!dailyLogId) {
+    if (!effectiveDailyLogId) {
       return;
     }
 
@@ -945,7 +947,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
       const { error: logDeleteError } = await supabase
         .from('todo_logs')
         .delete()
-        .eq('daily_log_id', dailyLogId)
+        .eq('daily_log_id', effectiveDailyLogId)
         .eq('todo_id', todo.id);
 
       if (logDeleteError) {
@@ -1102,13 +1104,11 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
         return;
       }
 
-      // 報酬計算・反映処理（確定済みの日誌では記録を変えない）
-      if (!isConfirmed) {
-        if (!wasCompleted && willBeCompleted) {
-          await handleTaskCompletion(currentTodo);
-        } else if (wasCompleted && !willBeCompleted) {
-          await handleTaskUncompletion(currentTodo);
-        }
+      // 報酬計算・反映処理（確定済みの場合は今日の日誌IDに記録する）
+      if (!wasCompleted && willBeCompleted) {
+        await handleTaskCompletion(currentTodo);
+      } else if (wasCompleted && !willBeCompleted) {
+        await handleTaskUncompletion(currentTodo);
       }
 
       // ページをリフレッシュして最新データを取得

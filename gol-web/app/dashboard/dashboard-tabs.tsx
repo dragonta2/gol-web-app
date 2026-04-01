@@ -53,6 +53,7 @@ export default function DashboardTabs({
   isAdmin,
   canManageAnnouncements = false,
   scoreBreakdown,
+  todayDailyLogId,
   activeTab: controlledActiveTab,
   onActiveTabChange,
 }: DashboardTabsOwnProps) {
@@ -292,6 +293,7 @@ export default function DashboardTabs({
               todoLogs={todoLogs}
               todoSubtasks={todoSubtasks}
               dailyLogId={dailyLogId}
+              todayDailyLogId={todayDailyLogId}
               isExpanded={isKanbanExpanded}
               onExpandedChange={setIsKanbanExpanded}
               onEditTodo={(id) => {
@@ -399,6 +401,8 @@ export default function DashboardTabs({
                 todoLogs={todoLogs}
                 todoSubtasks={todoSubtasks}
                 dailyLogId={dailyLogId}
+                todayDailyLogId={todayDailyLogId}
+                isConfirmed={isConfirmed}
                 initialEditTodoId={editTodoId}
                 onInitialEditConsumed={() => setEditTodoId(null)}
                 initialOpenCreateModal={openCreateModalOnSwitch}

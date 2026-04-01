@@ -82,7 +82,8 @@ export default async function DashboardPage({
     new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo" }).format(
       new Date(),
     )
-  const selectedDate = resolvedParams?.date || getTodayJST()
+  const todayStr = getTodayJST()
+  const selectedDate = resolvedParams?.date || todayStr
 
   // 選択された日付のdaily_logsを取得（なければ作成）
   let dailyLogId: string | null = null
@@ -165,6 +166,20 @@ export default async function DashboardPage({
           .order("display_order", { ascending: true })
       : { data: [] }
 
+  // 今日の日誌IDを取得（過去日誌確定後にToDoを完了させた場合、今日の日誌に報酬を記録するために使用）
+  let todayDailyLogId: string | null = null
+  if (selectedDate === todayStr) {
+    todayDailyLogId = dailyLogId
+  } else {
+    const { data: todayLog } = await supabase
+      .from("daily_logs")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("log_date", todayStr)
+      .single()
+    todayDailyLogId = todayLog?.id ?? null
+  }
+
   // 未確定の日誌がある場合、その日の仮スコア（確定時に反映されるデルタ）を計算
   let pendingDeltas: { points_delta: number; exp_body_delta: number; exp_mind_delta: number; exp_spirit_delta: number } | null = null
   if (dailyLogId && dailyLogData && !dailyLogData.is_confirmed) {
@@ -199,6 +214,7 @@ export default async function DashboardPage({
         canManageAnnouncements={canManageAnnouncements}
         pendingDeltas={pendingDeltas}
         scoreBreakdown={scoreBreakdown}
+        todayDailyLogId={todayDailyLogId}
       />
     </div>
   )

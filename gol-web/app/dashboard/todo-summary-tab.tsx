@@ -47,6 +47,10 @@ interface TodoSummaryTabProps {
   todoLogs: TodoLog[]
   todoSubtasks: TodoSubtask[]
   dailyLogId: string | null
+  /** 今日（JST）の日誌ID。確定済みの日誌でToDoを完了させた場合、今日の日誌に報酬を記録するために使用 */
+  todayDailyLogId?: string | null
+  /** 表示中の日誌が確定済みか */
+  isConfirmed?: boolean
   /** 日誌カンバンから「編集」で飛んできたとき、このIDのタスクの編集モーダルを開く */
   initialEditTodoId?: string | null
   /** 編集モーダルを開いたあと、親の editTodoId をクリアするために呼ぶ */
@@ -76,11 +80,15 @@ function TodoSummaryTab({
   todoLogs,
   todoSubtasks,
   dailyLogId,
+  todayDailyLogId,
+  isConfirmed = false,
   initialEditTodoId,
   onInitialEditConsumed,
   initialOpenCreateModal,
   onInitialOpenCreateConsumed,
 }: TodoSummaryTabProps) {
+  // 確定済みの日誌を見ているときは今日の日誌IDに記録する
+  const effectiveDailyLogId = isConfirmed ? (todayDailyLogId ?? dailyLogId) : dailyLogId
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -564,7 +572,7 @@ function TodoSummaryTab({
 
   // タスク完了時の報酬計算・反映処理
   const handleTaskCompletion = async (todo: Todo) => {
-    if (!dailyLogId) {
+    if (!effectiveDailyLogId) {
       console.warn("dailyLogIdが存在しないため、報酬を記録できません")
       return
     }
@@ -578,7 +586,7 @@ function TodoSummaryTab({
       // todo_logsに記録を作成または更新（UNIQUE制約があるためUPSERT）
       const { error: logError } = await supabase.from("todo_logs").upsert(
         {
-          daily_log_id: dailyLogId,
+          daily_log_id: effectiveDailyLogId,
           todo_id: todo.id,
           points_earned: reward.points,
           exp_body_earned: reward.exp_body,
@@ -602,7 +610,7 @@ function TodoSummaryTab({
 
   // タスク未完了時: todo_logs から記録を削除（profiles の反映は確定時に一括なのでここでは削除のみ）
   const handleTaskUncompletion = async (todo: Todo) => {
-    if (!dailyLogId) {
+    if (!effectiveDailyLogId) {
       return
     }
 
@@ -613,7 +621,7 @@ function TodoSummaryTab({
       const { error: logDeleteError } = await supabase
         .from("todo_logs")
         .delete()
-        .eq("daily_log_id", dailyLogId)
+        .eq("daily_log_id", effectiveDailyLogId)
         .eq("todo_id", todo.id)
 
       if (logDeleteError) {
