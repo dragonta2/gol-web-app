@@ -19,6 +19,7 @@ import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, DIFFICULTY_MULTIPLIERS } from '@/
 import { Button } from '@/components/ui/button';
 import { FormLabel } from '@/components/ui/form-input';
 import { FormCard } from '@/components/ui/form-card';
+import { CompletedAtDialog } from '@/components/completed-at-dialog';
 import { ClipboardList, ChevronDown, ChevronUp, Edit, Plus, Coins, Dumbbell, Brain, Sparkles } from 'lucide-react';
 
 // ドラッグ可能なカードコンポーネント
@@ -599,6 +600,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
   });
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [pendingCompletion, setPendingCompletion] = useState<{ onConfirm: (completedAt: string) => void } | null>(null);
   const [internalIsExpanded, setInternalIsExpanded] = useState(true); // アコーディオンの開閉状態（内部管理）
   // フィルター状態（初回はサーバーとクライアントで同じにし、マウント後に localStorage から復元して Hydration エラーを防ぐ）
   const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>([]);
@@ -813,7 +815,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     const weekday = WEEKDAY_JA[date.getDay()];
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
-    return `(${year}/${month}/${day}-${weekday} ${hour}:${minute})`;
+    return `${year}/${month}/${day}-${weekday} ${hour}:${minute}`;
   };
 
   const formatSubtaskCompletedDate = (completedAt: string | null): string => {
@@ -825,7 +827,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     const weekday = WEEKDAY_JA[date.getDay()];
     const hour = String(date.getHours()).padStart(2, '0');
     const minute = String(date.getMinutes()).padStart(2, '0');
-    return `(${year}/${month}/${day}-${weekday} ${hour}:${minute})`;
+    return `${year}/${month}/${day}-${weekday} ${hour}:${minute}`;
   };
 
   const getSubtasksForTodo = (todoId: string): TodoSubtask[] =>
@@ -842,14 +844,41 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
 
   const handleToggleSubtaskCompletion = async (subtask: TodoSubtask) => {
     const willBeCompleted = !subtask.is_completed;
+    if (willBeCompleted) {
+      setPendingCompletion({
+        onConfirm: async (completedAt: string) => {
+          setPendingCompletion(null);
+          try {
+            const supabase = createClient();
+            const { error } = await supabase
+              .from('todo_subtasks')
+              .update({ is_completed: true, completed_at: completedAt })
+              .eq('id', subtask.id);
+            if (error) {
+              toast.error('サブタスクの更新に失敗しました', { description: error.message });
+              return;
+            }
+            setSubtasks((prev) =>
+              prev.map((st) =>
+                st.id === subtask.id
+                  ? { ...st, is_completed: true, completed_at: completedAt, updated_at: new Date().toISOString() }
+                  : st
+              )
+            );
+          } catch (err) {
+            console.error('サブタスク完了切替エラー:', err);
+            toast.error('サブタスクの更新に失敗しました');
+          }
+        },
+      });
+      return;
+    }
+    // 未完了に戻す場合はダイアログなし
     try {
       const supabase = createClient();
       const { error } = await supabase
         .from('todo_subtasks')
-        .update({
-          is_completed: willBeCompleted,
-          completed_at: willBeCompleted ? new Date().toISOString() : null,
-        })
+        .update({ is_completed: false, completed_at: null })
         .eq('id', subtask.id);
       if (error) {
         toast.error('サブタスクの更新に失敗しました', { description: error.message });
@@ -858,12 +887,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
       setSubtasks((prev) =>
         prev.map((st) =>
           st.id === subtask.id
-            ? {
-                ...st,
-                is_completed: willBeCompleted,
-                completed_at: willBeCompleted ? new Date().toISOString() : null,
-                updated_at: new Date().toISOString(),
-              }
+            ? { ...st, is_completed: false, completed_at: null, updated_at: new Date().toISOString() }
             : st
         )
       );
@@ -1058,63 +1082,70 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     if (!mappedStatus || currentTodo.status === mappedStatus) return;
 
     const wasCompleted = currentTodo.status === 'completed';
-    const willBeCompleted = mappedStatus === 'completed';
 
-    // ローカル状態を即座に更新（楽観的更新）
-    const updatedTodos = todos.map((todo) => {
-      if (todo.id === todoId) {
-        return {
-          ...todo,
-          status: mappedStatus,
-          completed_at: mappedStatus === 'completed' ? new Date().toISOString() : null,
-        };
-      }
-      return todo;
-    });
-    setTodos(updatedTodos);
+    // 完了カラムへのドロップ → 日時選択ダイアログを表示してから更新
+    if (mappedStatus === 'completed') {
+      setPendingCompletion({
+        onConfirm: async (completedAt: string) => {
+          setPendingCompletion(null);
+          // 楽観的更新
+          setTodos((prev) =>
+            prev.map((t) =>
+              t.id === todoId ? { ...t, status: 'completed' as const, completed_at: completedAt } : t
+            )
+          );
+          setIsUpdating(true);
+          try {
+            const supabase = createClient();
+            const { error } = await supabase
+              .from('todos')
+              .update({ status: 'completed', completed_at: completedAt })
+              .eq('id', todoId);
+            if (error) {
+              setTodos(initialTodos);
+              toast.error('ステータスの更新に失敗しました', { description: error.message });
+              return;
+            }
+            if (!wasCompleted) {
+              await handleTaskCompletion(currentTodo);
+            }
+            window.location.reload();
+          } catch (err) {
+            setTodos(initialTodos);
+            toast.error('ステータスの更新に失敗しました', {
+              description: err instanceof Error ? err.message : 'ページをリロードしてください',
+            });
+          } finally {
+            setIsUpdating(false);
+          }
+        },
+      });
+      return;
+    }
 
-    // データベースを更新
+    // 完了以外へのステータス変更は楽観的更新してそのまま処理
+    setTodos((prev) =>
+      prev.map((t) =>
+        t.id === todoId ? { ...t, status: mappedStatus, completed_at: null } : t
+      )
+    );
     setIsUpdating(true);
     try {
       const supabase = createClient();
-      const updateData: Partial<Todo> = {
-        status: mappedStatus,
-      };
-
-      // 完了済みに変更する場合はcompleted_atを設定
-      if (mappedStatus === 'completed') {
-        updateData.completed_at = new Date().toISOString();
-      } else {
-        // 完了済み以外に戻す場合はcompleted_atをnullに
-        updateData.completed_at = null;
-      }
-
       const { error } = await supabase
         .from('todos')
-        .update(updateData)
+        .update({ status: mappedStatus, completed_at: null })
         .eq('id', todoId);
-
       if (error) {
-        console.error('todos更新エラー:', error);
-        // エラー時は元の状態に戻す
         setTodos(initialTodos);
-        toast.error('ステータスの更新に失敗しました', {
-          description: error.message || 'ページをリロードしてください',
-        });
+        toast.error('ステータスの更新に失敗しました', { description: error.message });
         return;
       }
-
-      // 報酬計算・反映処理（確定済みの場合は今日の日誌IDに記録する）
-      if (!wasCompleted && willBeCompleted) {
-        await handleTaskCompletion(currentTodo);
-      } else if (wasCompleted && !willBeCompleted) {
+      if (wasCompleted) {
         await handleTaskUncompletion(currentTodo);
       }
-
-      // ページをリフレッシュして最新データを取得
       window.location.reload();
     } catch (err) {
-      console.error('予期しないエラー:', err);
       setTodos(initialTodos);
       toast.error('ステータスの更新に失敗しました', {
         description: err instanceof Error ? err.message : 'ページをリロードしてください',
@@ -1403,6 +1434,12 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
         </DndContext>
         </div>
       )}
+
+      <CompletedAtDialog
+        open={!!pendingCompletion}
+        onConfirm={(completedAt) => pendingCompletion?.onConfirm(completedAt)}
+        onCancel={() => setPendingCompletion(null)}
+      />
     </div>
   );
 }

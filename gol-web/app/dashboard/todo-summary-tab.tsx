@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input"
 import { Modal } from "@/components/ui/modal"
 import { FormInput, FormLabel } from "@/components/ui/form-input"
 import { DatePickerField } from "@/components/date-picker-field"
+import { CompletedAtDialog } from "@/components/completed-at-dialog"
 import { FormCard } from "@/components/ui/form-card"
 import { toast } from "sonner"
 import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, Copy, Plus } from "lucide-react"
@@ -71,6 +72,7 @@ interface TodoFormData {
   status: "active" | "in_progress" | "completed"
   difficulty: Difficulty
   is_on_hold: boolean
+  completed_at?: string
 }
 
 
@@ -97,6 +99,7 @@ function TodoSummaryTab({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [addingSubtask, setAddingSubtask] = useState(false)
   const [deletingSubtaskId, setDeletingSubtaskId] = useState<string | null>(null)
+  const [pendingCompletion, setPendingCompletion] = useState<{ onConfirm: (completedAt: string) => void } | null>(null)
   // サブタスクが1件以上あるToDoはデフォルトで展開
   const [expandedTodos, setExpandedTodos] = useState<Set<string>>(() => {
     const ids = new Set<string>()
@@ -453,7 +456,7 @@ function TodoSummaryTab({
     const weekday = WEEKDAY_JA[date.getDay()]
     const hour = String(date.getHours()).padStart(2, "0")
     const minute = String(date.getMinutes()).padStart(2, "0")
-    return `(${year}/${month}/${day}-${weekday} ${hour}:${minute})`
+    return `${year}/${month}/${day}-${weekday} ${hour}:${minute}`
   }
 
   // EXP合計計算
@@ -520,6 +523,7 @@ function TodoSummaryTab({
       status: todo.status,
       difficulty: todo.difficulty || "medium",
       is_on_hold: todo.is_on_hold === true,
+      completed_at: todo.completed_at ?? undefined,
     })
     setIsModalOpen(true)
   }
@@ -547,6 +551,7 @@ function TodoSummaryTab({
       status: todo.status,
       difficulty: todo.difficulty || "medium",
       is_on_hold: todo.is_on_hold === true,
+      completed_at: todo.completed_at ?? undefined,
     })
     setIsModalOpen(true)
     onInitialEditConsumed?.()
@@ -691,7 +696,7 @@ function TodoSummaryTab({
             status: formData.status,
             due_date: formData.due_date || null,
             completed_at:
-              formData.status === "completed" ? new Date().toISOString() : null,
+              formData.status === "completed" ? (formData.completed_at || new Date().toISOString()) : null,
             display_order: displayOrder,
             difficulty: formData.difficulty,
             is_on_hold: formData.is_on_hold,
@@ -714,7 +719,7 @@ function TodoSummaryTab({
         }
 
         if (formData.status === "completed") {
-          updateData.completed_at = new Date().toISOString()
+          updateData.completed_at = formData.completed_at || new Date().toISOString()
         } else {
           updateData.completed_at = null
         }
@@ -756,7 +761,7 @@ function TodoSummaryTab({
             difficulty: formData.difficulty,
             display_order: displayOrder,
             completed_at:
-              formData.status === "completed" ? new Date().toISOString() : null,
+              formData.status === "completed" ? (formData.completed_at || new Date().toISOString()) : null,
             is_on_hold: formData.is_on_hold,
           })
           .select()
@@ -860,14 +865,32 @@ function TodoSummaryTab({
 
   // ToDoのステータスを変更（サマリー画面用。todo_logs は触らず todos.status のみ更新）
   const handleChangeStatus = async (todo: Todo, newStatus: "active" | "in_progress" | "completed") => {
+    if (newStatus === "completed") {
+      setPendingCompletion({
+        onConfirm: async (completedAt: string) => {
+          setPendingCompletion(null)
+          try {
+            const supabase = createClient()
+            const { error } = await supabase
+              .from("todos")
+              .update({ status: newStatus, completed_at: completedAt })
+              .eq("id", todo.id)
+            if (error) throw error
+            router.refresh()
+          } catch (err) {
+            toast.error("ステータスの変更に失敗しました", {
+              description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
+            })
+          }
+        },
+      })
+      return
+    }
     try {
       const supabase = createClient()
       const { error } = await supabase
         .from("todos")
-        .update({
-          status: newStatus,
-          completed_at: newStatus === "completed" ? new Date().toISOString() : null,
-        })
+        .update({ status: newStatus, completed_at: null })
         .eq("id", todo.id)
       if (error) throw error
       router.refresh()
@@ -898,33 +921,47 @@ function TodoSummaryTab({
 
   // サブタスクの完了状態を切り替え（チェック時に completed_at を記録）
   const handleToggleSubtaskCompletion = async (subtask: TodoSubtask) => {
+    const willBeCompleted = !subtask.is_completed
+    if (willBeCompleted) {
+      setPendingCompletion({
+        onConfirm: async (completedAt: string) => {
+          setPendingCompletion(null)
+          try {
+            const supabase = createClient()
+            const { error } = await supabase
+              .from("todo_subtasks")
+              .update({ is_completed: true, completed_at: completedAt })
+              .eq("id", subtask.id)
+            if (error) {
+              toast.error("サブタスクの更新に失敗しました", { description: error.message })
+              return
+            }
+            router.refresh()
+          } catch (err) {
+            toast.error("エラーが発生しました", {
+              description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
+            })
+          }
+        },
+      })
+      return
+    }
+    // 未完了に戻す場合はダイアログなし
     try {
       const supabase = createClient()
-      const willBeCompleted = !subtask.is_completed
-
       const { error } = await supabase
         .from("todo_subtasks")
-        .update({
-          is_completed: willBeCompleted,
-          completed_at: willBeCompleted ? new Date().toISOString() : null,
-        })
+        .update({ is_completed: false, completed_at: null })
         .eq("id", subtask.id)
-
       if (error) {
-        console.error("サブタスク更新エラー:", error)
-        toast.error("サブタスクの更新に失敗しました", {
-          description: error.message || "データベースエラーが発生しました",
-        })
+        toast.error("サブタスクの更新に失敗しました", { description: error.message })
         return
       }
-
-      // ページをリフレッシュしてデータを再取得
       router.refresh()
     } catch (err) {
       console.error("予期しないエラー:", err)
       toast.error("エラーが発生しました", {
-        description:
-          err instanceof Error ? err.message : "予期しないエラーが発生しました",
+        description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
       })
     }
   }
@@ -1848,6 +1885,33 @@ function TodoSummaryTab({
           </label>
         )}
 
+        {/* 完了日時（ステータスが「完了済み」の場合のみ表示） */}
+        {formData.status === "completed" && (
+          <div>
+            <FormLabel htmlFor="completed_at">完了日時</FormLabel>
+            <input
+              id="completed_at"
+              type="datetime-local"
+              value={
+                formData.completed_at
+                  ? new Date(new Date(formData.completed_at).getTime() - new Date(formData.completed_at).getTimezoneOffset() * 60000)
+                      .toISOString()
+                      .slice(0, 16)
+                  : ""
+              }
+              max={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  completed_at: e.target.value ? new Date(e.target.value).toISOString() : undefined,
+                })
+              }
+              className="mt-2 w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+            <p className="text-zinc-400 text-xs mt-1">空欄の場合は現在日時が記録されます</p>
+          </div>
+        )}
+
         {/* 期限（ヘッダーと同じダークカレンダーで選択） */}
         <DatePickerField
           id="due_date"
@@ -1858,6 +1922,12 @@ function TodoSummaryTab({
         />
         </div>
       </Modal>
+
+      <CompletedAtDialog
+        open={!!pendingCompletion}
+        onConfirm={(completedAt) => pendingCompletion?.onConfirm(completedAt)}
+        onCancel={() => setPendingCompletion(null)}
+      />
     </div>
   )
 }

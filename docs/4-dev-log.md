@@ -6,6 +6,46 @@
 
 記法・ルール → `docs-markdown-conventions.mdc`（`~/.claude/CLAUDE.md` 経由で AI に自動適用済み）
 
+## 2604 --------------
+
+### 260403-Fri
+
+#### 260403-Fri｜ToDo・サブタスク完了日時の手動入力機能
+
+**記載** ClaudeCode
+
+---
+
+##### 新規ファイル
+
+- `gol-web/components/completed-at-dialog.tsx`
+  - shadcn/ui の `Dialog` を使った共通ダイアログコンポーネント
+  - `open` / `onConfirm(completedAt: string)` / `onCancel` の3 props
+  - `useEffect` でダイアログ open 時に現在日時をリセット
+  - `color-scheme: dark` でカレンダーアイコンを白色化
+
+##### 変更ファイル
+
+- `gol-web/app/dashboard/todo-summary-tab.tsx`
+  - `TodoFormData` に `completed_at?: string` を追加
+  - `pendingCompletion` ステートで「完了確定待ち」のコールバックを管理
+  - `handleChangeStatus`: 完了時のみダイアログを挟み、確定後に DB 更新
+  - `handleToggleSubtaskCompletion`: チェック ON 時のみダイアログを挟む（OFF はそのまま）
+  - 編集モーダル: `status === "completed"` のとき datetime-local の完了日時フィールドを表示
+  - `handleSaveTodo`: `formData.completed_at || new Date().toISOString()` でフォーム入力値を優先
+
+- `gol-web/app/dashboard/kanban-board.tsx`
+  - 同様の `pendingCompletion` ステートを追加
+  - `handleToggleSubtaskCompletion`: チェック ON 時のみダイアログ
+  - `handleDragEnd`: 完了カラムへのドロップ → ダイアログを表示し、確定後に楽観的更新 + DB 更新（キャンセル時は UI を元の状態で維持）
+  - 完了以外のカラムへのドロップは従来通り楽観的更新のまま
+
+##### 表示変更
+
+- `formatCompletedDate` / `formatSubtaskCompletedDate`（kanban-board）と `formatCompletedDateTime`（todo-summary-tab）の戻り値から `()` を削除
+
+---
+
 ## 2603 --------------
 
 ### 260324-Tue
