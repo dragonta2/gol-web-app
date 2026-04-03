@@ -166,24 +166,28 @@ export default async function DashboardPage({
           .order("display_order", { ascending: true })
       : { data: [] }
 
-  // 今日の日誌IDを取得（過去日誌確定後にToDoを完了させた場合、今日の日誌に報酬を記録するために使用）
+  // 今日の日誌IDと確定状態を取得（過去日誌確定後にToDoを完了させた場合、今日の日誌に報酬を記録するために使用）
   let todayDailyLogId: string | null = null
+  let todayDailyLogIsConfirmed: boolean = false
   if (selectedDate === todayStr) {
     todayDailyLogId = dailyLogId
+    todayDailyLogIsConfirmed = dailyLogData?.is_confirmed ?? false
   } else {
     const { data: todayLog } = await supabase
       .from("daily_logs")
-      .select("id")
+      .select("id, is_confirmed")
       .eq("user_id", user.id)
       .eq("log_date", todayStr)
       .single()
     todayDailyLogId = todayLog?.id ?? null
+    todayDailyLogIsConfirmed = todayLog?.is_confirmed ?? false
   }
 
-  // 未確定の日誌がある場合、その日の仮スコア（確定時に反映されるデルタ）を計算
+  // 未確定スコアは常に今日の日誌で計算（どの日付の日誌を見ていても今日の未確定スコアを表示し続ける）
   let pendingDeltas: { points_delta: number; exp_body_delta: number; exp_mind_delta: number; exp_spirit_delta: number } | null = null
-  if (dailyLogId && dailyLogData && !dailyLogData.is_confirmed) {
-    const deltas = await calculateDayDeltas(supabase, dailyLogId)
+  const pendingLogId = !todayDailyLogIsConfirmed ? todayDailyLogId : null
+  if (pendingLogId) {
+    const deltas = await calculateDayDeltas(supabase, pendingLogId)
     if (deltas && (deltas.points_delta !== 0 || deltas.exp_body_delta !== 0 || deltas.exp_mind_delta !== 0 || deltas.exp_spirit_delta !== 0)) {
       pendingDeltas = deltas
     }
