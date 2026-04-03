@@ -35,6 +35,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+env.local
 
 # 環境変数ひな形用の.env.exampleファイルは、Git管理化している
 !.env.example
