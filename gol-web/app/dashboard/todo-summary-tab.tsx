@@ -100,14 +100,17 @@ function TodoSummaryTab({
   const [addingSubtask, setAddingSubtask] = useState(false)
   const [deletingSubtaskId, setDeletingSubtaskId] = useState<string | null>(null)
   const [pendingCompletion, setPendingCompletion] = useState<{ onConfirm: (completedAt: string) => void } | null>(null)
+  // サブタスクのローカルstate（楽観的更新用）
+  const [localSubtasks, setLocalSubtasks] = useState<TodoSubtask[]>(todoSubtasks)
   // サブタスクが1件以上あるToDoはデフォルトで展開
   const [expandedTodos, setExpandedTodos] = useState<Set<string>>(() => {
     const ids = new Set<string>()
     for (const st of todoSubtasks) ids.add(st.todo_id)
     return ids
   })
-  // todoSubtasks の変更時（例: 再取得後）も、サブタスクがある ToDo を展開状態にしておく
+  // todoSubtasks の変更時（例: 再取得後）もローカルstateを同期し、展開状態を更新
   useEffect(() => {
+    setLocalSubtasks(todoSubtasks)
     if (todoSubtasks.length === 0) return
     setExpandedTodos((prev) => {
       const next = new Set(prev)
@@ -908,7 +911,7 @@ function TodoSummaryTab({
 
   // サブタスクを取得（todo_idでフィルタ）
   const getSubtasksForTodo = (todoId: string): TodoSubtask[] => {
-    return todoSubtasks
+    return localSubtasks
       .filter((st) => st.todo_id === todoId)
       .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
   }
@@ -931,6 +934,9 @@ function TodoSummaryTab({
       setPendingCompletion({
         onConfirm: async (completedAt: string) => {
           setPendingCompletion(null)
+          // 楽観的更新
+          const updated = { ...subtask, is_completed: true, completed_at: completedAt, updated_at: new Date().toISOString() }
+          setLocalSubtasks((prev) => prev.map((st) => st.id === subtask.id ? updated : st))
           try {
             const supabase = createClient()
             const { error } = await supabase
@@ -938,11 +944,11 @@ function TodoSummaryTab({
               .update({ is_completed: true, completed_at: completedAt })
               .eq("id", subtask.id)
             if (error) {
+              setLocalSubtasks((prev) => prev.map((st) => st.id === subtask.id ? subtask : st))
               toast.error("サブタスクの更新に失敗しました", { description: error.message })
-              return
             }
-            router.refresh()
           } catch (err) {
+            setLocalSubtasks((prev) => prev.map((st) => st.id === subtask.id ? subtask : st))
             toast.error("エラーが発生しました", {
               description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
             })
@@ -951,7 +957,9 @@ function TodoSummaryTab({
       })
       return
     }
-    // 未完了に戻す場合はダイアログなし
+    // 未完了に戻す場合はダイアログなし＆楽観的更新
+    const reverted = { ...subtask, is_completed: false, completed_at: null, updated_at: new Date().toISOString() }
+    setLocalSubtasks((prev) => prev.map((st) => st.id === subtask.id ? reverted : st))
     try {
       const supabase = createClient()
       const { error } = await supabase
@@ -959,12 +967,11 @@ function TodoSummaryTab({
         .update({ is_completed: false, completed_at: null })
         .eq("id", subtask.id)
       if (error) {
+        setLocalSubtasks((prev) => prev.map((st) => st.id === subtask.id ? subtask : st))
         toast.error("サブタスクの更新に失敗しました", { description: error.message })
-        return
       }
-      router.refresh()
     } catch (err) {
-      console.error("予期しないエラー:", err)
+      setLocalSubtasks((prev) => prev.map((st) => st.id === subtask.id ? subtask : st))
       toast.error("エラーが発生しました", {
         description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
       })
