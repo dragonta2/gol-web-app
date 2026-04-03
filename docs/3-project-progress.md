@@ -10,6 +10,46 @@
 
 ---
 
+### 260403-Fri --------------
+
+#### 260403-Fri｜辛口コーチングアドバイスをコンテキスト考慮型に改善
+
+**記載** ClaudeCode
+
+**実施内容:**
+
+- **課題の特定**: アドバイスプロンプトに習慣・ToDoの達成状況が渡されておらず、文脈なしで一律に叱る挙動だった
+
+- **`STRICT_COACH_SNIPPET` 改善**: 「習慣登録=意欲の証拠、責めずに本質を指摘」「叱るときは理由を添える」指示を追加（`lib/ai/personality-types.ts`）
+
+- **`createAdvicePrompt` 拡張**: `completedHabits`・`missedHabits`・`completedTodos` の3引数を追加。プロンプトを3段構成（①できたことを認める→②理由付き指摘→③具体的アクション）に変更（`lib/ai/openai.ts`）
+
+- **`batch/route.ts` 修正**: 習慣ログを `is_checked` で達成/未達成に分類して取得。`createAdvicePrompt` に習慣データを渡すよう変更
+
+- **`advice/route.ts` 修正**: リクエストで `dailyLogId` を受け取り、DBから習慣・ToDoデータを取得して渡すよう変更
+
+---
+
+### 260401-Wed --------------
+
+#### 260401-Wed｜確定後ToDo完了時のスコア記録先修正
+
+**記載** ClaudeCode
+
+**実施内容:**
+
+- **ToDoスコア設計の調査・検討**: 確定後にToDoを完了させた場合の挙動をコードで確認。`score-calculator.ts`・`kanban-board.tsx`・`todo-summary-tab.tsx` を調査
+
+- **設計方針を決定**: ToDoは日誌と独立した存在として扱い、確定後に完了させた場合は「今日（未確定）の日誌」に報酬を記録する。過去の確定済みスコアは変えない
+
+- **修正実装**: `page.tsx` で `todayDailyLogId` を別途取得・`KanbanBoard`・`TodoSummaryTab` に渡す。確定済み表示中は `effectiveDailyLogId`（今日の日誌ID）を使用するよう変更。カンバンボードの `isConfirmed` ブロックも解除
+
+- **2番メモに設計メモ追記**: `## 260401-Wed ToDoスコア設計メモ` として追記
+
+- **M1→M5 同期**: コミット・push（`a9fbc54`）+ Clipy backup 実行
+
+---
+
 ### 260326-Thu --------------
 
 #### 260326-Thu｜モバイルレスポンシブ対応 進捗確認・コミット

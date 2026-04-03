@@ -176,20 +176,29 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // その日の習慣・ToDoを取得（判定・あらすじの参考に使う）
+    // その日の習慣・ToDoを取得（判定・あらすじ・アドバイスの参考に使う）
     const { data: habitLogs } = await supabase
       .from('habit_logs')
       .select('habit_id, is_checked')
       .eq('daily_log_id', dailyLogId);
-    const habitIdsChecked =
-      habitLogs?.filter((h) => h.is_checked).map((h) => h.habit_id) ?? [];
-    const habitIdSet = [...new Set(habitIdsChecked)];
+    const habitLogsAll = habitLogs ?? [];
+    const habitIdsCompleted = [...new Set(habitLogsAll.filter((h) => h.is_checked).map((h) => h.habit_id))];
+    const habitIdsMissed = [...new Set(habitLogsAll.filter((h) => !h.is_checked).map((h) => h.habit_id))];
+    const allHabitIds = [...new Set([...habitIdsCompleted, ...habitIdsMissed])];
     const { data: habitsRows } =
-      habitIdSet.length > 0
-        ? await supabase.from('habits').select('id, habit_name').in('id', habitIdSet)
+      allHabitIds.length > 0
+        ? await supabase.from('habits').select('id, habit_name').in('id', allHabitIds)
         : { data: [] };
-    const habits: string[] =
-      habitsRows?.map((h) => (h as { habit_name: string }).habit_name?.trim()).filter(Boolean) ?? [];
+    const habitMap = new Map(
+      habitsRows?.map((h) => [h.id, (h as { id: string; habit_name: string }).habit_name?.trim()]) ?? []
+    );
+    const completedHabits: string[] = habitIdsCompleted
+      .map((id) => habitMap.get(id))
+      .filter(Boolean) as string[];
+    const missedHabits: string[] = habitIdsMissed
+      .map((id) => habitMap.get(id))
+      .filter(Boolean) as string[];
+    const habits = completedHabits; // judgment / story 用（達成した習慣のみ）
 
     const { data: todoLogs } = await supabase
       .from('todo_logs')
@@ -293,7 +302,10 @@ export async function POST(request: NextRequest) {
       worldConfig,
       personalityAddition,
       nickname,
-      { advice_min: aiLimits.advice_min, advice_max: aiLimits.advice_max }
+      { advice_min: aiLimits.advice_min, advice_max: aiLimits.advice_max },
+      completedHabits,
+      missedHabits,
+      todos
     );
     const adviceCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',

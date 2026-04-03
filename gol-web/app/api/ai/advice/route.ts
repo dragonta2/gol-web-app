@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const {
+      dailyLogId,
       journalText,
       impressionText,
       conditionBody,
@@ -85,6 +86,37 @@ export async function POST(request: NextRequest) {
     const useAsDisplayName = finalProfile?.use_username_as_display_name !== false;
     const nickname = useAsDisplayName ? (finalProfile?.username ?? '').trim() : '';
 
+    // dailyLogId がある場合は習慣・ToDoデータをDBから取得
+    let completedHabits: string[] = [];
+    let missedHabits: string[] = [];
+    let completedTodos: string[] = [];
+
+    if (dailyLogId && typeof dailyLogId === 'string') {
+      const [{ data: habitLogs }, { data: todoLogs }] = await Promise.all([
+        supabase.from('habit_logs').select('habit_id, is_checked').eq('daily_log_id', dailyLogId),
+        supabase.from('todo_logs').select('todo_id').eq('daily_log_id', dailyLogId),
+      ]);
+      const habitLogsAll = habitLogs ?? [];
+      const habitIdsCompleted = [...new Set(habitLogsAll.filter((h) => h.is_checked).map((h) => h.habit_id))];
+      const habitIdsMissed = [...new Set(habitLogsAll.filter((h) => !h.is_checked).map((h) => h.habit_id))];
+      const allHabitIds = [...new Set([...habitIdsCompleted, ...habitIdsMissed])];
+      if (allHabitIds.length > 0) {
+        const { data: habitsRows } = await supabase
+          .from('habits').select('id, habit_name').in('id', allHabitIds);
+        const habitMap = new Map(
+          habitsRows?.map((h) => [h.id, (h as { id: string; habit_name: string }).habit_name?.trim()]) ?? []
+        );
+        completedHabits = habitIdsCompleted.map((id) => habitMap.get(id)).filter(Boolean) as string[];
+        missedHabits = habitIdsMissed.map((id) => habitMap.get(id)).filter(Boolean) as string[];
+      }
+      const todoIds = [...new Set(todoLogs?.map((t) => t.todo_id) ?? [])];
+      if (todoIds.length > 0) {
+        const { data: todosRows } = await supabase
+          .from('todos').select('id, task_name').in('id', todoIds);
+        completedTodos = todosRows?.map((t) => (t as { task_name: string }).task_name?.trim()).filter(Boolean) as string[] ?? [];
+      }
+    }
+
     let override: Record<string, unknown> | null = null;
     if (!overrideError && overrideRows?.config_json && typeof overrideRows.config_json === 'object') {
       override = overrideRows.config_json as Record<string, unknown>;
@@ -118,7 +150,11 @@ export async function POST(request: NextRequest) {
       conditionMood,
       worldConfig,
       personalityAddition,
-      nickname
+      nickname,
+      null,
+      completedHabits,
+      missedHabits,
+      completedTodos
     );
 
     const completion = await openai.chat.completions.create({
