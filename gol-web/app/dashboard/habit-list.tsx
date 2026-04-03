@@ -36,6 +36,8 @@ import {
   buildHabitTree,
   buildManagementGroups,
   isParentCompleted,
+  HabitMobileDetail,
+  getHabitPointsExpPartsUtil,
 } from './habit-list-utils';
 
 function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false }: HabitListProps) {
@@ -112,6 +114,8 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   const [isBonusExpanded, setIsBonusExpanded] = useState(true);
   const [isGoodLowFreqExpanded, setIsGoodLowFreqExpanded] = useState(false);
   const [isBadLowFreqExpanded, setIsBadLowFreqExpanded] = useState(false);
+  // モバイル用：習慣の詳細展開（週末除外・Comp対象外ボタン表示）
+  const [expandedHabitId, setExpandedHabitId] = useState<string | null>(null);
 
   // フィルター適用（習慣では難易度フィルターなし）
   const applyFilters = (habits: HabitWithLog[]) => habits;
