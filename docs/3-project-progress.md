@@ -10,6 +10,80 @@
 
 ---
 
+### 260403-Fri --------------
+
+#### 260403-Fri｜辛口コーチングアドバイスをコンテキスト考慮型に改善
+
+**記載** ClaudeCode
+
+**実施内容:**
+
+- **課題の特定**: アドバイスプロンプトに習慣・ToDoの達成状況が渡されておらず、文脈なしで一律に叱る挙動だった
+
+- **`STRICT_COACH_SNIPPET` 改善**: 「習慣登録=意欲の証拠、責めずに本質を指摘」「叱るときは理由を添える」指示を追加（`lib/ai/personality-types.ts`）
+
+- **`createAdvicePrompt` 拡張**: `completedHabits`・`missedHabits`・`completedTodos` の3引数を追加。プロンプトを3段構成（①できたことを認める→②理由付き指摘→③具体的アクション）に変更（`lib/ai/openai.ts`）
+
+- **`batch/route.ts` 修正**: 習慣ログを `is_checked` で達成/未達成に分類して取得。`createAdvicePrompt` に習慣データを渡すよう変更
+
+- **`advice/route.ts` 修正**: リクエストで `dailyLogId` を受け取り、DBから習慣・ToDoデータを取得して渡すよう変更
+
+---
+
+### 260401-Wed --------------
+
+#### 260401-Wed｜確定後ToDo完了時のスコア記録先修正
+
+**記載** ClaudeCode
+
+**実施内容:**
+
+- **ToDoスコア設計の調査・検討**: 確定後にToDoを完了させた場合の挙動をコードで確認。`score-calculator.ts`・`kanban-board.tsx`・`todo-summary-tab.tsx` を調査
+
+- **設計方針を決定**: ToDoは日誌と独立した存在として扱い、確定後に完了させた場合は「今日（未確定）の日誌」に報酬を記録する。過去の確定済みスコアは変えない
+
+- **修正実装**: `page.tsx` で `todayDailyLogId` を別途取得・`KanbanBoard`・`TodoSummaryTab` に渡す。確定済み表示中は `effectiveDailyLogId`（今日の日誌ID）を使用するよう変更。カンバンボードの `isConfirmed` ブロックも解除
+
+- **2番メモに設計メモ追記**: `## 260401-Wed ToDoスコア設計メモ` として追記
+
+- **M1→M5 同期**: コミット・push（`a9fbc54`）+ Clipy backup 実行
+
+---
+
+### 260326-Thu --------------
+
+#### 260326-Thu｜モバイルレスポンシブ対応 進捗確認・コミット
+
+**記載** ClaudeCode
+
+**実施内容:**
+
+- **260325-Wed の進捗メモ追記**: Playwright モバイル設定・日誌・カンバン対応内容を 3番 に記載
+
+- **モバイルレスポンシブ対応タスク定義**: 習慣リストの固定幅対応・タッチターゲットサイズ確認・子習慣インデント対応の3タスク作成
+
+- **全変更をコミット**: `c070a99` として Playwright 設定・レスポンシブ対応・ドキュメント更新を反映。usage 制限の理由で習慣リスト詳細対応は次回へ
+
+---
+
+### 260325-Wed --------------
+
+#### 260325-Wed｜モバイルレスポンシブ対応（日誌・カンバン・Playwright設定）
+
+**記載** ClaudeCode
+
+**実施内容:**
+
+- **Playwright モバイル設定**: Pixel 5 / iPhone 12 プロジェクト追加。`npm run test:e2e:mobile` コマンド追加。`gol-web/e2e/mobile-visual.spec.ts` 新規作成
+
+- **日誌インプレッションエリア**: `journal-impression-sections.tsx` のテキストエリア固定高さ `h-[800px]` をレスポンシブ対応に変更
+
+- **AI判定結果エリア**: `journal-form.tsx` の grid レイアウト `grid-cols-2` → `grid-cols-1 sm:grid-cols-2` に変更（モバイルでは1列、small以上で2列）
+
+- **カンバンボード**: `todo-summary-tab.tsx` の3列カンバン `md:grid-cols-3` → `sm:grid-cols-2 md:grid-cols-3` に変更（モバイルでは2列、medium以上で3列）
+
+---
+
 ### 260324-Tue --------------
 
 #### 260324-Tue｜設定ページ削除・導線統一・管理者アカウント追加

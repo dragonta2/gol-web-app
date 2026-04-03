@@ -35,7 +35,10 @@ export const PERSONALITY_TYPES: PersonalityType[] = [
 
 /** 辛口コーチをオンにしたときに追加する指示（独立した設定） */
 export const STRICT_COACH_SNIPPET =
-  '辛口で本質を突くコメントを心がけてください。厳しめのトーンで。';
+  '辛口で本質を突くコメントを心がけてください。厳しめのトーンで。' +
+  'ただし、習慣として登録しているが今日達成できなかったものは「やりたい意欲がある証拠」です。' +
+  'できなかった事実を責めず、なぜできなかったかの本質を鋭く指摘してください。' +
+  '叱るときは必ず理由を添えること（「〜だから〜が問題だ」の形）。';
 
 /** デフォルトの性格タイプ（未設定時） */
 export const DEFAULT_PERSONALITY_TYPE_ID: PersonalityTypeId = 'neutral';

@@ -87,6 +87,9 @@ ${habitsBlock}${todosBlock}${referenceNote}以下のJSON形式で回答してく
  * @param personalityAddition 性格タイプによる追加指示（省略可）。世界観の口調の後に「加えて」で結合
  * @param nickname ユーザーのニックネーム（アドバイス冒頭の「〇〇よ。」に使用。未設定時は世界観のデフォルト名）
  * @param limits アドバイスの文字数制限（省略時は 200-300 文字の指示）
+ * @param completedHabits 今日達成した習慣の名前一覧
+ * @param missedHabits 習慣として登録しているが今日達成できなかった習慣の名前一覧
+ * @param completedTodos 今日完了したToDoの名前一覧
  * @returns プロンプト文字列
  */
 export function createAdvicePrompt(
@@ -97,7 +100,10 @@ export function createAdvicePrompt(
   worldConfig?: StoryWorldConfig | null,
   personalityAddition?: string | null,
   nickname: string = '',
-  limits?: { advice_min: number; advice_max: number } | null
+  limits?: { advice_min: number; advice_max: number } | null,
+  completedHabits?: string[],
+  missedHabits?: string[],
+  completedTodos?: string[]
 ): string {
   const toneInstruction =
     worldConfig?.adviceToneInstruction ??
@@ -109,11 +115,31 @@ export function createAdvicePrompt(
   const displayName = nickname.trim() || (worldConfig?.protagonistName ?? '勇者');
   const nameInstruction = `【重要】アドバイスの冒頭の1行目は「${displayName}よ。」という呼びかけのみにしてください。呼びかけ以外の文章は2行目以降に書いてください。`;
 
+  const completedHabitsBlock = completedHabits && completedHabits.length > 0
+    ? completedHabits.join('、')
+    : 'なし';
+  const missedHabitsBlock = missedHabits && missedHabits.length > 0
+    ? missedHabits.join('、')
+    : 'なし';
+  const completedTodosBlock = completedTodos && completedTodos.length > 0
+    ? completedTodos.join('、')
+    : 'なし';
+
   return `${toneBlock}
 
 ${nameInstruction}
 
 以下の情報を基に、コーチングアドバイスを生成してください。
+
+【今日達成した習慣】
+${completedHabitsBlock}
+
+【今日できなかった習慣（目標として登録済み）】
+${missedHabitsBlock}
+※「今日できなかった習慣」は「やりたい意欲がある証拠」です。できなかった事実を責めず、なぜできなかったかの本質を指摘してください。
+
+【完了したToDo】
+${completedTodosBlock}
 
 【日誌本文】
 ${journalText || '（未記入）'}
@@ -123,6 +149,11 @@ ${impressionText || '（未記入）'}
 
 【体調スコア】${conditionBody}/100
 【気分スコア】${conditionMood}/100
+
+アドバイスは以下の3段構成で書いてください：
+① できたことを1文で認める
+② 課題・指摘を「〜だから〜が問題だ」と理由付きで述べる
+③ 明日への具体的なアクションを1つ示す
 
 ${limits && limits.advice_max > 0 ? `${limits.advice_min}-${limits.advice_max}文字で生成してください。` : '200-300文字で生成してください。'}`;
 }
