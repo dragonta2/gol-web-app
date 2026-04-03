@@ -863,7 +863,7 @@ function TodoSummaryTab({
     }
   }
 
-  // ToDoのステータスを変更（サマリー画面用。todo_logs は触らず todos.status のみ更新）
+  // ToDoのステータスを変更（サマリー画面用）
   const handleChangeStatus = async (todo: Todo, newStatus: "active" | "in_progress" | "completed") => {
     if (newStatus === "completed") {
       setPendingCompletion({
@@ -876,6 +876,7 @@ function TodoSummaryTab({
               .update({ status: newStatus, completed_at: completedAt })
               .eq("id", todo.id)
             if (error) throw error
+            await handleTaskCompletion(todo)
             router.refresh()
           } catch (err) {
             toast.error("ステータスの変更に失敗しました", {
@@ -886,6 +887,7 @@ function TodoSummaryTab({
       })
       return
     }
+    const wasCompleted = todo.status === "completed"
     try {
       const supabase = createClient()
       const { error } = await supabase
@@ -893,6 +895,9 @@ function TodoSummaryTab({
         .update({ status: newStatus, completed_at: null })
         .eq("id", todo.id)
       if (error) throw error
+      if (wasCompleted) {
+        await handleTaskUncompletion(todo)
+      }
       router.refresh()
     } catch (err) {
       toast.error("ステータスの変更に失敗しました", {
