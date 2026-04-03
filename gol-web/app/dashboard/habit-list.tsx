@@ -129,10 +129,31 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
   const bonusHabits = applyFilters(habitsWithLogs.filter((h) => h.habit_type === 'bonus' && h.is_active !== false));
 
   // 表示用ツリー（親→子のネスト）
-  const goodHighHabits = useMemo(() => goodHabits.filter((h) => !h.is_low_frequency), [goodHabits]);
-  const goodLowHabits = useMemo(() => goodHabits.filter((h) => h.is_low_frequency), [goodHabits]);
-  const badHighHabits = useMemo(() => badHabits.filter((h) => !h.is_low_frequency), [badHabits]);
-  const badLowHabits = useMemo(() => badHabits.filter((h) => h.is_low_frequency), [badHabits]);
+  // 低頻度ゾーン = 親が低頻度の習慣 + その子習慣（子の is_low_frequency に関わらず）
+  const goodLowParentIds = useMemo(
+    () => new Set(goodHabits.filter((h) => !h.parent_habit_id && h.is_low_frequency).map((h) => h.id)),
+    [goodHabits]
+  );
+  const goodLowHabits = useMemo(
+    () => goodHabits.filter((h) => h.is_low_frequency || (h.parent_habit_id != null && goodLowParentIds.has(h.parent_habit_id))),
+    [goodHabits, goodLowParentIds]
+  );
+  const goodHighHabits = useMemo(() => {
+    const lowIds = new Set(goodLowHabits.map((h) => h.id));
+    return goodHabits.filter((h) => !lowIds.has(h.id));
+  }, [goodHabits, goodLowHabits]);
+  const badLowParentIds = useMemo(
+    () => new Set(badHabits.filter((h) => !h.parent_habit_id && h.is_low_frequency).map((h) => h.id)),
+    [badHabits]
+  );
+  const badLowHabits = useMemo(
+    () => badHabits.filter((h) => h.is_low_frequency || (h.parent_habit_id != null && badLowParentIds.has(h.parent_habit_id))),
+    [badHabits, badLowParentIds]
+  );
+  const badHighHabits = useMemo(() => {
+    const lowIds = new Set(badLowHabits.map((h) => h.id));
+    return badHabits.filter((h) => !lowIds.has(h.id));
+  }, [badHabits, badLowHabits]);
   const goodTree = useMemo(() => buildHabitTree(goodHighHabits), [goodHighHabits]);
   const goodLowTree = useMemo(() => buildHabitTree(goodLowHabits), [goodLowHabits]);
   const badTree = useMemo(() => buildHabitTree(badHighHabits), [badHighHabits]);
@@ -1257,78 +1278,155 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                 </span>
               </button>
               {isGoodLowFreqExpanded && (
-                <div className="space-y-3 w-full min-w-0 overflow-x-auto pl-3">
+                <div className="space-y-3 w-full min-w-0 overflow-x-auto pl-3 pt-3">
                   {goodLowTree.map(({ parent, children }) => {
                     const parentChecked = isParentCompleted(parent, children);
                     const hasChildren = children.length > 0;
                     return (
                       <div key={parent.id} className="space-y-1">
+                        {/* 親習慣行：子がいる場合は「親」ラベル（チェックなし） */}
                         {hasChildren ? (
-                          <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
-                              <span className="text-[calc(1em-2px)] text-zinc-400 truncate min-w-0" title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
-                                {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
-                              </span>
+                          <>
+                            <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
+                                <span className="text-[calc(1em-2px)] text-zinc-400 truncate min-w-0" title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
+                                  {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                                </span>
+                                <button
+                                  type="button"
+                                  className="sm:hidden shrink-0 p-0.5 text-zinc-500 hover:text-zinc-300 transition-colors"
+                                  onClick={() => setExpandedHabitId(expandedHabitId === parent.id ? null : parent.id)}
+                                  aria-label="詳細を表示"
+                                  aria-expanded={expandedHabitId === parent.id}
+                                >
+                                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedHabitId === parent.id ? 'rotate-180' : ''}`} />
+                                </button>
+                              </div>
+                              <div className="hidden sm:flex items-center justify-end gap-2 shrink-0 min-w-[41rem]">
+                                <div className="w-16" />
+                                <div className="flex items-baseline gap-1 text-sm text-zinc-100 whitespace-nowrap w-[14rem] min-w-[14rem]">
+                                  <span className="text-zinc-500">ー</span>
+                                </div>
+                                <div className="flex items-center shrink-0 ml-3">
+                                  <div className="w-[4.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                    <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeWeekends(parent.id); }} disabled={isConfirmed} title="土日祝は任意（進捗に影響しません）" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${parent.exclude_weekends ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>週末除外</button>
+                                  </div>
+                                  <div className="w-[5.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                    <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeFromComplete(parent.id); }} disabled={isConfirmed} title="Completeボーナス対象外" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${parent.exclude_from_complete ? 'text-yellow-400 bg-yellow-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>Comp対象外</button>
+                                  </div>
+                                </div>
+                                <div className="w-[13rem] min-w-[13rem]" />
+                              </div>
                             </div>
-                          </div>
+                            {expandedHabitId === parent.id && (
+                              <div className="sm:hidden pl-3 pb-2">
+                                <HabitMobileDetail habit={parent} isConfirmed={isConfirmed} onToggleExcludeWeekends={toggleExcludeWeekends} onToggleExcludeFromComplete={toggleExcludeFromComplete} />
+                              </div>
+                            )}
+                          </>
                         ) : (
-                          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
-                            <button
-                              id={`habit-${parent.id}`}
-                              onClick={() => !isConfirmed && toggleCheck(parent.id)}
-                              onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(parent.id); } }}
-                              aria-label={`${parent.habit_name}を${parentChecked ? '未完了' : '完了'}にする`}
-                              aria-checked={parentChecked}
-                              aria-disabled={isConfirmed}
-                              role="checkbox"
-                              tabIndex={isConfirmed ? -1 : 0}
-                              disabled={isConfirmed}
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${parentChecked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
-                            >
-                              {parentChecked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
-                            </button>
-                            <label htmlFor={`habit-${parent.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`} title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
-                              {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
-                            </label>
-                            <div className="flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
-                              <div className="w-16" />
-                              <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]">
-                                <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(parent).g}</span>
-                                {(getHabitPointsExpParts(parent).body !== 0 || getHabitPointsExpParts(parent).mind !== 0 || getHabitPointsExpParts(parent).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(parent).body} mind={getHabitPointsExpParts(parent).mind} spirit={getHabitPointsExpParts(parent).spirit} signed /></>)}
+                          <>
+                            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
+                              <button
+                                id={`habit-${parent.id}`}
+                                onClick={() => !isConfirmed && toggleCheck(parent.id)}
+                                onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(parent.id); } }}
+                                aria-label={`${parent.habit_name}を${parentChecked ? '未完了' : '完了'}にする`}
+                                aria-checked={parentChecked}
+                                aria-disabled={isConfirmed}
+                                role="checkbox"
+                                tabIndex={isConfirmed ? -1 : 0}
+                                disabled={isConfirmed}
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${parentChecked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                              >
+                                {parentChecked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
+                              </button>
+                              <label htmlFor={`habit-${parent.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`} title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
+                                {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <div className="hidden sm:flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
+                                  <div className="w-16" />
+                                  <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]" title="ゴルド・EXPの加減算設定">
+                                    <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(parent).g}</span>
+                                    {(getHabitPointsExpParts(parent).body !== 0 || getHabitPointsExpParts(parent).mind !== 0 || getHabitPointsExpParts(parent).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(parent).body} mind={getHabitPointsExpParts(parent).mind} spirit={getHabitPointsExpParts(parent).spirit} signed /></>)}
+                                  </div>
+                                  <div className="flex items-center shrink-0 ml-3">
+                                    <div className="w-[4.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeWeekends(parent.id); }} disabled={isConfirmed} title="土日祝は任意（進捗に影響しません）" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${parent.exclude_weekends ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>週末除外</button>
+                                    </div>
+                                    <div className="w-[5.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeFromComplete(parent.id); }} disabled={isConfirmed} title="Completeボーナス対象外" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${parent.exclude_from_complete ? 'text-yellow-400 bg-yellow-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>Comp対象外</button>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-baseline gap-1 text-[17px] font-bold whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 text-cyan-400" title="チェック時に加算・減算される数値">
+                                    {(() => { const { g, body, mind, spirit } = getCheckTimeDeltaParts({ ...parent, checked: parentChecked }); const hasExp = body !== 0 || mind !== 0 || spirit !== 0; if (!g && !hasExp) return null; return (<>{g && <span className="shrink-0">{g}</span>}{g && hasExp && <span className="shrink-0">｜</span>}{hasExp && <ExpWithIcons body={body} mind={mind} spirit={spirit} signed />}</>); })()}
+                                  </div>
+                                </div>
+                                <button type="button" className="sm:hidden p-0.5 text-zinc-500 hover:text-zinc-300 transition-colors" onClick={() => setExpandedHabitId(expandedHabitId === parent.id ? null : parent.id)} aria-label="詳細を表示" aria-expanded={expandedHabitId === parent.id}>
+                                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedHabitId === parent.id ? 'rotate-180' : ''}`} />
+                                </button>
                               </div>
-                              <div className="w-[10rem] min-w-[10rem]" />
                             </div>
-                          </div>
+                            {expandedHabitId === parent.id && (
+                              <div className="sm:hidden pl-7 pb-2">
+                                <HabitMobileDetail habit={parent} isConfirmed={isConfirmed} onToggleExcludeWeekends={toggleExcludeWeekends} onToggleExcludeFromComplete={toggleExcludeFromComplete} />
+                              </div>
+                            )}
+                          </>
                         )}
+                        {/* 子習慣行 */}
                         {children.map((child) => (
-                          <div key={child.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full pl-6">
-                            <button
-                              id={`habit-${child.id}`}
-                              onClick={() => !isConfirmed && toggleCheck(child.id)}
-                              onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(child.id); } }}
-                              aria-label={`${child.habit_name}を${child.checked ? '未完了' : '完了'}にする`}
-                              aria-checked={child.checked}
-                              aria-disabled={isConfirmed}
-                              role="checkbox"
-                              tabIndex={isConfirmed ? -1 : 0}
-                              disabled={isConfirmed}
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${child.checked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
-                            >
-                              {child.checked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
-                            </button>
-                            <label htmlFor={`habit-${child.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}>
-                              {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
-                            </label>
-                            <div className="flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
-                              <div className="w-16" />
-                              <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]">
-                                <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(child).g}</span>
-                                {(getHabitPointsExpParts(child).body !== 0 || getHabitPointsExpParts(child).mind !== 0 || getHabitPointsExpParts(child).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(child).body} mind={getHabitPointsExpParts(child).mind} spirit={getHabitPointsExpParts(child).spirit} signed /></>)}
+                          <React.Fragment key={child.id}>
+                            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full pl-6">
+                              <button
+                                id={`habit-${child.id}`}
+                                onClick={() => !isConfirmed && toggleCheck(child.id)}
+                                onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(child.id); } }}
+                                aria-label={`${child.habit_name}を${child.checked ? '未完了' : '完了'}にする`}
+                                aria-checked={child.checked}
+                                aria-disabled={isConfirmed}
+                                role="checkbox"
+                                tabIndex={isConfirmed ? -1 : 0}
+                                disabled={isConfirmed}
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${child.checked ? 'bg-cyan-500 border-cyan-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                              >
+                                {child.checked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
+                              </button>
+                              <label htmlFor={`habit-${child.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}>
+                                {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <div className="hidden sm:flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
+                                  <div className="w-16" />
+                                  <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]" title="ゴルド・EXPの加減算設定">
+                                    <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(child).g}</span>
+                                    {(getHabitPointsExpParts(child).body !== 0 || getHabitPointsExpParts(child).mind !== 0 || getHabitPointsExpParts(child).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(child).body} mind={getHabitPointsExpParts(child).mind} spirit={getHabitPointsExpParts(child).spirit} signed /></>)}
+                                  </div>
+                                  <div className="flex items-center shrink-0 ml-3">
+                                    <div className="w-[4.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeWeekends(child.id); }} disabled={isConfirmed} title="土日祝は任意（進捗に影響しません）" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${child.exclude_weekends ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>週末除外</button>
+                                    </div>
+                                    <div className="w-[5.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeFromComplete(child.id); }} disabled={isConfirmed} title="Completeボーナス対象外" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${child.exclude_from_complete ? 'text-yellow-400 bg-yellow-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>Comp対象外</button>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-baseline gap-1 text-[17px] font-bold whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 text-cyan-400" title="チェック時に加算・減算される数値">
+                                    {(() => { const { g, body, mind, spirit } = getCheckTimeDeltaParts(child); const hasExp = body !== 0 || mind !== 0 || spirit !== 0; if (!g && !hasExp) return null; return (<>{g && <span className="shrink-0">{g}</span>}{g && hasExp && <span className="shrink-0">｜</span>}{hasExp && <ExpWithIcons body={body} mind={mind} spirit={spirit} signed />}</>); })()}
+                                  </div>
+                                </div>
+                                <button type="button" className="sm:hidden p-0.5 text-zinc-500 hover:text-zinc-300 transition-colors" onClick={() => setExpandedHabitId(expandedHabitId === child.id ? null : child.id)} aria-label="詳細を表示" aria-expanded={expandedHabitId === child.id}>
+                                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedHabitId === child.id ? 'rotate-180' : ''}`} />
+                                </button>
                               </div>
-                              <div className="w-[10rem] min-w-[10rem]" />
                             </div>
-                          </div>
+                            {expandedHabitId === child.id && (
+                              <div className="sm:hidden pl-11 pb-2">
+                                <HabitMobileDetail habit={child} isConfirmed={isConfirmed} onToggleExcludeWeekends={toggleExcludeWeekends} onToggleExcludeFromComplete={toggleExcludeFromComplete} />
+                              </div>
+                            )}
+                          </React.Fragment>
                         ))}
                       </div>
                     );
@@ -1627,78 +1725,149 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                 </span>
               </button>
               {isBadLowFreqExpanded && (
-                <div className="space-y-3 w-full min-w-0 overflow-x-auto pl-3">
+                <div className="space-y-3 w-full min-w-0 overflow-x-auto pl-3 pt-3">
                   {badLowTree.map(({ parent, children }) => {
                     const parentChecked = isParentCompleted(parent, children);
                     const hasChildren = children.length > 0;
                     return (
                       <div key={parent.id} className="space-y-1">
+                        {/* 親習慣行：子がいる場合は「親」ラベル（チェックなし） */}
                         {hasChildren ? (
-                          <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
-                              <span className="text-[calc(1em-2px)] text-zinc-400 truncate min-w-0" title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
-                                {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
-                              </span>
+                          <>
+                            <div className="grid grid-cols-[1fr_auto] items-center gap-x-3 text-base w-full min-w-0">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs px-2 py-0.5 bg-cyan-900/50 text-cyan-300 rounded shrink-0">親</span>
+                                <span className="text-[calc(1em-2px)] text-zinc-400 truncate min-w-0" title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
+                                  {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                                </span>
+                                <button type="button" className="sm:hidden shrink-0 p-0.5 text-zinc-500 hover:text-zinc-300 transition-colors" onClick={() => setExpandedHabitId(expandedHabitId === parent.id ? null : parent.id)} aria-label="詳細を表示" aria-expanded={expandedHabitId === parent.id}>
+                                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedHabitId === parent.id ? 'rotate-180' : ''}`} />
+                                </button>
+                              </div>
+                              <div className="hidden sm:flex items-center justify-end gap-2 shrink-0 min-w-[41rem]">
+                                <div className="w-16" />
+                                <div className="flex items-baseline gap-1 text-sm text-zinc-100 whitespace-nowrap w-[14rem] min-w-[14rem]">
+                                  <span className="text-zinc-500">ー</span>
+                                </div>
+                                <div className="flex items-center shrink-0 ml-3">
+                                  <div className="w-[4.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                    <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeWeekends(parent.id); }} disabled={isConfirmed} title="土日祝は任意（進捗に影響しません）" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${parent.exclude_weekends ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>週末除外</button>
+                                  </div>
+                                  <div className="w-[5.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                    <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeFromComplete(parent.id); }} disabled={isConfirmed} title="Completeボーナス対象外" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${parent.exclude_from_complete ? 'text-yellow-400 bg-yellow-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>Comp対象外</button>
+                                  </div>
+                                </div>
+                                <div className="w-[13rem] min-w-[13rem]" />
+                              </div>
                             </div>
-                          </div>
+                            {expandedHabitId === parent.id && (
+                              <div className="sm:hidden pl-3 pb-2">
+                                <HabitMobileDetail habit={parent} isConfirmed={isConfirmed} onToggleExcludeWeekends={toggleExcludeWeekends} onToggleExcludeFromComplete={toggleExcludeFromComplete} />
+                              </div>
+                            )}
+                          </>
                         ) : (
-                          <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
-                            <button
-                              id={`habit-${parent.id}`}
-                              onClick={() => !isConfirmed && toggleCheck(parent.id)}
-                              onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(parent.id); } }}
-                              aria-label={`${parent.habit_name}を${parentChecked ? '未完了' : '完了'}にする`}
-                              aria-checked={parentChecked}
-                              aria-disabled={isConfirmed}
-                              role="checkbox"
-                              tabIndex={isConfirmed ? -1 : 0}
-                              disabled={isConfirmed}
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${parentChecked ? 'bg-red-500 border-red-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
-                            >
-                              {parentChecked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
-                            </button>
-                            <label htmlFor={`habit-${parent.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`} title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
-                              {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
-                            </label>
-                            <div className="flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
-                              <div className="w-16" />
-                              <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]">
-                                <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(parent).g}</span>
-                                {(getHabitPointsExpParts(parent).body !== 0 || getHabitPointsExpParts(parent).mind !== 0 || getHabitPointsExpParts(parent).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(parent).body} mind={getHabitPointsExpParts(parent).mind} spirit={getHabitPointsExpParts(parent).spirit} signed /></>)}
+                          <>
+                            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full">
+                              <button
+                                id={`habit-${parent.id}`}
+                                onClick={() => !isConfirmed && toggleCheck(parent.id)}
+                                onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(parent.id); } }}
+                                aria-label={`${parent.habit_name}を${parentChecked ? '未完了' : '完了'}にする`}
+                                aria-checked={parentChecked}
+                                aria-disabled={isConfirmed}
+                                role="checkbox"
+                                tabIndex={isConfirmed ? -1 : 0}
+                                disabled={isConfirmed}
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${parentChecked ? 'bg-red-500 border-red-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                              >
+                                {parentChecked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
+                              </button>
+                              <label htmlFor={`habit-${parent.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${parentChecked ? 'text-zinc-100' : 'text-zinc-400'}`} title={[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜') || undefined}>
+                                {[parent.habit_name, parent.description?.trim()].filter(Boolean).join('｜')}
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <div className="hidden sm:flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
+                                  <div className="w-16" />
+                                  <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]" title="ゴルド・EXPの加減算設定">
+                                    <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(parent).g}</span>
+                                    {(getHabitPointsExpParts(parent).body !== 0 || getHabitPointsExpParts(parent).mind !== 0 || getHabitPointsExpParts(parent).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(parent).body} mind={getHabitPointsExpParts(parent).mind} spirit={getHabitPointsExpParts(parent).spirit} signed /></>)}
+                                  </div>
+                                  <div className="flex items-center shrink-0 ml-3">
+                                    <div className="w-[4.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeWeekends(parent.id); }} disabled={isConfirmed} title="土日祝は任意（進捗に影響しません）" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${parent.exclude_weekends ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>週末除外</button>
+                                    </div>
+                                    <div className="w-[5.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeFromComplete(parent.id); }} disabled={isConfirmed} title="Completeボーナス対象外" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${parent.exclude_from_complete ? 'text-yellow-400 bg-yellow-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>Comp対象外</button>
+                                    </div>
+                                  </div>
+                                  <div className={`flex items-baseline gap-1 text-[17px] font-bold whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${parentChecked ? 'text-red-400' : 'text-cyan-400'}`} title="チェック時に加算・減算される数値">
+                                    {(() => { const { g, body, mind, spirit } = getCheckTimeDeltaParts({ ...parent, checked: parentChecked }); const hasExp = body !== 0 || mind !== 0 || spirit !== 0; if (!g && !hasExp) return null; return (<>{g && <span className="shrink-0">{g}</span>}{g && hasExp && <span className="shrink-0">｜</span>}{hasExp && <ExpWithIcons body={body} mind={mind} spirit={spirit} signed />}</>); })()}
+                                  </div>
+                                </div>
+                                <button type="button" className="sm:hidden p-0.5 text-zinc-500 hover:text-zinc-300 transition-colors" onClick={() => setExpandedHabitId(expandedHabitId === parent.id ? null : parent.id)} aria-label="詳細を表示" aria-expanded={expandedHabitId === parent.id}>
+                                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedHabitId === parent.id ? 'rotate-180' : ''}`} />
+                                </button>
                               </div>
-                              <div className="w-[10rem] min-w-[10rem]" />
                             </div>
-                          </div>
+                            {expandedHabitId === parent.id && (
+                              <div className="sm:hidden pl-7 pb-2">
+                                <HabitMobileDetail habit={parent} isConfirmed={isConfirmed} onToggleExcludeWeekends={toggleExcludeWeekends} onToggleExcludeFromComplete={toggleExcludeFromComplete} />
+                              </div>
+                            )}
+                          </>
                         )}
+                        {/* 子習慣行 */}
                         {children.map((child) => (
-                          <div key={child.id} className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full pl-6">
-                            <button
-                              id={`habit-${child.id}`}
-                              onClick={() => !isConfirmed && toggleCheck(child.id)}
-                              onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(child.id); } }}
-                              aria-label={`${child.habit_name}を${child.checked ? '未完了' : '完了'}にする`}
-                              aria-checked={child.checked}
-                              aria-disabled={isConfirmed}
-                              role="checkbox"
-                              tabIndex={isConfirmed ? -1 : 0}
-                              disabled={isConfirmed}
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${child.checked ? 'bg-red-500 border-red-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
-                            >
-                              {child.checked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
-                            </button>
-                            <label htmlFor={`habit-${child.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}>
-                              {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
-                            </label>
-                            <div className="flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
-                              <div className="w-16" />
-                              <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]">
-                                <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(child).g}</span>
-                                {(getHabitPointsExpParts(child).body !== 0 || getHabitPointsExpParts(child).mind !== 0 || getHabitPointsExpParts(child).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(child).body} mind={getHabitPointsExpParts(child).mind} spirit={getHabitPointsExpParts(child).spirit} signed /></>)}
+                          <React.Fragment key={child.id}>
+                            <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 text-base w-full pl-6">
+                              <button
+                                id={`habit-${child.id}`}
+                                onClick={() => !isConfirmed && toggleCheck(child.id)}
+                                onKeyDown={(e) => { if (isConfirmed) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleCheck(child.id); } }}
+                                aria-label={`${child.habit_name}を${child.checked ? '未完了' : '完了'}にする`}
+                                aria-checked={child.checked}
+                                aria-disabled={isConfirmed}
+                                role="checkbox"
+                                tabIndex={isConfirmed ? -1 : 0}
+                                disabled={isConfirmed}
+                                className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900 ${child.checked ? 'bg-red-500 border-red-500' : 'bg-transparent border-zinc-600 hover:border-zinc-400'} ${isConfirmed ? 'opacity-60 cursor-not-allowed' : ''}`}
+                              >
+                                {child.checked && <svg className="w-3 h-3 text-white" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path d="M5 13l4 4L19 7"></path></svg>}
+                              </button>
+                              <label htmlFor={`habit-${child.id}`} className={`block text-[calc(1em-2px)] truncate min-w-0 ${isConfirmed ? 'cursor-default text-zinc-500' : 'cursor-pointer'} ${child.checked ? 'text-zinc-100' : 'text-zinc-400'}`}>
+                                {[child.habit_name, child.description?.trim()].filter(Boolean).join('｜')}
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <div className="hidden sm:flex items-center justify-end gap-2 shrink-0 min-w-[42rem]">
+                                  <div className="w-16" />
+                                  <div className="flex items-baseline gap-1 text-sm text-zinc-100 flex-wrap w-[14rem] min-w-[14rem]" title="ゴルド・EXPの加減算設定">
+                                    <span className="w-9 text-right shrink-0">{getHabitPointsExpParts(child).g}</span>
+                                    {(getHabitPointsExpParts(child).body !== 0 || getHabitPointsExpParts(child).mind !== 0 || getHabitPointsExpParts(child).spirit !== 0) && (<><span className="shrink-0">｜</span><ExpWithIcons body={getHabitPointsExpParts(child).body} mind={getHabitPointsExpParts(child).mind} spirit={getHabitPointsExpParts(child).spirit} signed /></>)}
+                                  </div>
+                                  <div className="flex items-center shrink-0 ml-3">
+                                    <div className="w-[4.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeWeekends(child.id); }} disabled={isConfirmed} title="土日祝は任意（進捗に影響しません）" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${child.exclude_weekends ? 'text-cyan-300/90 bg-cyan-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>週末除外</button>
+                                    </div>
+                                    <div className="w-[5.5rem] flex justify-end shrink-0 group min-h-[1.5rem]">
+                                      <button type="button" onClick={(e) => { e.stopPropagation(); toggleExcludeFromComplete(child.id); }} disabled={isConfirmed} title="Completeボーナス対象外" className={`text-xs px-2 py-0.5 rounded transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1 focus:ring-offset-zinc-900 ${child.exclude_from_complete ? 'text-yellow-400 bg-yellow-900/30' : 'text-zinc-500 bg-zinc-800 opacity-0 group-hover:opacity-100 hover:bg-zinc-700'} ${isConfirmed ? 'cursor-not-allowed' : 'cursor-pointer'}`}>Comp対象外</button>
+                                    </div>
+                                  </div>
+                                  <div className={`flex items-baseline gap-1 text-[17px] font-bold whitespace-nowrap w-[13rem] min-w-[13rem] justify-end shrink-0 ${child.checked ? 'text-red-400' : 'text-cyan-400'}`} title="チェック時に加算・減算される数値">
+                                    {(() => { const { g, body, mind, spirit } = getCheckTimeDeltaParts(child); const hasExp = body !== 0 || mind !== 0 || spirit !== 0; if (!g && !hasExp) return null; return (<>{g && <span className="shrink-0">{g}</span>}{g && hasExp && <span className="shrink-0">｜</span>}{hasExp && <ExpWithIcons body={body} mind={mind} spirit={spirit} signed />}</>); })()}
+                                  </div>
+                                </div>
+                                <button type="button" className="sm:hidden p-0.5 text-zinc-500 hover:text-zinc-300 transition-colors" onClick={() => setExpandedHabitId(expandedHabitId === child.id ? null : child.id)} aria-label="詳細を表示" aria-expanded={expandedHabitId === child.id}>
+                                  <ChevronDown className={`w-4 h-4 transition-transform ${expandedHabitId === child.id ? 'rotate-180' : ''}`} />
+                                </button>
                               </div>
-                              <div className="w-[10rem] min-w-[10rem]" />
                             </div>
-                          </div>
+                            {expandedHabitId === child.id && (
+                              <div className="sm:hidden pl-11 pb-2">
+                                <HabitMobileDetail habit={child} isConfirmed={isConfirmed} onToggleExcludeWeekends={toggleExcludeWeekends} onToggleExcludeFromComplete={toggleExcludeFromComplete} />
+                              </div>
+                            )}
+                          </React.Fragment>
                         ))}
                       </div>
                     );
