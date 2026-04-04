@@ -1,6 +1,6 @@
 "use client"
 
-import React, { memo, useState, useEffect, useMemo, useTransition } from "react"
+import React, { memo, useState, useEffect, useMemo, useRef, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { Todo, TodoLog, TodoSubtask, Difficulty } from "@/lib/types"
@@ -78,6 +78,29 @@ interface TodoFormData {
   completed_at?: string
 }
 
+function parseSubtaskUpdatedAtMs(s: string | undefined | null): number {
+  if (s == null || s === "") return 0
+  const t = Date.parse(s)
+  return Number.isFinite(t) ? t : 0
+}
+
+/** router.refresh 直後に古い RSC が届いても、楽観更新したサブタスク名を上書きしない */
+function mergeTodoSubtasksFromServer(
+  prev: TodoSubtask[],
+  server: TodoSubtask[],
+): TodoSubtask[] {
+  if (server.length === 0) return []
+  const prevById = new Map(prev.map((st) => [st.id, st]))
+  return server.map((serverRow) => {
+    const local = prevById.get(serverRow.id)
+    if (local == null) return serverRow
+    const lt = parseSubtaskUpdatedAtMs(local.updated_at)
+    const st = parseSubtaskUpdatedAtMs(serverRow.updated_at)
+    if (lt > st) return local
+    if (lt === st && local.subtask_name !== serverRow.subtask_name) return local
+    return serverRow
+  })
+}
 
 function TodoSummaryTab({
   userId,
@@ -109,9 +132,15 @@ function TodoSummaryTab({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [addingSubtask, setAddingSubtask] = useState(false)
   const [deletingSubtaskId, setDeletingSubtaskId] = useState<string | null>(null)
+  /** 編集モーダル内のサブタスク名の下書き（キー=subtask id）。未キーは localSubtasks の現行名を表示 */
+  const [subtaskNameDrafts, setSubtaskNameDrafts] = useState<Record<string, string>>({})
+  /** モーダルを開いた時点のサブタスク名（差分 update 用）。モーダル後から追加された id は含まない */
+  const subtaskNameSnapshotRef = useRef<Record<string, string>>({})
   const [pendingCompletion, setPendingCompletion] = useState<{ onConfirm: (completedAt: string) => void } | null>(null)
   // サブタスクのローカルstate（楽観的更新用）
   const [localSubtasks, setLocalSubtasks] = useState<TodoSubtask[]>(todoSubtasks)
+  const localSubtasksRef = useRef(localSubtasks)
+  localSubtasksRef.current = localSubtasks
   // サブタスクが1件以上あるToDoはデフォルトで展開
   const [expandedTodos, setExpandedTodos] = useState<Set<string>>(() => {
     const ids = new Set<string>()
@@ -120,7 +149,7 @@ function TodoSummaryTab({
   })
   // todoSubtasks の変更時（例: 再取得後）もローカルstateを同期し、展開状態を更新
   useEffect(() => {
-    setLocalSubtasks(todoSubtasks)
+    setLocalSubtasks((p) => mergeTodoSubtasksFromServer(p, todoSubtasks))
     if (todoSubtasks.length === 0) return
     setExpandedTodos((prev) => {
       const next = new Set(prev)
@@ -516,6 +545,8 @@ function TodoSummaryTab({
   // モーダルを開く（新規作成）
   const handleOpenCreateModal = () => {
     setEditingTodo(null)
+    subtaskNameSnapshotRef.current = {}
+    setSubtaskNameDrafts({})
     setSelectedAttributes(["mind"])
     const gold = PRESET_GOLD_BY_DIFFICULTY["medium"]
     const dist = distributePresetExp(PRESET_EXP_BY_DIFFICULTY["medium"], [
@@ -548,6 +579,12 @@ function TodoSummaryTab({
   // モーダルを開く（編集）
   const handleOpenEditModal = (todo: Todo) => {
     setEditingTodo(todo)
+    subtaskNameSnapshotRef.current = Object.fromEntries(
+      localSubtasks
+        .filter((st) => st.todo_id === todo.id)
+        .map((st) => [st.id, st.subtask_name]),
+    )
+    setSubtaskNameDrafts({})
     const attrs = inferAttributesFromTodo(todo)
     setSelectedAttributes(attrs)
     setDescriptionDraft(todo.description ?? "")
@@ -571,6 +608,7 @@ function TodoSummaryTab({
     setIsModalOpen(false)
     setEditingTodo(null)
     setDescriptionDraft("")
+    setSubtaskNameDrafts({})
   }
 
   // 日誌カンバンから「編集」で飛んできたとき、該当タスクの編集モーダルを開く
@@ -579,6 +617,12 @@ function TodoSummaryTab({
     const todo = localTodos.find((t) => t.id === initialEditTodoId)
     if (!todo) return
     setEditingTodo(todo)
+    subtaskNameSnapshotRef.current = Object.fromEntries(
+      localSubtasksRef.current
+        .filter((st) => st.todo_id === todo.id)
+        .map((st) => [st.id, st.subtask_name]),
+    )
+    setSubtaskNameDrafts({})
     setSelectedAttributes(inferAttributesFromTodo(todo))
     setDescriptionDraft(todo.description ?? "")
     setFormData({
@@ -701,6 +745,19 @@ function TodoSummaryTab({
       }
     }
 
+    if (editingTodo) {
+      const sts = localSubtasks
+        .filter((st) => st.todo_id === editingTodo.id)
+        .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+      for (const st of sts) {
+        const effective = (subtaskNameDrafts[st.id] ?? st.subtask_name).trim()
+        if (!effective) {
+          toast.error("サブタスク名が空の行があります")
+          return
+        }
+      }
+    }
+
     setIsSubmitting(true)
     try {
       const supabase = createClient()
@@ -780,6 +837,49 @@ function TodoSummaryTab({
           })
           return
         }
+
+        const draftsAtSave = { ...subtaskNameDrafts }
+        const snapAtSave = { ...subtaskNameSnapshotRef.current }
+        const nowSt = new Date().toISOString()
+        const sts = localSubtasks
+          .filter((st) => st.todo_id === editingTodo.id)
+          .sort((a, b) => (a.display_order ?? 0) - (b.display_order ?? 0))
+
+        let anySubtaskRename = false
+        for (const st of sts) {
+          const effectiveName = (draftsAtSave[st.id] ?? st.subtask_name).trim()
+          const baselineRaw = Object.hasOwn(snapAtSave, st.id)
+            ? snapAtSave[st.id]
+            : st.subtask_name
+          if (effectiveName === baselineRaw.trim()) continue
+          anySubtaskRename = true
+          const { error: stErr } = await supabase
+            .from("todo_subtasks")
+            .update({ subtask_name: effectiveName, updated_at: nowSt })
+            .eq("id", st.id)
+          if (stErr) {
+            console.error("サブタスク名更新エラー:", stErr)
+            toast.error("サブタスク名の保存に失敗しました", {
+              description: stErr.message || "データベースエラーが発生しました",
+            })
+            return
+          }
+        }
+
+        if (anySubtaskRename) {
+          setLocalSubtasks((prev) =>
+            prev.map((row) => {
+              if (row.todo_id !== editingTodo.id) return row
+              const effectiveName = (draftsAtSave[row.id] ?? row.subtask_name).trim()
+              const baselineRaw = Object.hasOwn(snapAtSave, row.id)
+                ? snapAtSave[row.id]
+                : row.subtask_name
+              if (effectiveName === baselineRaw.trim()) return row
+              return { ...row, subtask_name: effectiveName, updated_at: nowSt }
+            }),
+          )
+        }
+        setSubtaskNameDrafts({})
 
         // 報酬計算・反映処理
         if (!wasCompleted && willBeCompleted) {
@@ -1104,59 +1204,20 @@ function TodoSummaryTab({
     }
   }
 
-  // サブタスクを編集（モーダルから nameOverride を渡してリネーム）
-  const handleEditSubtask = async (
-    subtaskId: string,
-    nameOverride?: string,
-  ): Promise<boolean> => {
-    const name = (nameOverride ?? "").trim()
-    if (!name) {
-      toast.error("サブタスク名を入力してください")
-      return false
-    }
-
-    try {
-      const supabase = createClient()
-
-      const { error } = await supabase
-        .from("todo_subtasks")
-        .update({ subtask_name: name })
-        .eq("id", subtaskId)
-
-      if (error) {
-        console.error("サブタスク更新エラー:", error)
-        toast.error("サブタスクの更新に失敗しました", {
-          description: error.message || "データベースエラーが発生しました",
-        })
-        return false
-      }
-
-      const now = new Date().toISOString()
-      setLocalSubtasks((prev) =>
-        prev.map((st) =>
-          st.id === subtaskId
-            ? { ...st, subtask_name: name, updated_at: now }
-            : st,
-        ),
-      )
-      toast.success("サブタスク名を保存しました")
-      refreshDashboard()
-      return true
-    } catch (err) {
-      console.error("予期しないエラー:", err)
-      toast.error("エラーが発生しました", {
-        description:
-          err instanceof Error ? err.message : "予期しないエラーが発生しました",
-      })
-      return false
-    }
-  }
-
   // サブタスクを削除
   const handleDeleteSubtask = async (subtask: TodoSubtask) => {
     if (!confirm(`「${subtask.subtask_name}」を削除しますか？`)) {
       return
     }
+
+    setSubtaskNameDrafts((p) => {
+      const n = { ...p }
+      delete n[subtask.id]
+      return n
+    })
+    const snap = { ...subtaskNameSnapshotRef.current }
+    delete snap[subtask.id]
+    subtaskNameSnapshotRef.current = snap
 
     setDeletingSubtaskId(subtask.id)
     try {
@@ -1750,6 +1811,7 @@ function TodoSummaryTab({
           if (!open) {
             setEditingTodo(null)
             setDescriptionDraft("")
+            setSubtaskNameDrafts({})
           }
         }}
         title={editingTodo ? "ToDoを編集" : "+ 新規ToDoを作成"}
@@ -1795,7 +1857,7 @@ function TodoSummaryTab({
                 disabled={isSubmitting}
                 className="bg-cyan-600 hover:bg-cyan-700 text-white shrink-0"
               >
-                {isSubmitting ? "保存中..." : editingTodo ? "更新" : "作成"}
+                {isSubmitting ? "保存中..." : editingTodo ? "保存" : "作成"}
               </Button>
             </div>
           </>
@@ -1949,7 +2011,7 @@ function TodoSummaryTab({
             <div className="space-y-3">
               <FormLabel>サブタスク</FormLabel>
               <p className="text-sm text-zinc-400">
-                名前を変えたら「保存」を押してください。並び替えは↑↓ボタンまたはグリップをドラッグして変更できます。両端のものはドラッグが反応しずらくなっています。
+                サブタスク名の変更は、モーダル下の「保存」ボタンで ToDo と一緒に書き込まれます。並び替えは↑↓ボタンまたはグリップをドラッグして変更できます。両端のものはドラッグが反応しずらくなっています。
               </p>
               <div className="space-y-2 pb-2">
                 {subtaskList.length > 0 ? (
@@ -1966,7 +2028,15 @@ function TodoSummaryTab({
                         <SortableSubtaskRow
                           key={subtask.id}
                           subtask={subtask}
-                          onSave={(name) => handleEditSubtask(subtask.id, name)}
+                          name={
+                            subtaskNameDrafts[subtask.id] ?? subtask.subtask_name
+                          }
+                          onNameChange={(name) =>
+                            setSubtaskNameDrafts((p) => ({
+                              ...p,
+                              [subtask.id]: name,
+                            }))
+                          }
                           onDelete={() => handleDeleteSubtask(subtask)}
                           isDeleting={deletingSubtaskId === subtask.id}
                           onMoveUp={idx > 0 ? () => handleSubtaskMove(subtask.id, "up") : undefined}

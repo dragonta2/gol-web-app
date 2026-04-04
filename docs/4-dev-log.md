@@ -8,6 +8,52 @@
 
 ## 2604 --------------
 
+### 260405-Sun
+
+#### 260405-Sun｜サブタスク名のモーダル一括保存・保存ボタン表記
+
+**記載** Cursor
+
+---
+
+##### 背景・課題
+
+- サブタスク名は従来、各行の「保存」で即 Supabase update。ユーザー操作で行保存を押し忘れ、本文だけ「更新」したつもりになり名前が残らないことがあった
+
+- `router.refresh()` 後に古い RSC の `todoSubtasks` が一瞬届くと `useEffect` で `localSubtasks` が全置換され、楽観更新が消える問題への対策として、既存の `mergeTodoSubtasksFromServer`（`updated_at` 比較でローカル優先）を継続
+
+---
+
+##### `subtask-rows.tsx`
+
+- **`SubtaskEditRow`**: `useState` による行内保持＋行「保存」をやめ、props の **`name`** と **`onNameChange`** で親が下書きを保持
+
+- **`SortableSubtaskRow`**: 上記をそのまま子へ伝播
+
+---
+
+##### `todo-summary-tab.tsx`
+
+- **`subtaskNameDrafts`**: `Record<subtaskId, string>`。キーが無い id は `localSubtasks` の `subtask_name` を表示
+
+- **`subtaskNameSnapshotRef`**: 編集モーダルを開いた時点の `id → subtask_name`。`handleOpenEditModal` と `initialEditTodoId` 用 effect で `localSubtasks`（effect 内は `localSubtasksRef` で最新参照）から構築。新規作成・閉じるでクリア
+
+- **`handleSaveTodo`（編集時）**: 事前にサブタスク各行の trim 後空名を拒否。`todos` の update 成功後、各サブタスクについて `effective = (drafts[id] ?? st.subtask_name).trim()` とスナップショット（無い id はモーダル後追加とみなし baseline＝現行 `st.subtask_name`）を比較し、**差分のみ** `todo_subtasks` を `subtask_name`＋`updated_at` で update。変更があれば `setLocalSubtasks` で楽観反映し `subtaskNameDrafts` を空に
+
+- **`handleEditSubtask`**: 削除（行単体保存の経路を廃止）
+
+- **削除時**: 対象 id の draft とスナップショットエントリを削除
+
+- **フッターボタン**: 編集時ラベルを「更新」→「保存」（送信中は「保存中...」、新規は「作成」のまま）
+
+---
+
+##### ドキュメント
+
+- **`docs/3-project-progress.md`**: 本エントリで進捗要約を追記
+
+---
+
 ### 260404-Sat
 
 #### 260404-Sat｜本日の実装詳細（MD→ToDo 連携・source_yid・カンバン・仕様書・タスク名展開）

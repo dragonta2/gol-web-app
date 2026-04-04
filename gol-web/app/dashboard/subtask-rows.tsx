@@ -1,6 +1,6 @@
 "use client"
 
-import { memo, useState, useEffect } from "react"
+import { memo, useState } from "react"
 import type { TodoSubtask } from "@/lib/types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,10 +10,11 @@ import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { isSubmitShortcut } from "@/lib/utils"
 
-/** サブタスク1行：入力はローカルstateで保持し、保存ボタン押下時のみ親に通知（入力遅延防止）。並び替えはドラッグハンドルまたは↑↓ボタン */
+/** サブタスク1行：名前は親の state（下書き）で保持し、モーダル「更新」で一括保存。並び替えはドラッグハンドルまたは↑↓ボタン */
 export const SubtaskEditRow = memo(function SubtaskEditRow({
   subtask,
-  onSave,
+  name,
+  onNameChange,
   onDelete,
   dragHandle,
   isDeleting,
@@ -21,25 +22,14 @@ export const SubtaskEditRow = memo(function SubtaskEditRow({
   onMoveDown,
 }: {
   subtask: TodoSubtask
-  onSave: (name: string) => void
+  name: string
+  onNameChange: (name: string) => void
   onDelete: () => void
   dragHandle?: React.ReactNode
   isDeleting?: boolean
   onMoveUp?: () => void
   onMoveDown?: () => void
 }) {
-  const [value, setValue] = useState(subtask.subtask_name)
-  useEffect(() => {
-    setValue(subtask.subtask_name)
-  }, [subtask.id, subtask.subtask_name])
-  const handleSaveClick = () => {
-    const name = value.trim()
-    if (!name) {
-      toast.error("サブタスク名を入力してください")
-      return
-    }
-    onSave(name)
-  }
   if (isDeleting) {
     return (
       <div className="flex items-center gap-2 p-2 bg-zinc-800 rounded text-zinc-400 text-sm">
@@ -79,20 +69,11 @@ export const SubtaskEditRow = memo(function SubtaskEditRow({
       )}
       <Input
         type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
+        value={name}
+        onChange={(e) => onNameChange(e.target.value)}
         className="flex-1 min-w-0 bg-zinc-900 border-zinc-700 text-zinc-100 text-sm"
         placeholder="サブタスク名"
       />
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={handleSaveClick}
-        className="text-xs text-cyan-400 hover:text-cyan-300 shrink-0 h-auto py-1"
-      >
-        保存
-      </Button>
       <Button
         type="button"
         variant="ghost"
@@ -169,14 +150,16 @@ export const NewSubtaskInput = memo(function NewSubtaskInput({
 /** 編集モーダル用：ドラッグ&ドロップまたは↑↓ボタンで並び替え可能なサブタスク1行 */
 export const SortableSubtaskRow = memo(function SortableSubtaskRow({
   subtask,
-  onSave,
+  name,
+  onNameChange,
   onDelete,
   isDeleting,
   onMoveUp,
   onMoveDown,
 }: {
   subtask: TodoSubtask
-  onSave: (name: string) => void
+  name: string
+  onNameChange: (name: string) => void
   onDelete: () => void
   isDeleting?: boolean
   onMoveUp?: () => void
@@ -206,7 +189,8 @@ export const SortableSubtaskRow = memo(function SortableSubtaskRow({
     >
       <SubtaskEditRow
         subtask={subtask}
-        onSave={onSave}
+        name={name}
+        onNameChange={onNameChange}
         onDelete={onDelete}
         isDeleting={isDeleting}
         onMoveUp={onMoveUp}

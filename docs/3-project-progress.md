@@ -10,6 +10,22 @@
 
 ---
 
+### 260405-Sun --------------
+
+#### 260405-Sun｜サブタスク名の一括保存・モーダル保存ボタン文言
+
+**記載** Cursor
+
+**実施内容:**
+
+- **`subtask-rows.tsx`**: 行ごとの「保存」を廃止。`SubtaskEditRow` を親の `name` / `onNameChange` で制御
+
+- **`todo-summary-tab.tsx`**: モーダル開時にサブタスク名スナップショットを保持し、下部の「保存」（旧「更新」）押下で ToDo 更新後に変更があったサブタスクのみ `todo_subtasks` を差分 update。`subtaskNameDrafts`・`mergeTodoSubtasksFromServer`（古い RSC 対策）・`localSubtasksRef` を継続利用
+
+- **文言**: 編集モーダル主ボタンを「保存」に統一。サブタスク説明文を「保存で ToDo と一緒に書き込み」に合わせて更新
+
+---
+
 ### 260404-Sat --------------
 
 #### 260404-Sat｜ToDoタスク名のクリック展開（カンバン・サマリー共通化）
