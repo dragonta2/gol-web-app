@@ -108,7 +108,7 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
       onOpenChange={(v) => {
         if (!isCreating) onOpenChange(v)
       }}
-      title="MDからToDoをインポート"
+      title="マークダウンからToDoタスクを作成"
       description={
         <div className="space-y-3">
           <p>

@@ -1544,12 +1544,12 @@ function TodoSummaryTab({
             </Button>
             <Button
               onClick={() => setIsMdImportOpen(true)}
-              aria-label="マークダウンからToDoを一括インポートする"
+              aria-label="マークダウンをToDoタスクに変換する"
               variant="outline"
               className="border-zinc-600 bg-zinc-800 text-zinc-100 shadow-none hover:bg-zinc-700 hover:text-white w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
               size="sm"
             >
-              MDからインポート
+              MDをToDoタスクに変換
             </Button>
           </div>
         </div>
