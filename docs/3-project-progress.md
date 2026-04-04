@@ -42,6 +42,26 @@
 
 ---
 
+#### 260403-Fri｜低頻度ゾーン修正・サブタスクタイムラグ解消・mainデプロイ対応
+
+**記載** ClaudeCode
+
+**実施内容:**
+
+- **ToDoサブタスクチェックのタイムラグ解消**: `todo-summary-tab.tsx` にローカルstateを追加し楽観的更新を実装。`router.refresh()` 待ちなしでチェックが即時反映されるよう変更
+
+- **習慣低頻度ゾーン修正（2件）**:
+  - データ定義修正：「親が低頻度なら子もセットで低頻度ゾーンに含める」よう変更し、親がチェックボックス化するバグを修正
+  - 配置修正：右側エリアに `hidden sm:flex` がなくモバイルでも表示されていた問題を解消。週末除外・Comp対象外・チェック時デルタ・モバイル展開エリアを高頻度エリアと揃えた
+
+- **mainへのcherry-pick**: featureブランチ（モバイル対応途中）で行った修正8件を `main` ブランチへ cherry-pick してデプロイ反映
+
+- **ビルドエラー修正**: cherry-pick後に `HabitMobileDetail`・`expandedHabitId`・`getHabitPointsExpPartsUtil` がmainブランチに未定義だったためビルド失敗 → `habit-list-utils.tsx` に定義を追加して解消
+
+- **`.gitignore` 修正**: `gol-web/env.local`（ドットなし）が untracked に出ていたため `gol-web/.gitignore` に追加
+
+---
+
 #### 260403-Fri｜辛口コーチングアドバイスをコンテキスト考慮型に改善
 
 **記載** ClaudeCode
