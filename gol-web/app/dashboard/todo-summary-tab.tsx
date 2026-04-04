@@ -1106,7 +1106,7 @@ function TodoSummaryTab({
 
   // サブタスクを編集（モーダルから nameOverride を渡してリネーム）
   const handleEditSubtask = async (
-    subtask: TodoSubtask,
+    subtaskId: string,
     nameOverride?: string,
   ): Promise<boolean> => {
     const name = (nameOverride ?? "").trim()
@@ -1121,7 +1121,7 @@ function TodoSummaryTab({
       const { error } = await supabase
         .from("todo_subtasks")
         .update({ subtask_name: name })
-        .eq("id", subtask.id)
+        .eq("id", subtaskId)
 
       if (error) {
         console.error("サブタスク更新エラー:", error)
@@ -1131,6 +1131,15 @@ function TodoSummaryTab({
         return false
       }
 
+      const now = new Date().toISOString()
+      setLocalSubtasks((prev) =>
+        prev.map((st) =>
+          st.id === subtaskId
+            ? { ...st, subtask_name: name, updated_at: now }
+            : st,
+        ),
+      )
+      toast.success("サブタスク名を保存しました")
       refreshDashboard()
       return true
     } catch (err) {
@@ -1957,7 +1966,7 @@ function TodoSummaryTab({
                         <SortableSubtaskRow
                           key={subtask.id}
                           subtask={subtask}
-                          onSave={(name) => handleEditSubtask(subtask, name)}
+                          onSave={(name) => handleEditSubtask(subtask.id, name)}
                           onDelete={() => handleDeleteSubtask(subtask)}
                           isDeleting={deletingSubtaskId === subtask.id}
                           onMoveUp={idx > 0 ? () => handleSubtaskMove(subtask.id, "up") : undefined}
