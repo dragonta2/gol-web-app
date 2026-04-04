@@ -10,38 +10,133 @@
 
 ### 260404-Sat
 
-#### 260404-Sat｜ToDoタスク名のクリック展開（カンバン・サマリー）
+#### 260404-Sat｜本日の実装詳細（MD→ToDo 連携・source_yid・カンバン・仕様書・タスク名展開）
 
-**記載** Cursor
+**記載** Cursor（同日のコミット群 `268da58`〜`b4a1fe6` 付近を踏まえて整理）
 
 ---
 
-##### 背景
+##### 全体像
 
-- カンバンでは先行して `ExpandableTaskTitle` を `kanban-board.tsx` 内に実装済み。ToDo サマリータブの一覧でも同じ要望のため共通化した
+- **やりたいことリスト互換のマークダウン**を ToDo サマリーから貼り付け、`todos` / `todo_subtasks` に一括 insert する経路を主軸にした（**サービスロール経由の `sync-todos` は後日撤去**し、**ブラウザ RLS のみ**に統一）
 
-##### 新規ファイル
+- **`source_yid`（YID-N）** で「同じリスト行の再インポート」を防ぎ、カード上に **YID バッジ**で表示
 
-- `gol-web/components/expandable-task-title.tsx`
-  - `useState` で折りたたみ／展開をトグル
-  - 畳み: `truncate`、展開: `whitespace-normal wrap-break-word`
-  - `button` + `aria-expanded` + `aria-label`（タスク名全文を含む）
-  - `suppressHydrationWarning` 継承
-  - `textClassName` で完了時の `line-through` などを付与可能
+- **カンバン**はアクティブ／進行中列の並びを **期限ベース（近い順／遠い順）** に変更し、旧 `asc`/`desc` の localStorage を読み替え移行
 
-##### 変更ファイル
+- **長いタスク名**はカンバン・サマリーとも **クリックで展開／畳み**（最終的に `ExpandableTaskTitle` 共通化）
 
-- `gol-web/app/dashboard/kanban-board.tsx`
-  - ローカル関数を削除し `@/components/expandable-task-title` を import
+- **`docs/1-spec-sheet.md`** に貼り付けインポートの確定仕様を追記
 
-- `gol-web/app/dashboard/todo-summary-tab.tsx`
-  - `DraggableTodoCard` 内のタイトル `span`（`truncate`）を `ExpandableTaskTitle` に置換
-  - 完了タスクの ✅ は `ExpandableTaskTitle` の直前に `shrink-0` の `span` で配置（ボタン内に含めない）
-  - `DragOverlay` 内のタスク名に `whitespace-normal wrap-break-word` を付与し、ドラッグ中も長文が読めるようにした
+---
 
-##### ビルド確認
+##### `parse-todo-markdown.ts`（パーサー本体）
 
-- `npm run build` 成功（Next.js 16）
+- **出力型 `ParsedTodoForImport`**: `task_name`, `description`, `difficulty`, 報酬系 `sp_*`, `due_date`, `due_date_weekday_label`（プレビュー用 `260410-金` 形式）, `subtasks[]`, **`source_yid`**
+
+- **親行**: `- []` / `- [ ]` 等のチェックボックス行。`- [x]` はブロックを閉じてインポート対象外
+
+- **除外**: 行頭 `! - []` 形式（`TOP_TODO_EXCLUDE_LINE`）、親行チェックボックス直後の **`!-` / `! ｜`** 系（`isTodoLineExcludedByBangPrefix`）
+
+- **GOL 反映済みフラグ**: 親行の `｜` セグメントに **`GOL化`** または正規化後 **`gol_synced` / `synced_gol`**（ハイフン・アンダースコア大小無視）があると **ブロック全体スキップ**（`isTodoLineExcludedByGolSyncedFlag`）
+
+- **YID**: 先頭セグメントが `YID-数字` のとき `source_yid` に正規化格納。`extractTaskTitle` でタイトルから YID・フラグ・英語難易度セグメント等を除外
+
+- **インデント行**: `**｜説明｜…**`（1行閉じ必須）、`｜期限｜`, `｜難易度｜`（やさしい／ふつう／むずかしい or easy/medium/hard）、`｜報酬｜`（`数字G`・`身体N`・`頭脳N`・`精神N`）。`｜記載日` 始まりは無視
+
+- **期限**: `parseYyMmDdDate` で `YYMMDD`＋任意サフィックス（`-W` / `-?` / 漢字曜など）。漢字1字曜と暦日が不一致のとき **warn 診断**（保存は日付優先）。`weekdayKanjiForIsoDate` は UTC 正午基準で曜ズレ抑制
+
+- **バグ修正**: `Number` 誤用を **`parseInt(..., 10)`** に修正したコミットあり（`8b50f22`）
+
+- **テスト**: `parse-todo-markdown` 向け **Vitest** を追加したコミットあり（`cc17491` 付近）
+
+---
+
+##### `todo-md-import-modal.tsx`（インポート UI）
+
+- テキストエリア入力を **`parseTodoMarkdownWithDiagnostics`** でプレビュー。`severity === 'error'` があると作成ボタン不可
+
+- **作成ループ**: 既存 `todos` から `source_yid` を一覧取得 → **`Set`（`dbYids`）**。ループ中は **`batchYids`** で **同一貼り付け内の重複 YID** もスキップ（先に成功 insert した YID のみ `batchYids` / `dbYids` に追加）
+
+- **insert フィールド**: `description`, `sp_points`, `sp_exp_*`, `due_date`, `source_yid` など `ParsedTodoForImport` に揃える
+
+- **モーダル文言**: タイトル **「マークダウンからToDoタスクを作成」**、説明にやりたいことリスト互換の書式ヒント（`c38449b` 系の UI 調整）
+
+- **トースト**: 同一 YID スキップ件数を含む成功メッセージ、全スキップ時のメッセージ
+
+---
+
+##### `source_yid`（型・API・DB 前提）
+
+- **`lib/types.ts` の `Todo`**: `source_yid: string | null` を追加（Web 直作成は null）
+
+- **API `/api/todos`**: GET/POST/PATCH の選択・insert・update で `source_yid` を扱う（実装コミット `0c9d521` 付近）
+
+- **SQL スニペット（リポジトリ `docs/appendix/DB-related/sql-snippet/doned/`）**
+  - `add-source-yid-to-todos.sql`: 列追加＋**部分ユニーク** `(user_id, source_yid) WHERE source_yid IS NOT NULL`
+  - 同名タスク複数を許すなら `drop-todos-user-id-task-name-unique.sql`（運用で実行前提の説明を 1-spec / 外部メモに記載）
+
+---
+
+##### 経路 B（`sync-todos`）の撤去
+
+- **`gol-web/scripts/sync-todos.ts`** と **`npm run sync-todos`** を削除（`95fc2d5` / `14ae390` 付近）。**MD 貼り付け＝唯一の MD→Web 投入経路**に整理
+
+- **`.env.example` 等**: サービスロール一括投入に依存しない説明に寄せた調整あり
+
+---
+
+##### `kanban-board.tsx`（期限ソート・ドラッグオーバーレイ）
+
+- **アクティブ／進行中列**: 旧「完了日っぽい asc/desc ラベル」ではなく、**期限のみ**で **`near`（近い順） / `far`（遠い順）** をトグル。ボタン表記 **「近い順」「遠い順」**
+
+- **localStorage**: `todo-kanban-due-order-active` / `todo-kanban-due-order-in-progress`。旧キー `todo-kanban-sort-date-*` の `asc`→`far`, `desc`→`near` として **初回読み込み時に移行**
+
+- **完了列**: 従来どおり **完了日時の asc/desc**（ラベルも「遠い順／近い順」に寄せた表記のコミットあり）
+
+- **ドラッグオーバーレイ**: アクティブ系カードのタスク名に **`wrap-break-word`** で長文表示
+
+---
+
+##### `TodoSourceYidBadge`（`todo-source-yid-badge.tsx`）
+
+- `YID-12` 形式のとき **`YID-` を `text-[10px]`**、**数字部分を `text-sm`** で強調。非標準文字列は従来どおりまとめて `text-sm`
+
+---
+
+##### `docs/1-spec-sheet.md`
+
+- **`## MD版（Markdown運用）との関係・方針`** 配下に **`### やりたいことリストから ToDo へ（貼り付けインポート・実装済）`** を追加
+
+- P5 の「MD⇄Web 手動同期ボタン」とは別機能であること、画面ボタン名、RLS、実装ファイルパス、**重複スキップ条件**、SQL スニペット参照、**iCloud 側 YR-11 メモ**へのパスを記載（`ce3baf8`）
+
+---
+
+##### `ExpandableTaskTitle`（タスク名のクリック展開）
+
+- **第1段階**: `kanban-board.tsx` 内にローカル関数として実装（`truncate` ↔ 展開、`onPointerDown` stopPropagation でカード DnD と両立）
+
+- **第2段階**: **`gol-web/components/expandable-task-title.tsx` に抽出**し、カンバンは import のみに変更
+
+- **第3段階**: **`todo-summary-tab.tsx` の `DraggableTodoCard`** にも適用。完了 ✅ はボタン外の `span`（`shrink-0`）。`DragOverlay` 内タイトルも折り返し
+
+- **a11y**: `button`, `aria-expanded`, `aria-label` にタスク名＋操作説明を含める
+
+---
+
+##### ビルド・テスト
+
+- **`npm run build`**: 本日中の変更後に複回実行し成功を確認
+
+- **Vitest**: `parse-todo-markdown` 関連のユニットテストを追加済み（該当コミットで `npm run test` 対象）
+
+---
+
+##### リポジトリ外（参照のみ・本ログでは概要のみ）
+
+- iCloud の **`YR-11-やりたいことリストとGOL-WEBの同期.md`** に運用・スキップ条件・経路 B 撤去の注記を更新（**web-app の git には含めない**）
+
+- **`1-i-IT/README-TOP.md`** に GOL-WEB×やりたいことリストの概要を追記（同様にリポジトリ外）
 
 ---
 
