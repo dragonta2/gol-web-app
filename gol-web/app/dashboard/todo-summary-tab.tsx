@@ -40,6 +40,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { NewSubtaskInput, SortableSubtaskRow } from "./subtask-rows"
+import { TodoMdImportModal } from "./todo-md-import-modal"
 
 /** ToDoサマリーは日誌の確定・未確定に依存しない独立タブ。新規ToDoの作成・編集・一覧はいつでも可能 */
 interface TodoSummaryTabProps {
@@ -94,6 +95,7 @@ function TodoSummaryTab({
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isMdImportOpen, setIsMdImportOpen] = useState(false)
   /** 編集モーダル内のサブタスク名編集・新規入力は各コンポーネントのローカルstateで管理（入力遅延・誤追加防止） */
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -1478,6 +1480,15 @@ function TodoSummaryTab({
             >
               + 新規タスク
             </Button>
+            <Button
+              onClick={() => setIsMdImportOpen(true)}
+              aria-label="マークダウンからToDoを一括インポートする"
+              variant="outline"
+              className="border-zinc-600 text-zinc-300 hover:bg-zinc-800 w-full sm:w-auto"
+              size="sm"
+            >
+              MDからインポート
+            </Button>
           </div>
         </div>
       </div>
@@ -1939,6 +1950,13 @@ function TodoSummaryTab({
         open={!!pendingCompletion}
         onConfirm={(completedAt) => pendingCompletion?.onConfirm(completedAt)}
         onCancel={() => setPendingCompletion(null)}
+      />
+
+      <TodoMdImportModal
+        open={isMdImportOpen}
+        onOpenChange={setIsMdImportOpen}
+        userId={userId}
+        onSuccess={() => router.refresh()}
       />
     </div>
   )
