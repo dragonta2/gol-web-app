@@ -12,6 +12,20 @@
 
 ### 260404-Sat --------------
 
+#### 260404-Sat｜ToDoタスク名のクリック展開（カンバン・サマリー共通化）
+
+**記載** Cursor
+
+**実施内容:**
+
+- **`gol-web/components/expandable-task-title.tsx`（新規）**: 長いタスク名をデフォルト1行省略（`truncate`）、クリックで全文表示・再クリックで畳む。`onPointerDown` の `stopPropagation` でカードドラッグと競合しにくくする
+
+- **`kanban-board.tsx`**: インライン実装から上記共通コンポーネントへ差し替え
+
+- **`todo-summary-tab.tsx`**: 同コンポーネントを一覧カードに適用（完了時の ✅ はボタン外）。ドラッグオーバーレイのタスク名は折り返し表示
+
+---
+
 #### 260404-Sat｜MDからToDo一括インポート機能を実装
 
 **記載** ClaudeCode

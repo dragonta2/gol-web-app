@@ -22,6 +22,7 @@ import { FormCard } from '@/components/ui/form-card';
 import { CompletedAtDialog } from '@/components/completed-at-dialog';
 import { ClipboardList, ChevronDown, ChevronUp, Edit, Plus, Coins, Dumbbell, Brain, Sparkles } from 'lucide-react';
 import { TodoSourceYidBadge } from '@/components/todo-source-yid-badge';
+import { ExpandableTaskTitle } from '@/components/expandable-task-title';
 
 // ドラッグ可能なカードコンポーネント
 type Reward = { points: number; exp_body: number; exp_mind: number; exp_spirit: number };
@@ -85,9 +86,7 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <TodoSourceYidBadge sourceYid={todo.source_yid} />
-              <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate" suppressHydrationWarning>
-                {todo.task_name}
-              </span>
+              <ExpandableTaskTitle taskName={todo.task_name} />
             </div>
             {todo.difficulty && (
               <span
@@ -245,9 +244,7 @@ function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
           <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <TodoSourceYidBadge sourceYid={todo.source_yid} />
-              <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate line-through decoration-[3px]" suppressHydrationWarning>
-                {todo.task_name}
-              </span>
+              <ExpandableTaskTitle taskName={todo.task_name} textClassName="line-through decoration-[3px]" />
             </div>
             {todo.difficulty && (
               <span
@@ -1427,7 +1424,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
                   <span className="text-lg">{getIcon(activeTodo.status)}</span>
                   <div className="flex items-center gap-1.5 flex-1 min-w-0">
                     <TodoSourceYidBadge sourceYid={activeTodo.source_yid} />
-                    <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate">
+                    <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 whitespace-normal wrap-break-word text-left">
                       {activeTodo.task_name}
                     </span>
                   </div>

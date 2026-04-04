@@ -8,6 +8,43 @@
 
 ## 2604 --------------
 
+### 260404-Sat
+
+#### 260404-Sat｜ToDoタスク名のクリック展開（カンバン・サマリー）
+
+**記載** Cursor
+
+---
+
+##### 背景
+
+- カンバンでは先行して `ExpandableTaskTitle` を `kanban-board.tsx` 内に実装済み。ToDo サマリータブの一覧でも同じ要望のため共通化した
+
+##### 新規ファイル
+
+- `gol-web/components/expandable-task-title.tsx`
+  - `useState` で折りたたみ／展開をトグル
+  - 畳み: `truncate`、展開: `whitespace-normal wrap-break-word`
+  - `button` + `aria-expanded` + `aria-label`（タスク名全文を含む）
+  - `suppressHydrationWarning` 継承
+  - `textClassName` で完了時の `line-through` などを付与可能
+
+##### 変更ファイル
+
+- `gol-web/app/dashboard/kanban-board.tsx`
+  - ローカル関数を削除し `@/components/expandable-task-title` を import
+
+- `gol-web/app/dashboard/todo-summary-tab.tsx`
+  - `DraggableTodoCard` 内のタイトル `span`（`truncate`）を `ExpandableTaskTitle` に置換
+  - 完了タスクの ✅ は `ExpandableTaskTitle` の直前に `shrink-0` の `span` で配置（ボタン内に含めない）
+  - `DragOverlay` 内のタスク名に `whitespace-normal wrap-break-word` を付与し、ドラッグ中も長文が読めるようにした
+
+##### ビルド確認
+
+- `npm run build` 成功（Next.js 16）
+
+---
+
 ### 260403-Fri
 
 #### 260403-Fri｜ToDo・サブタスク完了日時の手動入力機能

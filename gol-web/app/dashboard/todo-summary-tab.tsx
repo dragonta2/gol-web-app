@@ -21,6 +21,7 @@ import { FormInput, FormLabel } from "@/components/ui/form-input"
 import { DatePickerField } from "@/components/date-picker-field"
 import { CompletedAtDialog } from "@/components/completed-at-dialog"
 import { TodoSourceYidBadge } from "@/components/todo-source-yid-badge"
+import { ExpandableTaskTitle } from "@/components/expandable-task-title"
 import { FormCard } from "@/components/ui/form-card"
 import { toast } from "sonner"
 import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, Copy, Plus, Loader2 } from "lucide-react"
@@ -1274,12 +1275,15 @@ function TodoSummaryTab({
         <div className="flex items-center justify-between gap-2 mb-2">
           <div className="flex items-center gap-1.5 flex-1 min-w-0">
             <TodoSourceYidBadge sourceYid={todo.source_yid} />
-            <span
-              className={`text-zinc-100 font-bold text-base flex-1 min-w-0 truncate ${isCompleted ? "line-through decoration-[3px]" : ""}`}
-            >
-              {isCompleted && <span className="text-green-400 mr-1">✅</span>}
-              {todo.task_name}
-            </span>
+            {isCompleted ? (
+              <span className="text-green-400 mr-0.5 shrink-0" aria-hidden>
+                ✅
+              </span>
+            ) : null}
+            <ExpandableTaskTitle
+              taskName={todo.task_name}
+              textClassName={isCompleted ? "line-through decoration-[3px]" : ""}
+            />
           </div>
           {todo.difficulty && (
             <span
@@ -1720,7 +1724,7 @@ function TodoSummaryTab({
               if (!todo) return null
               return (
                 <div className="bg-zinc-900 border border-cyan-600 rounded-lg p-3 sm:p-4 opacity-90 rotate-3 shadow-lg">
-                  <div className="text-zinc-100 font-medium">
+                  <div className="text-zinc-100 font-medium whitespace-normal wrap-break-word">
                     {todo.task_name}
                   </div>
                 </div>
