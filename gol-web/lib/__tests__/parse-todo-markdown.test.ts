@@ -41,6 +41,7 @@ describe('parseTodoMarkdown', () => {
     expect(t.sp_exp_mind).toBe(2)
     expect(t.sp_exp_spirit).toBe(0)
     expect(t.subtasks).toEqual(['調査', 'マークダウン側の項目値をあわせる', '実装', '確認'])
+    expect(t.source_yid).toBe('YID-11')
   })
 
   it('従来形式: タスク＋プレーンサブタスク', () => {
@@ -54,6 +55,7 @@ describe('parseTodoMarkdown', () => {
     expect(t.sp_points).toBe(2)
     expect(t.sp_exp_mind).toBe(2)
     expect(t.subtasks).toEqual(['サブ1', 'サブ2'])
+    expect(t.source_yid).toBeNull()
   })
 
   it('- [x] 完了行のあとに続く行は前タスクに付けない', () => {

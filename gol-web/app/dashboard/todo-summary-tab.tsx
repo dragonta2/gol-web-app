@@ -20,6 +20,7 @@ import { Modal } from "@/components/ui/modal"
 import { FormInput, FormLabel } from "@/components/ui/form-input"
 import { DatePickerField } from "@/components/date-picker-field"
 import { CompletedAtDialog } from "@/components/completed-at-dialog"
+import { TodoSourceYidBadge } from "@/components/todo-source-yid-badge"
 import { FormCard } from "@/components/ui/form-card"
 import { toast } from "sonner"
 import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, Copy, Plus, Loader2 } from "lucide-react"
@@ -191,11 +192,13 @@ function TodoSummaryTab({
   const applyFilters = (todoList: Todo[]) => {
     return todoList.filter((todo) => {
       // 検索フィルター
-      if (
-        searchQuery &&
-        !todo.task_name.toLowerCase().includes(searchQuery.toLowerCase())
-      ) {
-        return false
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase()
+        const inName = todo.task_name.toLowerCase().includes(q)
+        const inYid = todo.source_yid?.toLowerCase().includes(q) ?? false
+        if (!inName && !inYid) {
+          return false
+        }
       }
 
       // 難易度フィルター（OR条件：選択された難易度のいずれかに一致）
@@ -1269,12 +1272,15 @@ function TodoSummaryTab({
       >
         {/* 1. ToDoタイトル（左寄せ）｜難易度ラベル（右寄せ）・日誌カードと同じレイアウト */}
         <div className="flex items-center justify-between gap-2 mb-2">
-          <span
-            className={`text-zinc-100 font-bold text-base flex-1 min-w-0 truncate ${isCompleted ? "line-through decoration-[3px]" : ""}`}
-          >
-            {isCompleted && <span className="text-green-400 mr-1">✅</span>}
-            {todo.task_name}
-          </span>
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <TodoSourceYidBadge sourceYid={todo.source_yid} />
+            <span
+              className={`text-zinc-100 font-bold text-base flex-1 min-w-0 truncate ${isCompleted ? "line-through decoration-[3px]" : ""}`}
+            >
+              {isCompleted && <span className="text-green-400 mr-1">✅</span>}
+              {todo.task_name}
+            </span>
+          </div>
           {todo.difficulty && (
             <span
               className={`px-2 py-0.5 text-xs rounded shrink-0 font-bold ${todo.difficulty === "easy" ? "pt-1" : ""} ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
@@ -1795,6 +1801,17 @@ function TodoSummaryTab({
           }
           placeholder="例: 沖縄旅行の準備"
         />
+
+        {editingTodo?.source_yid ? (
+          <div>
+            <FormLabel className="mb-1">やりたいことリスト YID</FormLabel>
+            <div className="flex items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900/50 px-3 py-2 text-sm text-zinc-300">
+              <TodoSourceYidBadge sourceYid={editingTodo.source_yid} />
+              <span className="font-mono text-xs text-zinc-400">{editingTodo.source_yid}</span>
+            </div>
+            <p className="mt-1 text-xs text-zinc-500">インポート・同期で付与されたIDです（編集では変更しません）</p>
+          </div>
+        ) : null}
 
         {/* 説明（任意） */}
         <div>

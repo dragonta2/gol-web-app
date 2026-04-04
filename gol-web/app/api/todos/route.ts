@@ -14,7 +14,16 @@ import {
   validateUUID,
   validateDateFormat,
   validateAll,
+  validateSourceYidOptional,
 } from '@/lib/validation';
+
+function normalizeSourceYidInput(value: unknown): string | null {
+  if (value === undefined || value === null || typeof value !== 'string') return null;
+  const t = value.trim();
+  if (!t) return null;
+  const m = t.match(/^YID-(\d+)$/i);
+  return m ? `YID-${m[1]}` : null;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,6 +49,8 @@ export async function POST(request: NextRequest) {
       due_date,
       difficulty,
       is_on_hold,
+      description,
+      source_yid,
     } = body;
 
     // バリデーション
@@ -50,6 +61,7 @@ export async function POST(request: NextRequest) {
       validateExp(sp_exp_body, '身体EXP'),
       validateExp(sp_exp_mind, '頭脳EXP'),
       validateExp(sp_exp_spirit, '精神EXP'),
+      validateSourceYidOptional(source_yid),
     ]);
 
     // due_dateが提供されている場合はバリデーション
@@ -81,12 +93,33 @@ export async function POST(request: NextRequest) {
 
     const displayOrder = maxOrderTodo ? maxOrderTodo.display_order + 1 : 0;
 
+    const normalizedYid = normalizeSourceYidInput(source_yid);
+    if (normalizedYid) {
+      const { data: yidDup } = await supabase
+        .from('todos')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('source_yid', normalizedYid)
+        .maybeSingle();
+      if (yidDup) {
+        return NextResponse.json(
+          { error: '同じ YID の ToDo が既に存在します', code: 'DUPLICATE_YID' },
+          { status: 409 },
+        );
+      }
+    }
+
+    const desc =
+      typeof description === 'string' && description.trim() ? description.trim() : null;
+
     // ToDoを作成（報酬は sp_* をそのまま保存。難易度は easy/medium/hard。保留はデフォルト false）
     const { data: newTodo, error: insertError } = await supabase
       .from('todos')
       .insert({
         user_id: user.id,
         task_name: task_name.trim(),
+        description: desc,
+        source_yid: normalizedYid,
         sp_points: sp_points ?? 0,
         sp_exp_body: sp_exp_body ?? 0,
         sp_exp_mind: sp_exp_mind ?? 0,

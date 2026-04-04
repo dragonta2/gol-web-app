@@ -212,6 +212,8 @@ export interface Todo {
   difficulty: Difficulty;
   /** 説明（任意） */
   description: string | null;
+  /** やりたいことリストの YID-N（経路A/B 連携。未設定は null） */
+  source_yid?: string | null;
   /** 作成日時 */
   created_at: string;
   /** 更新日時 */

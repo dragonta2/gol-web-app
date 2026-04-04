@@ -165,6 +165,27 @@ export function validateTaskName(taskName: string | undefined | null): { valid: 
   return { valid: true };
 }
 
+/** やりたいことリスト連携 YID（任意）。未指定・空は OK */
+export function validateSourceYidOptional(value: unknown): { valid: boolean; error?: string } {
+  if (value === undefined || value === null || value === '') {
+    return { valid: true };
+  }
+  if (typeof value !== 'string') {
+    return { valid: false, error: 'YID は文字列である必要があります' };
+  }
+  const t = value.trim();
+  if (t.length === 0) {
+    return { valid: true };
+  }
+  if (!/^YID-\d+$/i.test(t)) {
+    return { valid: false, error: 'YID は YID-数字（例: YID-11）の形式である必要があります' };
+  }
+  if (t.length > 32) {
+    return { valid: false, error: 'YID が長すぎます' };
+  }
+  return { valid: true };
+}
+
 /**
  * 権利の利用回数のバリデーション
  */

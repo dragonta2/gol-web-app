@@ -21,6 +21,7 @@ import { FormLabel } from '@/components/ui/form-input';
 import { FormCard } from '@/components/ui/form-card';
 import { CompletedAtDialog } from '@/components/completed-at-dialog';
 import { ClipboardList, ChevronDown, ChevronUp, Edit, Plus, Coins, Dumbbell, Brain, Sparkles } from 'lucide-react';
+import { TodoSourceYidBadge } from '@/components/todo-source-yid-badge';
 
 // ドラッグ可能なカードコンポーネント
 type Reward = { points: number; exp_body: number; exp_mind: number; exp_spirit: number };
@@ -82,9 +83,12 @@ function DraggableTodoCard({ todo, isOverdue, icon, reward, formatDeadline, onMo
         <span className="text-lg shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate" suppressHydrationWarning>
-              {todo.task_name}
-            </span>
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <TodoSourceYidBadge sourceYid={todo.source_yid} />
+              <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate" suppressHydrationWarning>
+                {todo.task_name}
+              </span>
+            </div>
             {todo.difficulty && (
               <span
                 className={`px-2 py-0.5 text-xs rounded shrink-0 font-bold ${todo.difficulty === 'easy' ? 'pt-1' : ''} ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
@@ -239,9 +243,12 @@ function CompletedTodoCardInner({ todo, icon, reward, formatCompletedDate }: {
         <span className="text-lg shrink-0">{icon}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
-            <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate line-through decoration-[3px]" suppressHydrationWarning>
-              {todo.task_name}
-            </span>
+            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <TodoSourceYidBadge sourceYid={todo.source_yid} />
+              <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate line-through decoration-[3px]" suppressHydrationWarning>
+                {todo.task_name}
+              </span>
+            </div>
             {todo.difficulty && (
               <span
                 className={`px-2 py-0.5 text-xs rounded shrink-0 font-bold ${todo.difficulty === 'easy' ? 'pt-1' : ''} ${DIFFICULTY_COLORS[todo.difficulty]} text-white`}
@@ -1390,9 +1397,12 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
               <div className="bg-zinc-900 border border-cyan-600 rounded-lg p-3 shadow-lg opacity-90 rotate-2">
                 <div className="flex items-start gap-2 mb-2">
                   <span className="text-lg">{getIcon(activeTodo.status)}</span>
-                  <span className="text-base font-bold text-zinc-100 flex-1">
-                    {activeTodo.task_name}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                    <TodoSourceYidBadge sourceYid={activeTodo.source_yid} />
+                    <span className="text-base font-bold text-zinc-100 flex-1 min-w-0 truncate">
+                      {activeTodo.task_name}
+                    </span>
+                  </div>
                 </div>
                 <div className="space-y-1 text-base text-white">
                   {(() => {

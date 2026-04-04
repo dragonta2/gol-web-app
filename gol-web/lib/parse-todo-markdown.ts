@@ -17,6 +17,8 @@ export interface ParsedTodoForImport {
   /** YYYY-MM-DD または null */
   due_date: string | null
   subtasks: string[]
+  /** 先頭が `YID-N` のときのみ（DB の source_yid 用） */
+  source_yid: string | null
 }
 
 export type ParseTodoMarkdownSeverity = 'error' | 'warn'
@@ -44,6 +46,7 @@ type Builder = {
   due_date: string | null
   subtasks: string[]
   rewardLineParsed: boolean
+  source_yid: string | null
 }
 
 /** `- []` / `- [ ]` / `- [△]` など任意のチェックボックス内容 */
@@ -75,6 +78,14 @@ function parseDifficultyJp(s: string): Difficulty | null {
   if (t === 'ふつう' || t === 'medium') return 'medium'
   if (t === 'むずかしい' || t === 'hard') return 'hard'
   return null
+}
+
+/** 親行のチェックボックス直後テキストから `YID-N` を取り出す（正規化して YID-数字） */
+export function extractSourceYidFromTopLine(raw: string): string | null {
+  const parts = raw.split('｜').map((p) => p.trim()).filter(Boolean)
+  if (parts.length === 0) return null
+  const m = parts[0].match(/^YID-(\d+)$/i)
+  return m ? `YID-${m[1]}` : null
 }
 
 function extractTaskTitle(raw: string): string {
@@ -147,6 +158,7 @@ function finalizeBuilder(b: Builder): ParsedTodoForImport {
     sp_exp_spirit: b.sp_exp_spirit,
     due_date: b.due_date,
     subtasks: [...b.subtasks],
+    source_yid: b.source_yid,
   }
 }
 
@@ -308,6 +320,7 @@ export function parseTodoMarkdownWithDiagnostics(text: string): ParseTodoMarkdow
         due_date: null,
         subtasks: [],
         rewardLineParsed: false,
+        source_yid: extractSourceYidFromTopLine(topM[1]),
       }
       continue
     }

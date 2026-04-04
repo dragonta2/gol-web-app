@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
 import { parseTodoMarkdownWithDiagnostics } from '@/lib/parse-todo-markdown'
 import { DIFFICULTY_LABELS } from '@/lib/types'
+import { TodoSourceYidBadge } from '@/components/todo-source-yid-badge'
 import { toast } from 'sonner'
 
 interface TodoMdImportModalProps {
@@ -47,8 +48,44 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
 
       const baseOrder = maxOrderTodo ? maxOrderTodo.display_order + 1 : 0
 
+      const { data: existingRows, error: existingErr } = await supabase
+        .from('todos')
+        .select('task_name, source_yid')
+        .eq('user_id', userId)
+
+      if (existingErr) {
+        toast.error('既存ToDoの取得に失敗しました', { description: existingErr.message })
+        return
+      }
+
+      const dbYids = new Set(
+        (existingRows ?? [])
+          .map((r) => r.source_yid?.trim())
+          .filter((y): y is string => Boolean(y)),
+      )
+      const dbNames = new Set(
+        (existingRows ?? []).map((r) => r.task_name.trim()).filter(Boolean),
+      )
+      const batchYids = new Set<string>()
+      const batchNames = new Set<string>()
+
+      let created = 0
+      let skipped = 0
+      let orderOffset = 0
+
       for (let i = 0; i < parsed.length; i++) {
         const t = parsed[i]
+        const name = t.task_name.trim()
+        const yid = t.source_yid?.trim() || null
+
+        const dupByYid = yid && (dbYids.has(yid) || batchYids.has(yid))
+        const dupByName = !yid && name && (dbNames.has(name) || batchNames.has(name))
+
+        if (dupByYid || dupByName) {
+          skipped++
+          setProgress({ done: i + 1, total: parsed.length })
+          continue
+        }
 
         const { data: todo, error } = await supabase
           .from('todos')
@@ -62,37 +99,60 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
             sp_exp_spirit: t.sp_exp_spirit,
             status: 'active',
             difficulty: t.difficulty,
-            display_order: baseOrder + i,
+            display_order: baseOrder + orderOffset,
             is_on_hold: false,
             due_date: t.due_date,
             completed_at: null,
+            source_yid: yid,
           })
           .select()
           .single()
 
         if (error || !todo) {
-          toast.error(`「${t.task_name}」の作成に失敗しました`)
+          toast.error(`「${t.task_name}」の作成に失敗しました`, {
+            description: error?.message,
+          })
+          setProgress({ done: i + 1, total: parsed.length })
           continue
+        }
+
+        orderOffset++
+        created++
+        if (yid) {
+          batchYids.add(yid)
+          dbYids.add(yid)
+        }
+        if (name) {
+          batchNames.add(name)
+          dbNames.add(name)
         }
 
         if (t.subtasks.length > 0) {
           await supabase.from('todo_subtasks').insert(
-            t.subtasks.map((name, idx) => ({
+            t.subtasks.map((subName, idx) => ({
               todo_id: todo.id,
-              subtask_name: name,
+              subtask_name: subName,
               is_completed: false,
               display_order: idx,
-            }))
+            })),
           )
         }
 
         setProgress({ done: i + 1, total: parsed.length })
       }
 
-      toast.success(`${parsed.length}件のToDoを作成しました`)
-      onSuccess()
-      onOpenChange(false)
-      setText('')
+      if (created > 0) {
+        toast.success(
+          skipped > 0
+            ? `${created}件のToDoを作成しました（${skipped}件は重複のためスキップ）`
+            : `${created}件のToDoを作成しました`,
+        )
+        onSuccess()
+        onOpenChange(false)
+        setText('')
+      } else if (skipped > 0) {
+        toast.message('すべてスキップしました（既存と同一のYIDまたはタスク名）')
+      }
     } catch (err) {
       toast.error('エラーが発生しました')
       console.error(err)
@@ -200,11 +260,14 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
 
       {parsed.length > 0 && (
         <div>
-          <p className="text-xs text-zinc-400 mb-2">{parsed.length}件を作成します（プレビュー）</p>
+          <p className="text-xs text-zinc-400 mb-2">{parsed.length}件を作成します（プレビュー・重複は実行時にスキップ）</p>
           <ul className="space-y-3 max-h-56 overflow-y-auto pr-1 text-left">
             {parsed.map((t, i) => (
               <li key={i} className="text-sm text-zinc-300 border border-zinc-700 rounded-md p-2 bg-zinc-800/50">
-                <div className="font-medium text-cyan-300">{t.task_name}</div>
+                <div className="flex flex-wrap items-center gap-1.5 font-medium text-cyan-300">
+                  <TodoSourceYidBadge sourceYid={t.source_yid} />
+                  <span className="min-w-0">{t.task_name}</span>
+                </div>
                 <div className="text-xs text-zinc-500 mt-1 space-x-2 flex flex-wrap gap-x-2 gap-y-0.5">
                   <span>難易度: {DIFFICULTY_LABELS[t.difficulty]}</span>
                   <span>

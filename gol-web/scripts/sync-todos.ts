@@ -91,7 +91,8 @@ async function main() {
   if (dryRun) {
     for (const t of parsed) {
       const due = t.due_date ?? 'なし'
-      console.log(`  - ${t.task_name} [${t.difficulty}] 期限:${due} 報酬:${t.sp_points}G`)
+      const yidPart = t.source_yid ? ` ${t.source_yid}` : ''
+      console.log(`  -${yidPart} ${t.task_name} [${t.difficulty}] 期限:${due} 報酬:${t.sp_points}G`)
       if (t.description) console.log(`      説明: ${t.description.split('\n')[0].slice(0, 60)}…`)
       if (t.subtasks.length) console.log(`      サブ: ${t.subtasks.length} 件`)
     }
@@ -143,7 +144,7 @@ async function main() {
 
   const { data: existingTodos, error: fetchError } = await supabase
     .from('todos')
-    .select('task_name')
+    .select('task_name, source_yid')
     .eq('user_id', userId)
 
   if (fetchError) {
@@ -151,7 +152,14 @@ async function main() {
     process.exit(1)
   }
 
-  const existingNames = new Set(existingTodos?.map((t) => t.task_name) ?? [])
+  const existingNames = new Set(
+    (existingTodos ?? []).map((t) => t.task_name.trim()).filter(Boolean),
+  )
+  const existingYids = new Set(
+    (existingTodos ?? [])
+      .map((t) => t.source_yid?.trim())
+      .filter((y): y is string => Boolean(y)),
+  )
 
   const { data: maxOrderRow } = await supabase
     .from('todos')
@@ -170,8 +178,15 @@ async function main() {
     const name = todo.task_name.trim()
     if (!name) continue
 
-    if (existingNames.has(name)) {
-      console.log(`  スキップ（重複）: ${name}`)
+    const yid = todo.source_yid?.trim() || null
+    if (yid) {
+      if (existingYids.has(yid)) {
+        console.log(`  スキップ（同一YID）: ${yid} / ${name}`)
+        skipped++
+        continue
+      }
+    } else if (existingNames.has(name)) {
+      console.log(`  スキップ（重複タスク名）: ${name}`)
       skipped++
       continue
     }
@@ -192,6 +207,7 @@ async function main() {
         is_on_hold: false,
         due_date: todo.due_date,
         completed_at: null,
+        source_yid: yid,
       })
       .select()
       .single()
@@ -202,6 +218,7 @@ async function main() {
     }
 
     existingNames.add(name)
+    if (yid) existingYids.add(yid)
 
     if (todo.subtasks.length > 0) {
       const subtaskInserts = todo.subtasks.map((subtask_name, idx) => ({

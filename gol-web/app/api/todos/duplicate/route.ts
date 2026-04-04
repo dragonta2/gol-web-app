@@ -57,6 +57,8 @@ export async function POST(request: NextRequest) {
       .insert({
         user_id: user.id,
         task_name: `${original.task_name} のコピー`,
+        description: original.description ?? null,
+        source_yid: null,
         sp_points: original.sp_points,
         sp_exp_body: original.sp_exp_body,
         sp_exp_mind: original.sp_exp_mind,
