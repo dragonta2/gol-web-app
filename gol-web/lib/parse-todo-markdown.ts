@@ -19,6 +19,20 @@ export interface ParsedTodoForImport {
   subtasks: string[]
 }
 
+export type ParseTodoMarkdownSeverity = 'error' | 'warn'
+
+export interface ParseTodoMarkdownDiagnostic {
+  severity: ParseTodoMarkdownSeverity
+  /** 1-based 行番号 */
+  line: number
+  message: string
+}
+
+export interface ParseTodoMarkdownResult {
+  todos: ParsedTodoForImport[]
+  diagnostics: ParseTodoMarkdownDiagnostic[]
+}
+
 type Builder = {
   task_name: string
   descriptionParts: string[]
@@ -136,41 +150,100 @@ function finalizeBuilder(b: Builder): ParsedTodoForImport {
   }
 }
 
-function handleIndentedLine(b: Builder, rest: string): void {
+function handleIndentedLine(
+  b: Builder,
+  rest: string,
+  lineNum: number,
+  diagnostics: ParseTodoMarkdownDiagnostic[],
+): void {
   const t = rest.trim()
 
   if (/^｜記載日|記載日（人間用）/.test(t)) {
     return
   }
 
-  const dueM = t.match(/^｜期限｜\s*(.+)$/)
+  const dueM = t.match(/^｜期限｜\s*(.*)$/)
   if (dueM) {
-    const iso = parseYyMmDdDate(dueM[1])
+    const v = dueM[1].trim()
+    if (!v) {
+      diagnostics.push({
+        severity: 'warn',
+        line: lineNum,
+        message: '｜期限｜の後に日付がありません（例: 260411-土）',
+      })
+      return
+    }
+    const iso = parseYyMmDdDate(v)
     b.due_date = iso
+    if (!iso) {
+      diagnostics.push({
+        severity: 'warn',
+        line: lineNum,
+        message: `期限「${v}」を日付に変換できませんでした（YYMMDD と曜の6+桁推奨）`,
+      })
+    }
     return
   }
 
-  const diffM = t.match(/^｜難易度｜\s*(.+)$/)
+  const diffM = t.match(/^｜難易度｜\s*(.*)$/)
   if (diffM) {
-    const d = parseDifficultyJp(diffM[1])
+    const v = diffM[1].trim()
+    const d = parseDifficultyJp(v)
     if (d) b.difficulty = d
+    else if (v) {
+      diagnostics.push({
+        severity: 'warn',
+        line: lineNum,
+        message: `難易度「${v}」が認識できません（やさしい・ふつう・むずかしい）`,
+      })
+    }
     return
   }
 
-  const rewM = t.match(/^｜報酬｜\s*(.+)$/)
+  const rewM = t.match(/^｜報酬｜\s*(.*)$/)
   if (rewM) {
-    const parsed = parseRewardRest(rewM[1])
+    const rrest = rewM[1].trim()
+    if (!rrest) {
+      diagnostics.push({
+        severity: 'warn',
+        line: lineNum,
+        message: '｜報酬｜の後がありません（例: 2G｜身体0｜頭脳2｜精神0）',
+      })
+      return
+    }
+    const parsed = parseRewardRest(rrest)
     if (parsed) {
       b.rewardLineParsed = true
       b.sp_points = parsed.points > 0 ? parsed.points : PRESET_GOLD_BY_DIFFICULTY[b.difficulty]
       b.sp_exp_body = parsed.body
       b.sp_exp_mind = parsed.mind
       b.sp_exp_spirit = parsed.spirit
+    } else {
+      diagnostics.push({
+        severity: 'warn',
+        line: lineNum,
+        message:
+          '報酬行を解釈できません。`数字G`・`身体数字`・`頭脳数字`・`精神数字` を含めてください',
+      })
     }
     return
   }
 
+  if (/^報酬｜/.test(t) && !t.startsWith('｜報酬｜')) {
+    diagnostics.push({
+      severity: 'warn',
+      line: lineNum,
+      message: '報酬は「｜報酬｜」で始めてください（行頭は全角｜）',
+    })
+    return
+  }
+
   if (t.startsWith('｜')) {
+    diagnostics.push({
+      severity: 'warn',
+      line: lineNum,
+      message: `未対応のメタ行です（無視されます）: ${t.length > 40 ? `${t.slice(0, 40)}…` : t}`,
+    })
     return
   }
 
@@ -187,16 +260,12 @@ function handleIndentedLine(b: Builder, rest: string): void {
 }
 
 /**
- * やりたいことリスト（YR-11）形式と従来の簡易形式の両方を解釈する。
- *
- * - 親: `- [] タスク`（`- [x]` 完了行はスキップし、直後の子は付けない）
- * - 説明: `**｜説明｜…**`（複数行可）
- * - メタ: `  - ｜期限｜YYMMDD-W` / `  - ｜難易度｜ふつう` / `  - ｜報酬｜2G｜身体0｜頭脳2｜精神0` / `  - ｜記載日（人間用）｜…`（DBに使わない）
- * - サブタスク: `  - [] 名前` または `  - 名前`
+ * パース結果と、書式の警告・エラーを返す。
  */
-export function parseTodoMarkdown(text: string): ParsedTodoForImport[] {
+export function parseTodoMarkdownWithDiagnostics(text: string): ParseTodoMarkdownResult {
   const lines = text.split('\n')
   const out: ParsedTodoForImport[] = []
+  const diagnostics: ParseTodoMarkdownDiagnostic[] = []
   let current: Builder | null = null
 
   const flush = () => {
@@ -206,7 +275,10 @@ export function parseTodoMarkdown(text: string): ParsedTodoForImport[] {
     current = null
   }
 
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const lineNum = i + 1
+
     if (TOP_DONE.test(line)) {
       flush()
       continue
@@ -216,6 +288,15 @@ export function parseTodoMarkdown(text: string): ParsedTodoForImport[] {
     if (topM) {
       flush()
       const title = extractTaskTitle(topM[1])
+      if (!title.trim()) {
+        diagnostics.push({
+          severity: 'error',
+          line: lineNum,
+          message: 'タスク名が空です（`- [] タスク名` を確認してください）',
+        })
+        current = null
+        continue
+      }
       current = {
         task_name: title,
         descriptionParts: [],
@@ -237,9 +318,28 @@ export function parseTodoMarkdown(text: string): ParsedTodoForImport[] {
       continue
     }
 
+    if (current && /^\s*\*\*｜説明｜/.test(line) && !DESC_LINE.test(line)) {
+      diagnostics.push({
+        severity: 'warn',
+        line: lineNum,
+        message:
+          '説明行は `**｜説明｜本文**` の形で、行末まで `**` で閉じてください（インデント付きも同じ）',
+      })
+      continue
+    }
+
     const indM = line.match(INDENT_BULLET)
     if (indM && current) {
-      handleIndentedLine(current, indM[1])
+      if (/^\*\*｜説明｜/.test(indM[1].trim()) && !DESC_LINE.test(line)) {
+        diagnostics.push({
+          severity: 'warn',
+          line: lineNum,
+          message:
+            '説明行は `**｜説明｜本文**` で1行に閉じてください（末尾の `**` が欠けている可能性があります）',
+        })
+        continue
+      }
+      handleIndentedLine(current, indM[1], lineNum, diagnostics)
       continue
     }
 
@@ -249,5 +349,14 @@ export function parseTodoMarkdown(text: string): ParsedTodoForImport[] {
   }
 
   flush()
-  return out
+  return { todos: out, diagnostics }
+}
+
+/**
+ * やりたいことリスト（YR-11）形式と従来の簡易形式の両方を解釈する。
+ *
+ * 警告が必要なときは `parseTodoMarkdownWithDiagnostics` を使う。
+ */
+export function parseTodoMarkdown(text: string): ParsedTodoForImport[] {
+  return parseTodoMarkdownWithDiagnostics(text).todos
 }

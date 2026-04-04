@@ -53,8 +53,10 @@ export function Modal({
         <DialogHeader>
           <DialogTitle className="text-cyan-400">{title}</DialogTitle>
           {description && (
-            <DialogDescription className="text-sm text-zinc-400!">
-              {description}
+            <DialogDescription asChild>
+              <div className="text-sm text-zinc-300 leading-relaxed text-left [&_strong]:font-semibold [&_strong]:text-zinc-200">
+                {description}
+              </div>
             </DialogDescription>
           )}
         </DialogHeader>

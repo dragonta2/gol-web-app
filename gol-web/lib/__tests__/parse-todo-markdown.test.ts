@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { parseTodoMarkdown, parseYyMmDdDate } from '@/lib/parse-todo-markdown'
+import {
+  parseTodoMarkdown,
+  parseTodoMarkdownWithDiagnostics,
+  parseYyMmDdDate,
+} from '@/lib/parse-todo-markdown'
 
 describe('parseYyMmDdDate', () => {
   it('YYMMDD-W を YYYY-MM-DD にする', () => {
@@ -69,5 +73,27 @@ describe('parseTodoMarkdown', () => {
     expect(r).toHaveLength(2)
     expect(r[0].task_name).toBe('A')
     expect(r[1].task_name).toBe('B')
+  })
+})
+
+describe('parseTodoMarkdownWithDiagnostics', () => {
+  it('期限が不正なとき警告', () => {
+    const { todos, diagnostics } = parseTodoMarkdownWithDiagnostics(`- [] T
+  - ｜期限｜bad`)
+    expect(todos[0].due_date).toBeNull()
+    expect(diagnostics.some((d) => d.message.includes('変換できません'))).toBe(true)
+  })
+
+  it('報酬が解釈できないとき警告', () => {
+    const { diagnostics } = parseTodoMarkdownWithDiagnostics(`- [] T
+  - ｜報酬｜なし`)
+    expect(diagnostics.some((d) => d.message.includes('報酬行を解釈'))).toBe(true)
+  })
+
+  it('説明の ** が欠けた行は警告しサブタスクにしない', () => {
+    const { todos, diagnostics } = parseTodoMarkdownWithDiagnostics(`- [] T
+  **｜説明｜閉じ忘れ`)
+    expect(diagnostics.length).toBeGreaterThan(0)
+    expect(todos[0].subtasks.some((s) => s.includes('説明'))).toBe(false)
   })
 })

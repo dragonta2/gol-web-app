@@ -1546,7 +1546,7 @@ function TodoSummaryTab({
               onClick={() => setIsMdImportOpen(true)}
               aria-label="マークダウンからToDoを一括インポートする"
               variant="outline"
-              className="border-zinc-600 text-zinc-300 hover:bg-zinc-800 w-full sm:w-auto"
+              className="border-zinc-600 bg-zinc-800 text-zinc-100 shadow-none hover:bg-zinc-700 hover:text-white w-full sm:w-auto focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
               size="sm"
             >
               MDからインポート

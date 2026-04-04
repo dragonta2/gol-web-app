@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Modal } from '@/components/ui/modal'
 import { Button } from '@/components/ui/button'
-import { parseTodoMarkdown } from '@/lib/parse-todo-markdown'
+import { parseTodoMarkdownWithDiagnostics } from '@/lib/parse-todo-markdown'
 import { DIFFICULTY_LABELS } from '@/lib/types'
 import { toast } from 'sonner'
 
@@ -20,10 +20,16 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
   const [isCreating, setIsCreating] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
-  const parsed = parseTodoMarkdown(text)
+  const { todos: parsed, diagnostics } = useMemo(
+    () => parseTodoMarkdownWithDiagnostics(text),
+    [text],
+  )
+  const hasErrors = diagnostics.some((d) => d.severity === 'error')
+  const warnings = diagnostics.filter((d) => d.severity === 'warn')
+  const errors = diagnostics.filter((d) => d.severity === 'error')
 
   const handleCreate = async () => {
-    if (parsed.length === 0) return
+    if (parsed.length === 0 || hasErrors) return
 
     setIsCreating(true)
     setProgress({ done: 0, total: parsed.length })
@@ -104,15 +110,53 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
       }}
       title="MDからToDoをインポート"
       description={
-        <span>
-          やりたいことリスト形式: 親行 <code className="text-zinc-300">- []</code> 、説明{' '}
-          <code className="text-zinc-300">**｜説明｜…**</code> 、{' '}
-          <code className="text-zinc-300">｜期限｜</code>
-          <code className="text-zinc-300">｜難易度｜</code>
-          <code className="text-zinc-300">｜報酬｜</code> 、サブは{' '}
-          <code className="text-zinc-300">- [] 名前</code> またはプレーンの{' '}
-          <code className="text-zinc-300">- 名前</code>。
-        </span>
+        <div className="space-y-3">
+          <p>
+            <strong>やりたいことリスト</strong>
+            などの Markdown を下の欄に貼り付けると、内容を解釈して{' '}
+            <strong>GOL の ToDo として登録</strong>
+            します。トップレベルの{' '}
+            <code className="rounded bg-zinc-800/90 px-1 py-0.5 font-mono text-xs text-cyan-200/95">
+              - []
+            </code>{' '}
+            が複数あれば、<strong>1 回の「作成する」でまとめて複数件</strong>を作れます。形式がずれている行は警告・エラーとして表示されます。
+          </p>
+          <div>
+            <p className="mb-1.5 font-medium text-zinc-200">書式（やりたいことリスト互換）</p>
+            <ul className="list-disc space-y-1.5 pl-4 marker:text-zinc-500">
+              <li>
+                <span className="text-zinc-400">親タスク（1 行に 1 ToDo）</span>：{' '}
+                <code className="rounded bg-zinc-800/90 px-1 py-0.5 font-mono text-xs text-cyan-200/95">
+                  - [] YID-1｜タスク名
+                </code>{' '}
+                のように <code className="font-mono text-xs text-cyan-200/95">- []</code> で開始
+              </li>
+              <li>
+                <span className="text-zinc-400">説明</span>：インデントした行で{' '}
+                <code className="rounded bg-zinc-800/90 px-1 py-0.5 font-mono text-xs text-cyan-200/95">
+                  **｜説明｜本文**
+                </code>{' '}
+                （先頭・末尾の <code className="font-mono text-xs">**</code> が必須）
+              </li>
+              <li>
+                <span className="text-zinc-400">期限・難易度・報酬</span>：サブ行で{' '}
+                <code className="font-mono text-xs text-cyan-200/95">｜期限｜</code>・
+                <code className="font-mono text-xs text-cyan-200/95">｜難易度｜</code>・
+                <code className="font-mono text-xs text-cyan-200/95">｜報酬｜</code>
+              </li>
+              <li>
+                <span className="text-zinc-400">サブタスク</span>：{' '}
+                <code className="rounded bg-zinc-800/90 px-1 py-0.5 font-mono text-xs text-cyan-200/95">
+                  - [] 名前
+                </code>{' '}
+                またはチェックなしの{' '}
+                <code className="rounded bg-zinc-800/90 px-1 py-0.5 font-mono text-xs text-cyan-200/95">
+                  - 名前
+                </code>
+              </li>
+            </ul>
+          </div>
+        </div>
       }
     >
       <textarea
@@ -124,6 +168,35 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
         className="w-full min-h-40 h-48 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-zinc-100 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500 resize-y"
         disabled={isCreating}
       />
+
+      {diagnostics.length > 0 && (
+        <div className="rounded-md border border-zinc-600 bg-zinc-800/80 px-3 py-2 text-xs space-y-2 max-h-36 overflow-y-auto">
+          {errors.length > 0 && (
+            <div>
+              <p className="text-rose-400 font-medium mb-1">エラー（作成できません）</p>
+              <ul className="list-disc list-inside text-rose-200/90 space-y-0.5">
+                {errors.map((d, i) => (
+                  <li key={`e-${i}`}>
+                    L{d.line}: {d.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {warnings.length > 0 && (
+            <div>
+              <p className="text-amber-400 font-medium mb-1">警告（このまま作成は可能）</p>
+              <ul className="list-disc list-inside text-amber-100/80 space-y-0.5">
+                {warnings.map((d, i) => (
+                  <li key={`w-${i}`}>
+                    L{d.line}: {d.message}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {parsed.length > 0 && (
         <div>
@@ -163,15 +236,15 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
           size="sm"
           onClick={() => onOpenChange(false)}
           disabled={isCreating}
-          className="border-zinc-700 text-zinc-300 hover:bg-zinc-800"
+          className="border-zinc-600 bg-zinc-800 text-zinc-100 shadow-none hover:bg-zinc-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
         >
           キャンセル
         </Button>
         <Button
           size="sm"
           onClick={handleCreate}
-          disabled={parsed.length === 0 || isCreating}
-          className="bg-cyan-600 hover:bg-cyan-700 text-white"
+          disabled={parsed.length === 0 || isCreating || hasErrors}
+          className="bg-cyan-600 font-medium text-white shadow-none hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:ring-offset-2 focus:ring-offset-zinc-900 disabled:opacity-50"
         >
           {isCreating && progress
             ? `${progress.done}/${progress.total}件作成中...`
