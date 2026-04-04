@@ -58,9 +58,9 @@ export function parseYyMmDdDate(input: string): string | null {
   const s = input.trim()
   const m = s.match(/^(\d{2})(\d{2})(\d{2})(?:-\S*)?$/)
   if (!m) return null
-  const yy = Number(m[1], 10)
-  const mm = Number(m[2], 10)
-  const dd = Number(m[3], 10)
+  const yy = parseInt(m[1], 10)
+  const mm = parseInt(m[2], 10)
+  const dd = parseInt(m[3], 10)
   if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null
   const year = 2000 + yy
   const iso = `${year}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`
@@ -107,10 +107,10 @@ function parseRewardRest(rest: string): {
   const spirit = rest.match(/精神\s*(\d+)/)
   if (!g && !body && !mind && !spirit) return null
   return {
-    points: g ? Number(g[1], 10) : 0,
-    body: body ? Number(body[1], 10) : 0,
-    mind: mind ? Number(mind[1], 10) : 0,
-    spirit: spirit ? Number(spirit[1], 10) : 0,
+    points: g ? parseInt(g[1], 10) : 0,
+    body: body ? parseInt(body[1], 10) : 0,
+    mind: mind ? parseInt(mind[1], 10) : 0,
+    spirit: spirit ? parseInt(spirit[1], 10) : 0,
   }
 }
 
