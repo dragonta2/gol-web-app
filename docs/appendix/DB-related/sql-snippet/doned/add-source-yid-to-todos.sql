@@ -1,5 +1,5 @@
 -- todos にやりたいことリスト連携用の YID（例: YID-11）を保存する
--- 経路A/B の重複判定に使用。タスク名をリネームしても同一 YID は再登録しない。
+-- MD インポート時の重複判定（同一 YID）に使用。タスク名をリネームしても同一 YID は再登録しない。
 
 ALTER TABLE todos ADD COLUMN IF NOT EXISTS source_yid text;
 

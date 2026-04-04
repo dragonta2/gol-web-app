@@ -16,6 +16,10 @@ export interface ParsedTodoForImport {
   sp_exp_spirit: number
   /** YYYY-MM-DD または null */
   due_date: string | null
+  /**
+   * 期限行から解いた `260410-金` 形式（6桁＋実曜日）。`-W`・`-?` 等のプレースホルダや英字曜は実日付から補う。
+   */
+  due_date_weekday_label: string | null
   subtasks: string[]
   /** 先頭が `YID-N` のときのみ（DB の source_yid 用） */
   source_yid: string | null
@@ -44,6 +48,7 @@ type Builder = {
   sp_exp_mind: number
   sp_exp_spirit: number
   due_date: string | null
+  due_date_weekday_label: string | null
   subtasks: string[]
   rewardLineParsed: boolean
   source_yid: string | null
@@ -53,10 +58,28 @@ type Builder = {
 const TOP_TODO = /^- \[[^\]]*\]\s*(.+)\s*$/
 /** 完了 `- [x]` はブロックを閉じる（インポート対象外） */
 const TOP_DONE = /^- \[[xX]\]\s*/
+/** 行頭 `!` の直後に `- []`（例: `!- [] タスク` / `! - [] タスク`）→ 同期・インポート対象外 */
+const TOP_TODO_EXCLUDE_LINE = /^\s*!\s*-\s*\[/
 const DESC_LINE = /^\s*\*\*｜説明｜(.+?)\*\*\s*$/
 const INDENT_BULLET = /^(?: {2}|\t)- (.+)$/
 
-/** YYMMDD-W → YYYY-MM-DD（7桁日付や不正月日は null） */
+const JP_WEEKDAY_KANJI = ['日', '月', '火', '水', '木', '金', '土'] as const
+
+/** `YYYY-MM-DD` の暦日に対応する日本語1字曜（UTC 正午基準でズレにくくする） */
+export function weekdayKanjiForIsoDate(isoDate: string): string {
+  const [y, mo, d] = isoDate.split('-').map(Number)
+  const t = Date.UTC(y, mo - 1, d, 12, 0, 0)
+  return JP_WEEKDAY_KANJI[new Date(t).getUTCDay()]
+}
+
+/** 期限トークンと ISO から `260410-金` 形式を返す（6桁は入力から、曜は日付から算出） */
+export function canonicalYyMmDdWeekdayLabel(rawDueToken: string, iso: string): string | null {
+  const m = rawDueToken.trim().match(/^(\d{2})(\d{2})(\d{2})/)
+  if (!m) return null
+  return `${m[1]}${m[2]}${m[3]}-${weekdayKanjiForIsoDate(iso)}`
+}
+
+/** YYMMDD-W → YYYY-MM-DD（`-W`・`-?`・`-Sat` 等は日付6桁のみ見て解釈。不正月日は null） */
 export function parseYyMmDdDate(input: string): string | null {
   const s = input.trim()
   const m = s.match(/^(\d{2})(\d{2})(\d{2})(?:-\S*)?$/)
@@ -80,6 +103,33 @@ function parseDifficultyJp(s: string): Difficulty | null {
   return null
 }
 
+/**
+ * チェックボックス直後の本文が `!` / `!-` の除外マークか（`- [] !-｜メモ` / `- [] ! メモ`）。
+ * `!` のあとがすぐ文字（例: `!YID-1`）のときは除外しない。
+ */
+export function isTodoLineExcludedByBangPrefix(rawAfterCheckbox: string): boolean {
+  const t = rawAfterCheckbox.trim()
+  if (t.startsWith('!-')) return true
+  return /^!(?:\s|｜|$)/.test(t)
+}
+
+/** `｜` 区切りの1セグメントが「GOL に反映済み」フラグか（タイトル抽出からも除外する） */
+function isGolSyncedMarkerSegment(seg: string): boolean {
+  const t = seg.trim()
+  if (t === 'GOL化') return true
+  const n = t.replace(/-/g, '_').toLowerCase()
+  return n === 'gol_synced' || n === 'synced_gol'
+}
+
+/**
+ * 親行チェックボックス直後に `｜GOL化｜` / `｜GOL_SYNCED｜` 等のフラグセグメントがあるとき、
+ * その ToDo ブロックは MD インポート対象外（リスト側のマスターに残し、GOL へは載せない）。
+ */
+export function isTodoLineExcludedByGolSyncedFlag(rawAfterCheckbox: string): boolean {
+  const parts = rawAfterCheckbox.split('｜').map((p) => p.trim()).filter(Boolean)
+  return parts.some((p) => isGolSyncedMarkerSegment(p))
+}
+
 /** 親行のチェックボックス直後テキストから `YID-N` を取り出す（正規化して YID-数字） */
 export function extractSourceYidFromTopLine(raw: string): string | null {
   const parts = raw.split('｜').map((p) => p.trim()).filter(Boolean)
@@ -98,6 +148,7 @@ function extractTaskTitle(raw: string): string {
 
   for (let j = start; j < parts.length; j++) {
     const seg = parts[j]
+    if (isGolSyncedMarkerSegment(seg)) continue
     if (seg === 'easy' || seg === 'medium' || seg === 'hard') continue
     if (/^\d{6}-\S+$/.test(seg)) continue
     if (/^\d{7}-/.test(seg)) continue
@@ -157,6 +208,7 @@ function finalizeBuilder(b: Builder): ParsedTodoForImport {
     sp_exp_mind: b.sp_exp_mind,
     sp_exp_spirit: b.sp_exp_spirit,
     due_date: b.due_date,
+    due_date_weekday_label: b.due_date_weekday_label,
     subtasks: [...b.subtasks],
     source_yid: b.source_yid,
   }
@@ -187,11 +239,26 @@ function handleIndentedLine(
     }
     const iso = parseYyMmDdDate(v)
     b.due_date = iso
-    if (!iso) {
+    if (iso) {
+      const label = canonicalYyMmDdWeekdayLabel(v, iso)
+      b.due_date_weekday_label = label
+      const suffix = v.trim().match(/^\d{6}-(.+)$/)?.[1]?.trim() ?? ''
+      if (suffix && /^[日月火水木金土]$/.test(suffix)) {
+        const actual = weekdayKanjiForIsoDate(iso)
+        if (suffix !== actual) {
+          diagnostics.push({
+            severity: 'warn',
+            line: lineNum,
+            message: `期限「${v}」の曜日（${suffix}）がカレンダーと一致しません（実際は${actual}）。保存日付は ${iso}、表示用は ${label} です。`,
+          })
+        }
+      }
+    } else {
+      b.due_date_weekday_label = null
       diagnostics.push({
         severity: 'warn',
         line: lineNum,
-        message: `期限「${v}」を日付に変換できませんでした（YYMMDD と曜の6+桁推奨）`,
+        message: `期限「${v}」を日付に変換できませんでした（例: 260411-土 または 260411-W で曜不明）`,
       })
     }
     return
@@ -296,9 +363,20 @@ export function parseTodoMarkdownWithDiagnostics(text: string): ParseTodoMarkdow
       continue
     }
 
+    if (TOP_TODO_EXCLUDE_LINE.test(line)) {
+      flush()
+      continue
+    }
+
     const topM = line.match(TOP_TODO)
     if (topM) {
       flush()
+      if (isTodoLineExcludedByBangPrefix(topM[1])) {
+        continue
+      }
+      if (isTodoLineExcludedByGolSyncedFlag(topM[1])) {
+        continue
+      }
       const title = extractTaskTitle(topM[1])
       if (!title.trim()) {
         diagnostics.push({
@@ -318,6 +396,7 @@ export function parseTodoMarkdownWithDiagnostics(text: string): ParseTodoMarkdow
         sp_exp_mind: 0,
         sp_exp_spirit: 0,
         due_date: null,
+        due_date_weekday_label: null,
         subtasks: [],
         rewardLineParsed: false,
         source_yid: extractSourceYidFromTopLine(topM[1]),

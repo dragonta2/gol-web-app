@@ -50,7 +50,7 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
 
       const { data: existingRows, error: existingErr } = await supabase
         .from('todos')
-        .select('task_name, source_yid')
+        .select('source_yid')
         .eq('user_id', userId)
 
       if (existingErr) {
@@ -63,11 +63,7 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
           .map((r) => r.source_yid?.trim())
           .filter((y): y is string => Boolean(y)),
       )
-      const dbNames = new Set(
-        (existingRows ?? []).map((r) => r.task_name.trim()).filter(Boolean),
-      )
       const batchYids = new Set<string>()
-      const batchNames = new Set<string>()
 
       let created = 0
       let skipped = 0
@@ -75,13 +71,11 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
 
       for (let i = 0; i < parsed.length; i++) {
         const t = parsed[i]
-        const name = t.task_name.trim()
         const yid = t.source_yid?.trim() || null
 
-        const dupByYid = yid && (dbYids.has(yid) || batchYids.has(yid))
-        const dupByName = !yid && name && (dbNames.has(name) || batchNames.has(name))
+        const dupByYid = Boolean(yid && (dbYids.has(yid) || batchYids.has(yid)))
 
-        if (dupByYid || dupByName) {
+        if (dupByYid) {
           skipped++
           setProgress({ done: i + 1, total: parsed.length })
           continue
@@ -122,10 +116,6 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
           batchYids.add(yid)
           dbYids.add(yid)
         }
-        if (name) {
-          batchNames.add(name)
-          dbNames.add(name)
-        }
 
         if (t.subtasks.length > 0) {
           await supabase.from('todo_subtasks').insert(
@@ -144,14 +134,14 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
       if (created > 0) {
         toast.success(
           skipped > 0
-            ? `${created}件のToDoを作成しました（${skipped}件は重複のためスキップ）`
+            ? `${created}件のToDoを作成しました（${skipped}件は同一YIDのためスキップ）`
             : `${created}件のToDoを作成しました`,
         )
         onSuccess()
         onOpenChange(false)
         setText('')
       } else if (skipped > 0) {
-        toast.message('すべてスキップしました（既存と同一のYIDまたはタスク名）')
+        toast.message('すべてスキップしました（インポート対象のYIDはすべて既に登録済み）')
       }
     } catch (err) {
       toast.error('エラーが発生しました')
@@ -273,7 +263,16 @@ export function TodoMdImportModal({ open, onOpenChange, userId, onSuccess }: Tod
                   <span>
                     報酬: {t.sp_points}G / 体{t.sp_exp_body} 頭{t.sp_exp_mind} 心{t.sp_exp_spirit}
                   </span>
-                  {t.due_date ? <span>期限: {t.due_date}</span> : <span>期限: なし</span>}
+                  {t.due_date ? (
+                    <span>
+                      期限:{' '}
+                      {t.due_date_weekday_label
+                        ? `${t.due_date_weekday_label}（${t.due_date}）`
+                        : t.due_date}
+                    </span>
+                  ) : (
+                    <span>期限: なし</span>
+                  )}
                 </div>
                 {t.description ? (
                   <p className="text-xs text-zinc-400 mt-1 line-clamp-3 whitespace-pre-wrap">{t.description}</p>

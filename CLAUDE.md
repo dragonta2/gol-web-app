@@ -14,14 +14,10 @@ npm run test         # Vitest unit tests
 npm run test:e2e     # Playwright E2E tests (CI only)
 ```
 
-`gol-web` 直下では、やりたいことリスト MD → Supabase 同期（経路 B）に `npm run sync-todos`（`--dry-run` でパースのみ）を使える。
-
 Or run directly from `gol-web/`:
 
 ```bash
 cd gol-web
-npm run sync-todos             # 要: .env.local + SUPABASE_SERVICE_ROLE_KEY
-npx tsx scripts/sync-todos.ts --dry-run
 npx vitest run <path>          # Run a single test file
 npx vitest run --coverage      # With coverage report
 npx vitest --ui                # Interactive test UI

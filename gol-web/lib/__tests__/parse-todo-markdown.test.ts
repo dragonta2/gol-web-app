@@ -3,6 +3,9 @@ import {
   parseTodoMarkdown,
   parseTodoMarkdownWithDiagnostics,
   parseYyMmDdDate,
+  weekdayKanjiForIsoDate,
+  canonicalYyMmDdWeekdayLabel,
+  isTodoLineExcludedByGolSyncedFlag,
 } from '@/lib/parse-todo-markdown'
 
 describe('parseYyMmDdDate', () => {
@@ -10,9 +13,25 @@ describe('parseYyMmDdDate', () => {
     expect(parseYyMmDdDate('260411-土')).toBe('2026-04-11')
   })
 
+  it('曜プレースホルダ -W / -? も6桁日付として解釈する', () => {
+    expect(parseYyMmDdDate('260410-W')).toBe('2026-04-10')
+    expect(parseYyMmDdDate('260410-w')).toBe('2026-04-10')
+    expect(parseYyMmDdDate('260410-?')).toBe('2026-04-10')
+  })
+
   it('不正な日付は null', () => {
     expect(parseYyMmDdDate('2604011-土')).toBeNull()
     expect(parseYyMmDdDate('abc')).toBeNull()
+  })
+})
+
+describe('weekdayKanjiForIsoDate / canonicalYyMmDdWeekdayLabel', () => {
+  it('ISO から曜を返す', () => {
+    expect(weekdayKanjiForIsoDate('2026-04-10')).toBe('金')
+  })
+
+  it('期限トークンと ISO から 260410-金 を組み立てる', () => {
+    expect(canonicalYyMmDdWeekdayLabel('260410-W', '2026-04-10')).toBe('260410-金')
   })
 })
 
@@ -42,6 +61,14 @@ describe('parseTodoMarkdown', () => {
     expect(t.sp_exp_spirit).toBe(0)
     expect(t.subtasks).toEqual(['調査', 'マークダウン側の項目値をあわせる', '実装', '確認'])
     expect(t.source_yid).toBe('YID-11')
+    expect(t.due_date_weekday_label).toBe('260411-土')
+  })
+
+  it('期限が -W のとき実曜日ラベルを付ける', () => {
+    const [t] = parseTodoMarkdown(`- [] T
+  - ｜期限｜260410-W`)
+    expect(t.due_date).toBe('2026-04-10')
+    expect(t.due_date_weekday_label).toBe('260410-金')
   })
 
   it('従来形式: タスク＋プレーンサブタスク', () => {
@@ -56,6 +83,7 @@ describe('parseTodoMarkdown', () => {
     expect(t.sp_exp_mind).toBe(2)
     expect(t.subtasks).toEqual(['サブ1', 'サブ2'])
     expect(t.source_yid).toBeNull()
+    expect(t.due_date_weekday_label).toBeNull()
   })
 
   it('- [x] 完了行のあとに続く行は前タスクに付けない', () => {
@@ -75,6 +103,61 @@ describe('parseTodoMarkdown', () => {
     expect(r).toHaveLength(2)
     expect(r[0].task_name).toBe('A')
     expect(r[1].task_name).toBe('B')
+  })
+
+  it('行頭 !- [] / ! - [] は同期対象外', () => {
+    const r = parseTodoMarkdown(`!- [] 同期しない
+- [] 取り込む`)
+    expect(r).toHaveLength(1)
+    expect(r[0].task_name).toBe('取り込む')
+    const r2 = parseTodoMarkdown(`! - [] 同期しない
+- [] OK`)
+    expect(r2).toHaveLength(1)
+    expect(r2[0].task_name).toBe('OK')
+  })
+
+  it('チェックボックス直後が !- または !＋区切りなら同期対象外', () => {
+    const r = parseTodoMarkdown(`- [] !-｜同期しないメモ
+- [] ! 同期しない
+- [] 通常タスク`)
+    expect(r).toHaveLength(1)
+    expect(r[0].task_name).toBe('通常タスク')
+  })
+
+  it('! の直後が区切りでないときは除外しない', () => {
+    const r = parseTodoMarkdown(`- [] !Prefix付きタイトル`)
+    expect(r).toHaveLength(1)
+    expect(r[0].task_name).toBe('!Prefix付きタイトル')
+  })
+
+  it('親行に GOL化 / GOL_SYNCED セグメントがあるブロックはインポート対象外', () => {
+    const flagged = `- [] YID-11｜同期タスク｜GOL化
+  **｜説明｜説明文**
+  - [] サブ`
+    expect(parseTodoMarkdown(flagged)).toHaveLength(0)
+
+    const en = `- [] YID-12｜英語フラグ｜GOL_SYNCED
+  - サブ`
+    expect(parseTodoMarkdown(en)).toHaveLength(0)
+    expect(parseTodoMarkdown(`- [] a｜synced_gol`)).toHaveLength(0)
+    expect(parseTodoMarkdown(`- [] a｜GOL-SYNCED`)).toHaveLength(0)
+
+    const mixed = `- [] YID-1｜未反映のみ｜medium
+  - ｜難易度｜ふつう
+- [] YID-2｜GOL済み｜GOL化
+  - サブ`
+    const r = parseTodoMarkdown(mixed)
+    expect(r).toHaveLength(1)
+    expect(r[0].task_name).toBe('未反映のみ')
+    expect(r[0].source_yid).toBe('YID-1')
+  })
+})
+
+describe('isTodoLineExcludedByGolSyncedFlag', () => {
+  it('フラグセグメントを検出する', () => {
+    expect(isTodoLineExcludedByGolSyncedFlag('YID-1｜タイトル｜GOL化')).toBe(true)
+    expect(isTodoLineExcludedByGolSyncedFlag('タイトル｜gol_synced')).toBe(true)
+    expect(isTodoLineExcludedByGolSyncedFlag('YID-1｜ただのタスク')).toBe(false)
   })
 })
 
