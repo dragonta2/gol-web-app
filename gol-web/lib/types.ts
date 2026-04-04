@@ -210,6 +210,8 @@ export interface Todo {
   display_order: number;
   /** 難易度 */
   difficulty: Difficulty;
+  /** 説明（任意） */
+  description: string | null;
   /** 作成日時 */
   created_at: string;
   /** 更新日時 */

@@ -801,7 +801,8 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     const year = String(date.getFullYear()).slice(-2);
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    return `${year}/${month}/${day}`;
+    const wday = ['日','月','火','水','木','金','土'][date.getDay()];
+    return `${year}/${month}/${day}-${wday}`;
   };
 
   // 完了日時表示用フォーマット（26/01/28-水 HH:mm 形式、括弧付き）

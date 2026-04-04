@@ -1,6 +1,6 @@
 "use client"
 
-import React, { memo, useState, useEffect, useMemo } from "react"
+import React, { memo, useState, useEffect, useMemo, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import type { Todo, TodoLog, TodoSubtask, Difficulty } from "@/lib/types"
@@ -22,7 +22,7 @@ import { DatePickerField } from "@/components/date-picker-field"
 import { CompletedAtDialog } from "@/components/completed-at-dialog"
 import { FormCard } from "@/components/ui/form-card"
 import { toast } from "sonner"
-import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, Copy, Plus } from "lucide-react"
+import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, Copy, Plus, Loader2 } from "lucide-react"
 import {
   DndContext,
   DragEndEvent,
@@ -93,6 +93,12 @@ function TodoSummaryTab({
   // 確定済みの日誌を見ているときは今日の日誌IDに記録する
   const effectiveDailyLogId = isConfirmed ? (todayDailyLogId ?? dailyLogId) : dailyLogId
   const router = useRouter()
+  const [, startTransition] = useTransition()
+  const refreshDashboard = () => {
+    startTransition(() => {
+      router.refresh()
+    })
+  }
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isMdImportOpen, setIsMdImportOpen] = useState(false)
@@ -120,6 +126,13 @@ function TodoSummaryTab({
       return next
     })
   }, [todoSubtasks])
+
+  /** router.refresh 完了前でも一覧（説明含む）を即反映する。サーバー再取得後は props で上書き */
+  const [localTodos, setLocalTodos] = useState<Todo[]>(todos)
+  useEffect(() => {
+    setLocalTodos(todos)
+  }, [todos])
+
   // フィルター状態（初回はサーバーとクライアントで同じにし、マウント後に localStorage から復元して Hydration エラーを防ぐ）
   const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>([])
   // 月ごとのフィルター状態（'all' = すべて、'YYYY-MM' = 特定の月）
@@ -160,6 +173,8 @@ function TodoSummaryTab({
   const [selectedAttributes, setSelectedAttributes] = useState<ExpAttribute[]>([
     "mind",
   ])
+  /** 説明フィールド専用 state（formData と分離して入力遅延を防ぐ） */
+  const [descriptionDraft, setDescriptionDraft] = useState("")
   const [formData, setFormData] = useState<TodoFormData>({
     task_name: "",
     sp_points: 0,
@@ -196,7 +211,7 @@ function TodoSummaryTab({
 
   // 完了済みToDoを月ごとにグループ化
   const getCompletedTodosByMonth = () => {
-    const completed = todos.filter((todo) => todo.status === "completed")
+    const completed = localTodos.filter((todo) => todo.status === "completed")
     const grouped: Record<string, Todo[]> = {}
 
     completed.forEach((todo) => {
@@ -267,29 +282,31 @@ function TodoSummaryTab({
     () =>
       sortTodos(
         applyFilters(
-          todos.filter(
+          localTodos.filter(
             (todo) => todo.status === "active" && !(todo.is_on_hold === true),
           ),
         ),
       ),
-    [todos, filterDifficulties, searchQuery],
+    [localTodos, filterDifficulties, searchQuery],
   )
   const filteredInProgressTodos = useMemo(
     () =>
       sortTodos(
         applyFilters(
-          todos.filter(
+          localTodos.filter(
             (todo) =>
               todo.status === "in_progress" && !(todo.is_on_hold === true),
           ),
         ),
       ),
-    [todos, filterDifficulties, searchQuery],
+    [localTodos, filterDifficulties, searchQuery],
   )
   const filteredOnHoldTodos = useMemo(
     () =>
-      sortTodos(applyFilters(todos.filter((todo) => todo.is_on_hold === true))),
-    [todos, filterDifficulties, searchQuery],
+      sortTodos(
+        applyFilters(localTodos.filter((todo) => todo.is_on_hold === true)),
+      ),
+    [localTodos, filterDifficulties, searchQuery],
   )
 
   // ドラッグ&ドロップで並び替えられた順序を管理
@@ -330,7 +347,7 @@ function TodoSummaryTab({
 
     if (!over || active.id === over.id) return
 
-    const activeTodo = todos.find((t) => t.id === active.id)
+    const activeTodo = localTodos.find((t) => t.id === active.id)
     if (!activeTodo) return
 
     const overId = over.id as string
@@ -411,7 +428,7 @@ function TodoSummaryTab({
 
   // 完了済みタスク（月フィルター適用）
   const getFilteredCompletedTodos = () => {
-    const completed = todos.filter((todo) => todo.status === "completed")
+    const completed = localTodos.filter((todo) => todo.status === "completed")
     let filtered = applyFilters(completed)
 
     // 月フィルターが適用されている場合
@@ -439,16 +456,26 @@ function TodoSummaryTab({
     return `${year}/${month}/${day}`
   }
 
-  // 期限表示用（YYYY年MM月DD日-曜日）
+  // 期限表示用（YY/MM/DD-W 形式）
   const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"]
   const formatDueDateWithWeekday = (dateString: string | null): string => {
     if (!dateString) return "─"
     const date = new Date(dateString)
-    const year = date.getFullYear()
+    const year = String(date.getFullYear()).slice(-2)
     const month = String(date.getMonth() + 1).padStart(2, "0")
     const day = String(date.getDate()).padStart(2, "0")
     const weekday = WEEKDAY_JA[date.getDay()]
-    return `${year}年${month}月${day}日-${weekday}`
+    return `${year}/${month}/${day}-${weekday}`
+  }
+
+  // 作成日フォーマット（YY/MM/DD-W 形式）
+  const formatCreatedDate = (dateString: string): string => {
+    const date = new Date(dateString)
+    const year = String(date.getFullYear()).slice(-2)
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    const weekday = WEEKDAY_JA[date.getDay()]
+    return `${year}/${month}/${day}-${weekday}`
   }
 
   // 完了日時フォーマット（26/01/28-水 HH:mm 形式、括弧付きで表示用）
@@ -490,6 +517,7 @@ function TodoSummaryTab({
     const dist = distributePresetExp(PRESET_EXP_BY_DIFFICULTY["medium"], [
       "mind",
     ])
+    setDescriptionDraft("")
     setFormData({
       task_name: "",
       sp_points: gold,
@@ -518,6 +546,7 @@ function TodoSummaryTab({
     setEditingTodo(todo)
     const attrs = inferAttributesFromTodo(todo)
     setSelectedAttributes(attrs)
+    setDescriptionDraft(todo.description ?? "")
     setFormData({
       task_name: todo.task_name,
       sp_points: todo.sp_points,
@@ -537,15 +566,17 @@ function TodoSummaryTab({
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setEditingTodo(null)
+    setDescriptionDraft("")
   }
 
   // 日誌カンバンから「編集」で飛んできたとき、該当タスクの編集モーダルを開く
   useEffect(() => {
-    if (!initialEditTodoId || !todos.length) return
-    const todo = todos.find((t) => t.id === initialEditTodoId)
+    if (!initialEditTodoId || !localTodos.length) return
+    const todo = localTodos.find((t) => t.id === initialEditTodoId)
     if (!todo) return
     setEditingTodo(todo)
     setSelectedAttributes(inferAttributesFromTodo(todo))
+    setDescriptionDraft(todo.description ?? "")
     setFormData({
       task_name: todo.task_name,
       sp_points: todo.sp_points,
@@ -560,7 +591,7 @@ function TodoSummaryTab({
     })
     setIsModalOpen(true)
     onInitialEditConsumed?.()
-  }, [initialEditTodoId, todos, onInitialEditConsumed])
+  }, [initialEditTodoId, localTodos, onInitialEditConsumed])
 
   // 日誌タブから「新規タスク」で切り替えたとき、新規作成モーダルを開く
   useEffect(() => {
@@ -669,6 +700,8 @@ function TodoSummaryTab({
     setIsSubmitting(true)
     try {
       const supabase = createClient()
+      const descriptionValue =
+        descriptionDraft.trim() === "" ? null : descriptionDraft.trim()
 
       // サーバーで認証済みの userId を props から使用（ミドルウェア＋Cookie 非 httpOnly でブラウザ側セッションも利用可能）
 
@@ -689,11 +722,12 @@ function TodoSummaryTab({
       const wasCompleted = editingTodo?.status === "completed"
       const willBeCompleted = formData.status === "completed"
       const updatedTodo: Todo = editingTodo
-        ? { ...editingTodo, ...formData }
+        ? { ...editingTodo, ...formData, description: descriptionValue }
         : {
             id: "",
             user_id: userId,
             task_name: formData.task_name.trim(),
+            description: descriptionValue,
             sp_points: formData.sp_points,
             sp_exp_body: formData.sp_exp_body,
             sp_exp_mind: formData.sp_exp_mind,
@@ -713,6 +747,7 @@ function TodoSummaryTab({
         // 更新
         const updateData: Partial<Todo> = {
           task_name: formData.task_name.trim(),
+          description: descriptionValue,
           sp_points: formData.sp_points,
           sp_exp_body: formData.sp_exp_body,
           sp_exp_mind: formData.sp_exp_mind,
@@ -750,6 +785,32 @@ function TodoSummaryTab({
           // 完了 → 未完了: 報酬を削除
           await handleTaskUncompletion(editingTodo)
         }
+
+        const completedAtVal =
+          formData.status === "completed"
+            ? formData.completed_at || new Date().toISOString()
+            : null
+        setLocalTodos((prev) =>
+          prev.map((t) =>
+            t.id === editingTodo.id
+              ? {
+                  ...t,
+                  task_name: formData.task_name.trim(),
+                  description: descriptionValue,
+                  sp_points: formData.sp_points,
+                  sp_exp_body: formData.sp_exp_body,
+                  sp_exp_mind: formData.sp_exp_mind,
+                  sp_exp_spirit: formData.sp_exp_spirit,
+                  due_date: formData.due_date || null,
+                  status: formData.status,
+                  difficulty: formData.difficulty,
+                  is_on_hold: formData.is_on_hold,
+                  completed_at: completedAtVal,
+                  updated_at: new Date().toISOString(),
+                }
+              : t,
+          ),
+        )
       } else {
         // 作成
         const { data: newTodo, error } = await supabase
@@ -757,6 +818,7 @@ function TodoSummaryTab({
           .insert({
             user_id: userId,
             task_name: formData.task_name.trim(),
+            description: descriptionValue,
             sp_points: formData.sp_points,
             sp_exp_body: formData.sp_exp_body,
             sp_exp_mind: formData.sp_exp_mind,
@@ -793,13 +855,14 @@ function TodoSummaryTab({
         if (willBeCompleted && newTodo) {
           await handleTaskCompletion(newTodo)
         }
+
+        setLocalTodos((prev) => [...prev, newTodo as Todo])
       }
 
       // モーダルを閉じる
       handleCloseModal()
 
-      // ページをリフレッシュしてデータを再取得
-      router.refresh()
+      refreshDashboard()
     } catch (err) {
       console.error("予期しないエラー:", err)
       toast.error("エラーが発生しました", {
@@ -834,8 +897,8 @@ function TodoSummaryTab({
         return false
       }
 
-      // ページをリフレッシュしてデータを再取得
-      router.refresh()
+      setLocalTodos((prev) => prev.filter((t) => t.id !== todo.id))
+      refreshDashboard()
       return true
     } catch (err) {
       console.error("予期しないエラー:", err)
@@ -860,7 +923,7 @@ function TodoSummaryTab({
         throw new Error(data.error ?? "複製に失敗しました")
       }
       toast.success(`「${todo.task_name}」を複製しました`)
-      router.refresh()
+      refreshDashboard()
     } catch (err) {
       toast.error("複製に失敗しました", {
         description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
@@ -882,7 +945,7 @@ function TodoSummaryTab({
               .eq("id", todo.id)
             if (error) throw error
             await handleTaskCompletion(todo)
-            router.refresh()
+            refreshDashboard()
           } catch (err) {
             toast.error("ステータスの変更に失敗しました", {
               description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
@@ -903,7 +966,7 @@ function TodoSummaryTab({
       if (wasCompleted) {
         await handleTaskUncompletion(todo)
       }
-      router.refresh()
+      refreshDashboard()
     } catch (err) {
       toast.error("ステータスの変更に失敗しました", {
         description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
@@ -1024,7 +1087,7 @@ function TodoSummaryTab({
         return
       }
 
-      router.refresh()
+      refreshDashboard()
       // 反映中のタイムラグ中も「追加中...」を表示し続ける
       setTimeout(() => setAddingSubtask(false), 1200)
     } catch (err) {
@@ -1064,7 +1127,7 @@ function TodoSummaryTab({
         return false
       }
 
-      router.refresh()
+      refreshDashboard()
       return true
     } catch (err) {
       console.error("予期しないエラー:", err)
@@ -1100,8 +1163,7 @@ function TodoSummaryTab({
         return
       }
 
-      // ページをリフレッシュしてデータを再取得
-      router.refresh()
+      refreshDashboard()
       // 反映中のタイムラグ中も「削除中...」を表示し続ける
       setTimeout(() => setDeletingSubtaskId(null), 1200)
     } catch (err) {
@@ -1134,7 +1196,7 @@ function TodoSummaryTab({
             .eq("id", newIds[i])
           if (error) throw error
         }
-        router.refresh()
+        refreshDashboard()
       } catch (err) {
         console.error("サブタスク並び替えエラー:", err)
         toast.error("並び替えに失敗しました", {
@@ -1165,7 +1227,7 @@ function TodoSummaryTab({
             .eq("id", newIds[i])
           if (error) throw error
         }
-        router.refresh()
+        refreshDashboard()
       } catch (err) {
         console.error("サブタスク並び替えエラー:", err)
         toast.error("並び替えに失敗しました", {
@@ -1648,7 +1710,7 @@ function TodoSummaryTab({
         <DragOverlay>
           {activeId &&
             (() => {
-              const todo = todos.find((t) => t.id === activeId)
+              const todo = localTodos.find((t) => t.id === activeId)
               if (!todo) return null
               return (
                 <div className="bg-zinc-900 border border-cyan-600 rounded-lg p-3 sm:p-4 opacity-90 rotate-3 shadow-lg">
@@ -1664,11 +1726,22 @@ function TodoSummaryTab({
       {/* モーダル（追加・編集） */}
       <Modal
         open={isModalOpen}
-        onOpenChange={setIsModalOpen}
+        onOpenChange={(open) => {
+          setIsModalOpen(open)
+          if (!open) {
+            setEditingTodo(null)
+            setDescriptionDraft("")
+          }
+        }}
         title={editingTodo ? "ToDoを編集" : "+ 新規ToDoを作成"}
         description={
           editingTodo
-            ? "ToDoの内容を編集します"
+            ? (
+              <span className="flex items-center justify-between">
+                <span>ToDoの内容を編集します</span>
+                <span>作成日:{formatCreatedDate(editingTodo.created_at)}</span>
+              </span>
+            )
             : "新しいToDoタスクを作成します"
         }
         footer={
@@ -1722,6 +1795,22 @@ function TodoSummaryTab({
           }
           placeholder="例: 沖縄旅行の準備"
         />
+
+        {/* 説明（任意） */}
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <FormLabel htmlFor="description" className="mb-0">説明</FormLabel>
+            {isSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400" />}
+          </div>
+          <textarea
+            id="description"
+            value={descriptionDraft}
+            onChange={(e) => setDescriptionDraft(e.target.value)}
+            placeholder="任意: タスクの詳細や備考"
+            rows={3}
+            className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+          />
+        </div>
 
         {/* 難易度（やさしい1G/1EXP・ふつう2G/2EXP・むずかしい3G/3EXP） */}
         <div>
@@ -1956,7 +2045,7 @@ function TodoSummaryTab({
         open={isMdImportOpen}
         onOpenChange={setIsMdImportOpen}
         userId={userId}
-        onSuccess={() => router.refresh()}
+        onSuccess={refreshDashboard}
       />
     </div>
   )
