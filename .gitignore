@@ -3,6 +3,9 @@
 # 秘匿情報（ID・PW・APIキー等）→ 絶対にコミットしない
 docs/ex-secret.md
 
+# Cursor デバッグセッション（NDJSON ログ等・コミットしない）
+.cursor/debug*.log
+
 # macOS
 .DS_Store
 
