@@ -441,6 +441,9 @@ function DroppableColumn({
   formatCompletedDate,
   sortOrder,
   onSortChange,
+  /** アクティブ／進行中: 期限ソート（遠い順＝期限が遠い方が上、近い順＝期限が近い方が上） */
+  dueOrder,
+  onDueOrderChange,
   dateSortLabel,
   onMoveToActive,
   onEditTodo,
@@ -462,6 +465,8 @@ function DroppableColumn({
   formatCompletedDate: (completedAt: string | null) => string;
   sortOrder?: 'asc' | 'desc';
   onSortChange?: (order: 'asc' | 'desc') => void;
+  dueOrder?: 'near' | 'far';
+  onDueOrderChange?: (order: 'near' | 'far') => void;
   dateSortLabel?: string;
   onMoveToActive?: (todoId: string) => void;
   onEditTodo?: (todoId: string) => void;
@@ -484,23 +489,43 @@ function DroppableColumn({
         <h3 className="font-medium text-zinc-300 text-base flex items-center justify-between gap-2">
           <span>{title}</span>
           <span className="flex items-center gap-1 shrink-0">
-            {sortOrder !== undefined && onSortChange && dateSortLabel && (
+            {dueOrder !== undefined && onDueOrderChange && dateSortLabel && (
+              <span className="flex items-center gap-1 text-xs text-zinc-500" aria-label={`${dateSortLabel}で並び替え`}>
+                <button
+                  type="button"
+                  onClick={() => onDueOrderChange('far')}
+                  className={`px-1.5 py-0.5 rounded ${dueOrder === 'far' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+                  title="期限が遠い順（日付の大きい方が上）"
+                >
+                  遠い順
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDueOrderChange('near')}
+                  className={`px-1.5 py-0.5 rounded ${dueOrder === 'near' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+                  title="期限が近い順（日付の小さい方が上）"
+                >
+                  近い順
+                </button>
+              </span>
+            )}
+            {sortOrder !== undefined && onSortChange && dateSortLabel && dueOrder === undefined && (
               <span className="flex items-center gap-1 text-xs text-zinc-500" aria-label={`${dateSortLabel}で並び替え`}>
                 <button
                   type="button"
                   onClick={() => onSortChange('asc')}
                   className={`px-1.5 py-0.5 rounded ${sortOrder === 'asc' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
-                  title="古い順"
+                  title="完了が古い順（日時が早い方が上）"
                 >
-                  古い順
+                  遠い順
                 </button>
                 <button
                   type="button"
                   onClick={() => onSortChange('desc')}
                   className={`px-1.5 py-0.5 rounded ${sortOrder === 'desc' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
-                  title="新しい順"
+                  title="完了が新しい順（日時が遅い方が上）"
                 >
-                  新しい順
+                  近い順
                 </button>
               </span>
             )}
@@ -611,8 +636,9 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
   const [internalIsExpanded, setInternalIsExpanded] = useState(true); // アコーディオンの開閉状態（内部管理）
   // フィルター状態（初回はサーバーとクライアントで同じにし、マウント後に localStorage から復元して Hydration エラーを防ぐ）
   const [filterDifficulties, setFilterDifficulties] = useState<Difficulty[]>([]);
-  const [sortDateActive, setSortDateActive] = useState<'asc' | 'desc'>('asc');
-  const [sortDateInProgress, setSortDateInProgress] = useState<'asc' | 'desc'>('asc');
+  /** 期限のみでソート: near=近い順、far=遠い順。期限切れは見た目のみで順序に混ぜない */
+  const [dueOrderActive, setDueOrderActive] = useState<'near' | 'far'>('near');
+  const [dueOrderInProgress, setDueOrderInProgress] = useState<'near' | 'far'>('near');
   const [sortDateCompleted, setSortDateCompleted] = useState<'asc' | 'desc'>('desc');
   // @dnd-kit の aria-* がサーバーと一致しないため、DndContext 配下はクライアントマウント後のみ描画する
   const [isClient, setIsClient] = useState(false);
@@ -638,10 +664,22 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
         /* ignore */
       }
     }
-    const sActive = localStorage.getItem('todo-kanban-sort-date-active');
-    if (sActive === 'asc' || sActive === 'desc') setSortDateActive(sActive);
-    const sProgress = localStorage.getItem('todo-kanban-sort-date-in-progress');
-    if (sProgress === 'asc' || sProgress === 'desc') setSortDateInProgress(sProgress);
+    const LS_ACTIVE = 'todo-kanban-due-order-active';
+    const LS_PROG = 'todo-kanban-due-order-in-progress';
+    const a = localStorage.getItem(LS_ACTIVE);
+    if (a === 'near' || a === 'far') setDueOrderActive(a);
+    else {
+      const legacy = localStorage.getItem('todo-kanban-sort-date-active');
+      if (legacy === 'asc') setDueOrderActive('far');
+      else if (legacy === 'desc') setDueOrderActive('near');
+    }
+    const p = localStorage.getItem(LS_PROG);
+    if (p === 'near' || p === 'far') setDueOrderInProgress(p);
+    else {
+      const legacyP = localStorage.getItem('todo-kanban-sort-date-in-progress');
+      if (legacyP === 'asc') setDueOrderInProgress('far');
+      else if (legacyP === 'desc') setDueOrderInProgress('near');
+    }
     const sCompleted = localStorage.getItem('todo-kanban-sort-date-completed');
     if (sCompleted === 'asc' || sCompleted === 'desc') setSortDateCompleted(sCompleted);
   }, []);
@@ -656,11 +694,11 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
   }, [filterDifficulties]);
 
   useEffect(() => {
-    localStorage.setItem('todo-kanban-sort-date-active', sortDateActive);
-  }, [sortDateActive]);
+    localStorage.setItem('todo-kanban-due-order-active', dueOrderActive);
+  }, [dueOrderActive]);
   useEffect(() => {
-    localStorage.setItem('todo-kanban-sort-date-in-progress', sortDateInProgress);
-  }, [sortDateInProgress]);
+    localStorage.setItem('todo-kanban-due-order-in-progress', dueOrderInProgress);
+  }, [dueOrderInProgress]);
   useEffect(() => {
     localStorage.setItem('todo-kanban-sort-date-completed', sortDateCompleted);
   }, [sortDateCompleted]);
@@ -722,7 +760,7 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     return { startDate, endDate };
   };
 
-  // 期限超過判定関数（sortTodosByDeadline より前に定義すること）
+  // 期限超過判定（カードの赤表示・⚠のみ。ソートでは特別扱いしない）
   const isOverdue = (dueDate: string | null, status: string): boolean => {
     if (!dueDate || status === 'completed') return false;
     const due = new Date(dueDate);
@@ -730,7 +768,23 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     return due < todayDate;
   };
 
-  // 日付でソート（小順=asc=古い順、高順=desc=新しい順）。同一日は getSubKey で比較
+  /** アクティブ／進行中: 期限のみ。無期限は末尾。同じ日は display_order */
+  const sortTodosByDueOnly = (list: Todo[], nearFirst: boolean): Todo[] => {
+    return [...list].sort((a, b) => {
+      const da = a.due_date;
+      const db = b.due_date;
+      if (!da && !db) return (a.display_order ?? 0) - (b.display_order ?? 0);
+      if (!da) return 1;
+      if (!db) return -1;
+      const ta = new Date(da).getTime();
+      const tb = new Date(db).getTime();
+      const cmp = nearFirst ? ta - tb : tb - ta;
+      if (cmp !== 0) return cmp;
+      return (a.display_order ?? 0) - (b.display_order ?? 0);
+    });
+  };
+
+  // 日付でソート（完了日など）。同一日は getSubKey で比較
   const sortByDate = (
     list: Todo[],
     getDate: (t: Todo) => string | null,
@@ -753,28 +807,11 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
     });
   };
 
-  // 期限切れを一番上（日付古い順）、それ以外は display_order（ドラッグで変更可能）
-  const sortTodosByDeadline = (todoList: Todo[]): Todo[] => {
-    const overdue = todoList.filter((t) => isOverdue(t.due_date, t.status));
-    const rest = todoList.filter((t) => !isOverdue(t.due_date, t.status));
-    const overdueSorted = overdue.sort((a, b) =>
-      (a.due_date && b.due_date) ? new Date(a.due_date).getTime() - new Date(b.due_date).getTime() : 0
-    );
-    const restSorted = rest.sort((a, b) => (a.display_order || 0) - (b.display_order || 0));
-    return [...overdueSorted, ...restSorted];
-  };
-
   // ステータス別にtodosを分類（保留中は日誌カンバンに表示しない）
   const activeFiltered = applyFilters(todos.filter((todo) => todo.status === 'active' && !(todo.is_on_hold === true)));
   const inProgressFiltered = applyFilters(todos.filter((todo) => todo.status === 'in_progress' && !(todo.is_on_hold === true)));
-  const activeTodos =
-    sortDateActive === 'asc'
-      ? sortTodosByDeadline(activeFiltered)
-      : sortByDate(activeFiltered, (t) => t.due_date, 'desc', (t) => t.display_order ?? 0);
-  const inProgressTodos =
-    sortDateInProgress === 'asc'
-      ? sortTodosByDeadline(inProgressFiltered)
-      : sortByDate(inProgressFiltered, (t) => t.due_date, 'desc', (t) => t.display_order ?? 0);
+  const activeTodos = sortTodosByDueOnly(activeFiltered, dueOrderActive === 'near');
+  const inProgressTodos = sortTodosByDueOnly(inProgressFiltered, dueOrderInProgress === 'near');
 
   // 完了済みタスク（今月のものだけ表示・完了日でソート）
   const completedTodos = sortByDate(
@@ -1053,10 +1090,6 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
       (currentTodo.status === 'active' ? !!targetInActive : !!targetInProgress);
 
     if (sameColumnReorder) {
-      if (isOverdue(currentTodo.due_date, currentTodo.status)) {
-        toast.warning('期限超過のタスクは並び替えできません');
-        return;
-      }
       const currentList =
         currentTodo.status === 'active' ? [...activeTodos] : [...inProgressTodos];
       const oldIndex = currentList.findIndex((t) => t.id === todoId);
@@ -1064,16 +1097,11 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
       if (oldIndex === -1 || newIndex === -1) return;
       const [moved] = currentList.splice(oldIndex, 1);
       currentList.splice(newIndex, 0, moved);
-      const overdueCount = currentList.filter((t) => isOverdue(t.due_date, t.status)).length;
       setIsUpdating(true);
       try {
         const supabase = createClient();
-        let restIndex = 0;
-        for (const t of currentList) {
-          if (!isOverdue(t.due_date, t.status)) {
-            await supabase.from('todos').update({ display_order: overdueCount + restIndex }).eq('id', t.id);
-            restIndex += 1;
-          }
+        for (let i = 0; i < currentList.length; i++) {
+          await supabase.from('todos').update({ display_order: i }).eq('id', currentList[i].id);
         }
         toast.success('並び順を更新しました');
         window.location.reload();
@@ -1322,8 +1350,8 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
             getReward={calculateReward}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
-            sortOrder={sortDateActive}
-            onSortChange={setSortDateActive}
+            dueOrder={dueOrderActive}
+            onDueOrderChange={setDueOrderActive}
             dateSortLabel="期限"
             onEditTodo={onEditTodo}
             getSubtasksForTodo={getSubtasksForTodo}
@@ -1345,8 +1373,8 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
             getReward={calculateReward}
             formatDeadline={formatDeadline}
             formatCompletedDate={formatCompletedDate}
-            sortOrder={sortDateInProgress}
-            onSortChange={setSortDateInProgress}
+            dueOrder={dueOrderInProgress}
+            onDueOrderChange={setDueOrderInProgress}
             dateSortLabel="期限"
             onMoveToActive={handleMoveToActive}
             onEditTodo={onEditTodo}

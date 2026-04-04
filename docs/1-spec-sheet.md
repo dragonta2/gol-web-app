@@ -795,6 +795,36 @@ ToDoと日誌は独立した存在として扱う。スコアを記録する日�
 - MD側の運用改善は `md-app/01-concept-spec.md` で管理。
 - 共通概念は参照のみ。Web実装の具体は本書で定義。
 
+### やりたいことリストから ToDo へ（貼り付けインポート・実装済）
+
+**P5 の「MD⇄Web 手動同期ボタン」とは別経路。** ユーザーが **マークダウンをコピー＆ペースト**して `todos` / `todo_subtasks` に **insert** する **一方向（MD 断片 → Web）** の機能。ファイルパス直読みや双方向同期は含まない。
+
+#### 概要
+
+- **画面**: ダッシュボード **ToDo サマリー** タブの **「MDをToDoタスクに変換」**（モーダルタイトルは「マークダウンからToDoタスクを作成」）
+
+- **認証**: ブラウザの Supabase クライアント（**RLS**）。サービスロールは使わない
+
+- **パーサー**: `gol-web/lib/parse-todo-markdown.ts`（親行 `- []`、インデント行の `｜期限｜` / `｜難易度｜` / `｜報酬｜`、`**｜説明｜**`、サブタスク等）
+
+- **UI・保存処理**: `gol-web/app/dashboard/todo-md-import-modal.tsx`
+
+#### データ・重複
+
+- **`todos.source_yid`**: 親行先頭セグメントが `YID-N` のときその文字列を保存。未連携の Web 直作成 ToDo は **null**
+
+- **スキップ条件**: **同一ユーザーかつ同一 `source_yid`** が **既に DB にある**場合、または **同じ貼り付けバッチ内で先に同じ YID で作成済み**の場合。**タスク名の一致のみではスキップしない**
+
+- **DB マイグレーション（運用前提）**: `source_yid` 列と部分ユニーク（`WHERE source_yid IS NOT NULL`）は `docs/appendix/DB-related/sql-snippet/doned/add-source-yid-to-todos.sql`。同名タスク複数を許す場合は `docs/appendix/DB-related/sql-snippet/doned/drop-todos-user-id-task-name-unique.sql` を参照
+
+#### 運用メモ（リポジトリ外）
+
+リスト側の書式・日々の手順の詳細は、iCloud 上の次を参照（ユーザー運用メモ）。
+
+```
+ALL-DTA2-iCloud/1-i-IT/i-Z-汎用生成物/i-1-中村辰彦/i-やりたいことリスト/i-progress/i-Reference/YR-11-やりたいことリストとGOL-WEBの同期.md
+```
+
 ---
 
 ## 将来の拡張機能（P5以降で検討） --------------
