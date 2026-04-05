@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, memo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouterRefresh } from '@/contexts/router-refresh-context';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +41,7 @@ import {
 } from './habit-list-utils';
 
 function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false }: HabitListProps) {
-  const router = useRouter();
+  const { refresh } = useRouterRefresh();
   const supabase = createClient();
   const sensors = useSensors(useSensor(PointerSensor));
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -223,7 +223,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         return;
       }
 
-      router.refresh();
+      refresh();
     } catch (error) {
       console.error('習慣更新エラー:', error);
       setLocalUpdates((prev) => {
@@ -252,7 +252,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
 
       if (error) throw error;
       toast.success('変更しました');
-      router.refresh();
+      refresh();
     } catch (err) {
       toast.error('更新に失敗しました');
       console.error(err);
@@ -274,7 +274,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
 
       if (error) throw error;
       toast.success('変更しました');
-      router.refresh();
+      refresh();
     } catch (err) {
       toast.error('更新に失敗しました');
       console.error(err);
@@ -295,7 +295,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
 
       if (error) throw error;
       toast.success('変更しました');
-      router.refresh();
+      refresh();
     } catch (err) {
       toast.error('更新に失敗しました');
       console.error(err);
@@ -316,7 +316,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
 
       if (error) throw error;
       toast.success('変更しました');
-      router.refresh();
+      refresh();
     } catch (err) {
       toast.error('更新に失敗しました');
       console.error(err);
@@ -539,7 +539,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
 
       toast.success('習慣を更新しました');
       handleCloseModal();
-      router.refresh();
+      refresh();
     } catch (err) {
       console.error('予期しないエラー:', err);
       toast.error('エラーが発生しました', {
@@ -571,7 +571,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
       }
 
       toast.success('習慣を削除しました');
-      router.refresh();
+      refresh();
     } catch (err) {
       console.error('予期しないエラー:', err);
       toast.error('エラーが発生しました', {
@@ -596,7 +596,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         updates.map((u) => supabase.from('habits').update({ display_order: u.display_order }).eq('id', u.id))
       );
       toast.success('習慣の順序を変更しました');
-      router.refresh();
+      refresh();
     } catch (err) {
       console.error('並び替えエラー:', err);
       toast.error('並び替えに失敗しました', {
@@ -621,7 +621,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         updates.map((u) => supabase.from('habits').update({ display_order: u.display_order }).eq('id', u.id))
       );
       toast.success('習慣の順序を変更しました');
-      router.refresh();
+      refresh();
     } catch (err) {
       console.error('並び替えエラー:', err);
       toast.error('並び替えに失敗しました', {
@@ -647,7 +647,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         flat.map((h, i) => supabase.from('habits').update({ display_order: i }).eq('id', h.id))
       );
       toast.success('習慣の順序を変更しました');
-      router.refresh();
+      refresh();
     } catch (err) {
       console.error('並び替えエラー:', err);
       toast.error('並び替えに失敗しました', {
@@ -922,7 +922,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
       }
 
       handleCloseModal();
-      router.refresh();
+      refresh();
     } catch (err) {
       console.error('予期しないエラー:', err);
       toast.error('エラーが発生しました', {

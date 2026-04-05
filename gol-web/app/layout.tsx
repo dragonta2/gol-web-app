@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { FontSizeProvider } from "@/contexts/font-size-context";
+import { RouterRefreshProvider } from "@/contexts/router-refresh-context";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,8 +32,10 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <FontSizeProvider>
-          {children}
-          <Toaster />
+          <RouterRefreshProvider>
+            {children}
+            <Toaster />
+          </RouterRefreshProvider>
         </FontSizeProvider>
       </body>
     </html>

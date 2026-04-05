@@ -1,7 +1,7 @@
 "use client"
 
-import React, { memo, useState, useEffect, useMemo, useRef, useTransition } from "react"
-import { useRouter } from "next/navigation"
+import React, { memo, useState, useEffect, useMemo, useRef } from "react"
+import { useRouterRefresh } from "@/contexts/router-refresh-context"
 import { createClient } from "@/lib/supabase/client"
 import type { Todo, TodoLog, TodoSubtask, Difficulty } from "@/lib/types"
 import {
@@ -117,13 +117,7 @@ function TodoSummaryTab({
 }: TodoSummaryTabProps) {
   // 確定済みの日誌を見ているときは今日の日誌IDに記録する
   const effectiveDailyLogId = isConfirmed ? (todayDailyLogId ?? dailyLogId) : dailyLogId
-  const router = useRouter()
-  const [, startTransition] = useTransition()
-  const refreshDashboard = () => {
-    startTransition(() => {
-      router.refresh()
-    })
-  }
+  const { refresh: refreshDashboard } = useRouterRefresh()
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isMdImportOpen, setIsMdImportOpen] = useState(false)

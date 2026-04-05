@@ -2,7 +2,7 @@
 
 import type { MutableRefObject } from 'react';
 import { useState, useEffect, memo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouterRefresh } from '@/contexts/router-refresh-context';
 import { createClient } from '@/lib/supabase/client';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -45,7 +45,7 @@ function JournalImpressionSections({
   isConfirmed: isConfirmedProp,
   journalTextsRef,
 }: JournalImpressionSectionsProps) {
-  const router = useRouter();
+  const { refresh } = useRouterRefresh();
   const supabase = createClient();
 
   const journalMaxLength = 3000;
@@ -168,7 +168,7 @@ function JournalImpressionSections({
           }
         }
         toast.success('Notion から取り込みました');
-        router.refresh();
+        refresh();
       }
     } catch {
       toast.error('Notion の取得に失敗しました');
@@ -197,7 +197,7 @@ function JournalImpressionSections({
       }
     }
     toast.success('Notion の内容で上書きしました');
-    router.refresh();
+    refresh();
   };
 
   // 表示する日付（dailyLogId）が変わったときだけ props から状態を同期する。
@@ -250,7 +250,7 @@ function JournalImpressionSections({
         toast.error('日誌本文の保存に失敗しました');
       } else {
         // 保存成功後、ページをリフレッシュして最新データを取得
-        router.refresh();
+        refresh();
       }
     }, 500);
   };
@@ -278,7 +278,7 @@ function JournalImpressionSections({
         toast.error('一言感想の保存に失敗しました');
       } else {
         // 保存成功後、ページをリフレッシュして最新データを取得
-        router.refresh();
+        refresh();
       }
     }, 500);
   };

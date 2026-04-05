@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouterRefresh } from '@/contexts/router-refresh-context';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Sparkles } from 'lucide-react';
@@ -11,7 +11,7 @@ import { Sparkles } from 'lucide-react';
  * 初期セットアップ（50G・権利A・デフォルトToDo）を後から適用するバナーを表示する。
  */
 export default function ApplyNewUserDefaultsBanner() {
-  const router = useRouter();
+  const { refresh } = useRouterRefresh();
   const [canApply, setCanApply] = useState<boolean | null>(null);
   const [applying, setApplying] = useState(false);
 
@@ -41,7 +41,7 @@ export default function ApplyNewUserDefaultsBanner() {
       }
       toast.success(data.message || '初期セットアップを適用しました');
       setCanApply(false);
-      router.refresh();
+      refresh();
     } catch {
       toast.error('適用に失敗しました');
     } finally {

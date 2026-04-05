@@ -3,6 +3,7 @@
 import { useState, useMemo, memo, useEffect, useRef, Fragment } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useRouterRefresh } from '@/contexts/router-refresh-context';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -70,6 +71,7 @@ interface AIJudgmentResult {
 
 function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpandedStateChange, userName = '', isAdmin = false, scoreBreakdown, journalTextsRef }: JournalFormProps) {
   const router = useRouter();
+  const { refresh } = useRouterRefresh();
   const supabase = createClient();
 
   // 日誌本文と一言感想の最大文字数（バリデーション用）
@@ -352,7 +354,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         });
       } else {
         toast.success('日誌を保存しました');
-        router.refresh();
+        refresh();
       }
     } catch (error) {
       console.error('Error saving journal:', error);
@@ -386,7 +388,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         return;
       }
       toast.success('日誌を確定しました');
-      router.refresh();
+      refresh();
     } catch (error) {
       console.error('Error confirming journal:', error);
       toast.error('日誌の確定に失敗しました');
@@ -418,7 +420,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         return;
       }
       toast.success('確定を取り消しました');
-      router.refresh();
+      refresh();
     } catch (error) {
       console.error('Error unconfirming journal:', error);
       toast.error('確定の取り消しに失敗しました');
@@ -511,7 +513,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           ? `体調: ${data.condition_body}点 / 気分: ${data.condition_mood}点　表示名: ${data._debug_nickname_used}`
           : `体調: ${data.condition_body}点 / 気分: ${data.condition_mood}点`,
       });
-      router.refresh();
+      refresh();
     } catch (error) {
       console.error('AI一括生成エラー:', error);
       let message = '予期しないエラーが発生しました';
@@ -553,7 +555,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         return;
       }
       toast.success('再生成回数をリセットしました');
-      router.refresh();
+      refresh();
     } catch {
       toast.error('リセットに失敗しました');
     } finally {
