@@ -159,7 +159,7 @@ export interface DailyLog {
   ai_story_past: string | null;
   /** AI生成: これからの冒険（あらすじ・未来） */
   ai_story_future: string | null;
-  /** AI一括生成の実行回数（1日2回まで。未適用時は0） */
+  /** AI一括生成の実行回数（当該日誌あたり2回まで。未適用時は0） */
   ai_batch_run_count?: number;
   /** 日誌確定フラグ（確定済みの過去日誌は編集不可） */
   is_confirmed: boolean;

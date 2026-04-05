@@ -184,12 +184,11 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       .trim();
   };
 
-  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines: 2行ごとに空行（これまでの冒険・これからの冒険・アドバイス用）。collapseFirstBlank: 1行目直後の空行を詰める（アドバイス名前行用）。連続空行は1行に統一。 */
-  const renderAiText = (text: string, options?: { blankEveryTwoLines?: boolean; collapseFirstBlank?: boolean }) => {
+  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines: 2行ごとに空行（これまでの冒険・これからの冒険・アドバイス用）。連続改行は \n{3,} を \n\n に揃える（空行は最大1つ）。 */
+  const renderAiText = (text: string, options?: { blankEveryTwoLines?: boolean }) => {
     let formatted = applyAiTextLineBreaks(text);
     if (options?.blankEveryTwoLines) formatted = insertBlankLineEveryTwoLines(formatted);
     formatted = formatted.replace(/\n{3,}/g, '\n\n');
-    if (options?.collapseFirstBlank) formatted = formatted.replace(/^([^\n]+)\n\n+/, '$1\n');
     if (!userName) return formatted;
     const parts = formatted.split(userName);
     if (parts.length <= 1) return formatted;
@@ -427,7 +426,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     }
   };
 
-  // AI一括生成（判定＋あらすじ＋アドバイス）。1日2回まで。
+  // AI一括生成（判定＋あらすじ＋アドバイス）。日誌ごと2回まで。
   const handleBatchRun = async () => {
     if (!dailyLogId) {
       toast.error('日誌IDが取得できませんでした', {
@@ -455,7 +454,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
 
     const runCount = dailyLog?.ai_batch_run_count ?? 0;
     if (runCount >= 2) {
-      toast.error('本日の再生成は2回までです。明日またお試しください。');
+      toast.error('再生成回数は2回までです。');
       return;
     }
 
@@ -490,7 +489,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         if (response.status === 429 && data.code === 'BATCH_LIMIT_EXCEEDED') {
-          toast.error(data.error || '本日の再生成は2回までです。');
+          toast.error(data.error || '再生成回数は2回までです。');
           return;
         }
         throw new Error(data.error || data.details || `HTTP ${response.status}`);
@@ -805,7 +804,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           </button>
           {isAiExpanded && (
             <div id="ai-content" className="space-y-6">
-              {/* AI一括生成（判定＋あらすじ＋アドバイス）。1日2回まで。 */}
+              {/* AI一括生成（判定＋あらすじ＋アドバイス）。日誌ごと2回まで。 */}
         {isEditable && (
           <div className="text-center space-y-2">
             <Button
@@ -819,7 +818,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               <Bot className="w-4 h-4 mr-1.5" />
               {isJudging ? '生成中...' : (aiJudgmentResult || aiStoryPast || aiAdvice ? '再生成' : 'AI判定を実行')}
             </Button>
-            <p className="text-zinc-500 text-xs">再生成は1日2回までです</p>
+            <p className="text-zinc-500 text-xs">再生成回数は2回まで</p>
             {isAdmin && (
               <Button
                 type="button"
@@ -1130,7 +1129,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
               ) : aiAdvice ? (
                 <>
                   <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true, collapseFirstBlank: true })}</p>
+                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true })}</p>
                   </div>
                   <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
                     <div className="flex items-center gap-1">

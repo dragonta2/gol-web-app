@@ -2,7 +2,7 @@
  * AI一括生成API Route
  *
  * 判定・これまでの冒険・これからの冒険・辛口コーチングアドバイスを一括生成。
- * 1日2回まで（daily_logs.ai_batch_run_count で制限）。
+ * 日誌（daily_log）ごと2回まで（ai_batch_run_count で制限。日付が変わっても別日誌の値は共有しない）。
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     const currentCount = Number((logRow as { ai_batch_run_count?: number }).ai_batch_run_count ?? 0);
     if (currentCount >= 2) {
       return NextResponse.json(
-        { error: '本日の再生成は2回までです。明日またお試しください。', code: 'BATCH_LIMIT_EXCEEDED' },
+        { error: '再生成回数は2回までです。', code: 'BATCH_LIMIT_EXCEEDED' },
         { status: 429 }
       );
     }
