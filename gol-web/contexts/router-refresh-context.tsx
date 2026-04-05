@@ -10,8 +10,10 @@ import {
 import { useRouter } from 'next/navigation';
 
 type RouterRefreshContextValue = {
-  /** Next の RSC 再取得。呼び出し元を同じ transition に載せ、画面全体のオーバーレイを出す */
+  /** RSC 再取得＋全画面オーバーレイ（確定・AI一括・設定反映など、待ちが分かりやすい操作向け） */
   refresh: () => void;
+  /** RSC 再取得のみ（オーバーレイなし）。習慣チェック・ToDo状態・日誌の自動保存など高頻度向け */
+  refreshQuiet: () => void;
 };
 
 const RouterRefreshContext = createContext<RouterRefreshContextValue | null>(
@@ -28,8 +30,12 @@ export function RouterRefreshProvider({ children }: { children: ReactNode }) {
     });
   }, [router, startTransition]);
 
+  const refreshQuiet = useCallback(() => {
+    router.refresh();
+  }, [router]);
+
   return (
-    <RouterRefreshContext.Provider value={{ refresh }}>
+    <RouterRefreshContext.Provider value={{ refresh, refreshQuiet }}>
       {children}
       {isPending ? (
         <div

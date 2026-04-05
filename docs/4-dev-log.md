@@ -26,6 +26,66 @@
 
 ---
 
+#### 260406-Mon｜RouterRefresh の refreshQuiet と docs 整理（2番→6番）
+
+**記載** Cursor
+
+---
+
+##### 背景
+
+- `RouterRefreshProvider` の `refresh` は `startTransition` で `router.refresh()` を包み、`isPending` で全画面オーバーレイを出していた。習慣チェックや日誌のデバウンス保存など短い間隔で何度も走ると、毎回オーバーレイが被さり UX が重く感じられた
+
+- 一方で確定日・AI 一括・設定反映など「待ちが分かりやすい」操作では従来のオーバーレイ付き `refresh` を残したい
+
+---
+
+##### `gol-web/contexts/router-refresh-context.tsx`
+
+- **型**: `RouterRefreshContextValue` に **`refreshQuiet: () => void`** を追加
+
+- **`refresh`**: 既存どおり `useTransition` 内で `router.refresh()`。`isPending` でオーバーレイ表示
+
+- **`refreshQuiet`**: `router.refresh()` のみ呼び出し、`isPending` を立てない（RSC 再取得は同等）
+
+- **Provider の `value`**: `{ refresh, refreshQuiet }` を渡す
+
+---
+
+##### `gol-web/app/dashboard/habit-list.tsx`
+
+- **`useRouterRefresh()`**: `refresh` → **`refreshQuiet`** に変更
+
+- **対象**: 習慣ログ更新、モーダルからの習慣 CRUD、並び替え、一括順序更新など、成功後に呼んでいたすべての `refresh()` を `refreshQuiet()` に置換
+
+---
+
+##### `gol-web/app/dashboard/journal-impression-sections.tsx`
+
+- **`useRouterRefresh()`**: `refresh` → **`refreshQuiet`**
+
+- **対象**: Notion 取り込み／上書き成功後、日誌本文・一言感想のデバウンス保存成功後の `refresh()` を `refreshQuiet()` に変更
+
+---
+
+##### `gol-web/app/dashboard/todo-summary-tab.tsx`
+
+- **`useRouterRefresh()`**: `refresh` を **`refreshDashboard`**、`refreshQuiet` を **`refreshDashboardQuiet`** として分割取得
+
+- **対象**: タスクのステータス変更（完了へ／未完了へ戻す）の成功後に呼んでいた `refreshDashboard()` を **`refreshDashboardQuiet()`** に変更。モーダル保存など他経路の `refreshDashboard` は据え置き
+
+---
+
+##### ドキュメント
+
+- **`docs/2-support-of-progress.md`**: 長大だった改修チェックリストを削除し、ToDo 進行用の内容は **`docs/6-todo-progress.md`（新規）** に移す。2番には記法・補助メモ（例: RSC と `router.refresh` の説明、`260401` ToDo スコア検討）を残す
+
+- **`docs/3-project-progress.md`**: 本件の簡潔サマリーを同日ブロックに追記
+
+- **`docs/4-dev-log.md`**: 本エントリ
+
+---
+
 ### 260405-Sun
 
 #### 260405-Sun｜サブタスク名のモーダル一括保存・保存ボタン表記

@@ -45,7 +45,7 @@ function JournalImpressionSections({
   isConfirmed: isConfirmedProp,
   journalTextsRef,
 }: JournalImpressionSectionsProps) {
-  const { refresh } = useRouterRefresh();
+  const { refreshQuiet } = useRouterRefresh();
   const supabase = createClient();
 
   const journalMaxLength = 3000;
@@ -168,7 +168,7 @@ function JournalImpressionSections({
           }
         }
         toast.success('Notion から取り込みました');
-        refresh();
+        refreshQuiet();
       }
     } catch {
       toast.error('Notion の取得に失敗しました');
@@ -197,7 +197,7 @@ function JournalImpressionSections({
       }
     }
     toast.success('Notion の内容で上書きしました');
-    refresh();
+    refreshQuiet();
   };
 
   // 表示する日付（dailyLogId）が変わったときだけ props から状態を同期する。
@@ -250,7 +250,7 @@ function JournalImpressionSections({
         toast.error('日誌本文の保存に失敗しました');
       } else {
         // 保存成功後、ページをリフレッシュして最新データを取得
-        refresh();
+        refreshQuiet();
       }
     }, 500);
   };
@@ -278,7 +278,7 @@ function JournalImpressionSections({
         toast.error('一言感想の保存に失敗しました');
       } else {
         // 保存成功後、ページをリフレッシュして最新データを取得
-        refresh();
+        refreshQuiet();
       }
     }, 500);
   };

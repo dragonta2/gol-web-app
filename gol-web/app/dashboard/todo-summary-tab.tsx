@@ -117,7 +117,8 @@ function TodoSummaryTab({
 }: TodoSummaryTabProps) {
   // 確定済みの日誌を見ているときは今日の日誌IDに記録する
   const effectiveDailyLogId = isConfirmed ? (todayDailyLogId ?? dailyLogId) : dailyLogId
-  const { refresh: refreshDashboard } = useRouterRefresh()
+  const { refresh: refreshDashboard, refreshQuiet: refreshDashboardQuiet } =
+    useRouterRefresh()
   const [searchQuery, setSearchQuery] = useState("")
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isMdImportOpen, setIsMdImportOpen] = useState(false)
@@ -1043,7 +1044,7 @@ function TodoSummaryTab({
               .eq("id", todo.id)
             if (error) throw error
             await handleTaskCompletion(todo)
-            refreshDashboard()
+            refreshDashboardQuiet()
           } catch (err) {
             toast.error("ステータスの変更に失敗しました", {
               description: err instanceof Error ? err.message : "予期しないエラーが発生しました",
@@ -1064,7 +1065,7 @@ function TodoSummaryTab({
       if (wasCompleted) {
         await handleTaskUncompletion(todo)
       }
-      refreshDashboard()
+      refreshDashboardQuiet()
     } catch (err) {
       toast.error("ステータスの変更に失敗しました", {
         description: err instanceof Error ? err.message : "予期しないエラーが発生しました",

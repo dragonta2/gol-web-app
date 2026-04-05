@@ -22,6 +22,20 @@
 
 ---
 
+#### 260406-Mon｜RouterRefresh の refreshQuiet と 2番チェックリスト分離
+
+**記載** Cursor
+
+**実施内容:**
+
+- **`router-refresh-context`**: `refreshQuiet`（`router.refresh` のみ・全画面 pending なし）を追加。`refresh` は従来どおり `useTransition`＋オーバーレイ
+
+- **`habit-list` / `journal-impression-sections` / `todo-summary-tab`（ステータス変更）**: 習慣・日誌デバウンス保存・Notion 取込・ToDo ステータスなど高頻度経路を `refreshQuiet` に切替え、操作のたびに全画面スピナーが出ないようにした
+
+- **`docs/2-support-of-progress.md`**: 改修チェックリストを削り、`docs/6-todo-progress.md`（新規）へ ToDo 系リストを集約。2番は記法・RSC／`router.refresh` 補助メモなどに絞った
+
+---
+
 ### 260405-Sun --------------
 
 #### 260405-Sun｜サブタスク名の一括保存・モーダル保存ボタン文言
