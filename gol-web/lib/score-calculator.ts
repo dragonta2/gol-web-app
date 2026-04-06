@@ -14,6 +14,24 @@ export type DayDeltas = {
   exp_spirit_delta: number;
 };
 
+/** 複数日分の DayDeltas を足し合わせる（null は 0 扱い） */
+export function sumDayDeltas(parts: (DayDeltas | null | undefined)[]): DayDeltas {
+  const out: DayDeltas = {
+    points_delta: 0,
+    exp_body_delta: 0,
+    exp_mind_delta: 0,
+    exp_spirit_delta: 0,
+  };
+  for (const p of parts) {
+    if (!p) continue;
+    out.points_delta += p.points_delta;
+    out.exp_body_delta += p.exp_body_delta;
+    out.exp_mind_delta += p.exp_mind_delta;
+    out.exp_spirit_delta += p.exp_spirit_delta;
+  }
+  return out;
+}
+
 /** スコア内訳（ToDo・習慣・AI・権利ごと） */
 export type ScoreBreakdownItem = {
   points_delta: number;

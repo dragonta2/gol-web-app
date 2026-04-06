@@ -24,6 +24,8 @@ export interface DashboardClientLayoutProps extends DashboardTabsProps {
   selectedDate: string;
   /** 未確定の日誌がある日の仮スコア（確定時に反映されるデルタ） */
   pendingDeltas?: DayDeltas | null;
+  /** 未確定日誌件数が上限超過のとき、件数のみ（内訳は表示しない） */
+  pendingUnconfirmedOverflowCount?: number | null;
   /** 今回の読み込みでレベルが上がった場合 true（レベルアップ演出用） */
   levelChanged?: boolean;
 }
@@ -32,6 +34,7 @@ export default function DashboardClientLayout({
   userProfile,
   selectedDate,
   pendingDeltas,
+  pendingUnconfirmedOverflowCount,
   dailyLog,
   levelChanged,
   ...tabsProps
@@ -55,6 +58,7 @@ export default function DashboardClientLayout({
         screenName={screenName}
         activeTab={activeTab}
         pendingDeltas={pendingDeltas ?? undefined}
+        pendingUnconfirmedOverflowCount={pendingUnconfirmedOverflowCount ?? undefined}
         isConfirmed={dailyLog?.is_confirmed ?? false}
       />
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">

@@ -12,6 +12,18 @@
 
 ### 260406-Mon --------------
 
+#### 260406-Mon｜ヘッダー「未確定」スコアの合算・30日窓・JST
+
+**記載** Cursor
+
+**実施内容:**
+
+- **ダッシュボード `page.tsx`**: 未確定 `daily_logs` を **JST の今日から30日前**（`getDateStringDaysAgoJST`）以降に限定し、`calculateDayDeltas` を並列実行して `sumDayDeltas` でヘッダー表示。件数 **30超** は内訳省略の件数表示。**合計デルタが全 0** のときはヘッダー非表示
+
+- **`pending-header-constants.ts` / `score-calculator.ts` の `sumDayDeltas` / ヘッダー UI（オーバーフロー文言）**、**`2-support-of-progress.md`**（案1＋ガード・一括更新注意・JST 境界の記載）
+
+---
+
 #### 260406-Mon｜.gitignore に Cursor デバッグログを除外
 
 **記載** Cursor

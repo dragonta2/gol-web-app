@@ -10,6 +10,112 @@
 
 ### 260406-Mon
 
+#### 260406-Mon｜ヘッダー未確定の集計（全未確定日合算・直近30日・JST・件数上限）
+
+**記載** Cursor
+
+---
+
+##### 方針
+
+- パターン A（ToDo 完了日が未確定日誌に紐づく）のままでも、**他の日の未確定デルタがヘッダーで見える**ようにする
+
+- 負荷対策: 集計対象の未確定日誌は **直近30日（カレンダー日・JST）** に限定し、**件数が 30 を超える**場合は `calculateDayDeltas` を回さず **件数のみ** をヘッダーに出す
+
+- **合算デルタがすべて 0** のときは「未確定」行自体を出さない（日付を開いただけの空 `daily_log` が大量にあってもラベルだけ残らない）
+
+---
+
+##### 実装ファイル（主）
+
+- `gol-web/app/dashboard/page.tsx`: `daily_logs` を `is_confirmed = false` かつ `log_date >= cutoffStr` で取得。`cutoffStr` は `gol-web/lib/date-utils.ts` の **`getDateStringDaysAgoJST`**（`Intl` の `Asia/Tokyo` で「今日」を出し、そこから N 日前の `YYYY-MM-DD`）。`MAX_UNCONFIRMED_LOGS_FOR_PENDING_HEADER_SUM`（30）は `gol-web/lib/pending-header-constants.ts`
+
+- `gol-web/lib/score-calculator.ts`: **`sumDayDeltas`** で複数日分を加算
+
+- `gol-web/app/dashboard/collapsible-dashboard-header.tsx` / `dashboard-client-layout.tsx`: オーバーフロー時の文言（30 件超のため内訳省略）
+
+---
+
+##### データ・運用メモ
+
+- デバッグで判明した例: 2 月以前の未確定日誌にデルタが残っており、合算が **-18G** などに見えていた。開発 DB では **2026-03-01 未満の未確定** を一括で確定済みにしたことがある。**条件がプロジェクト全体に当たる REST 更新**のため、**他ユーザーがいる本番では影響範囲の確認が必要**（`docs/2-support-of-progress.md` に注意書き）
+
+---
+
+#### 260406-Mon｜未確定スコアをヘッダーに常時表示（デルタ全 0 でも表示）
+
+**記載** Cursor
+
+---
+
+##### 課題
+
+- ヘッダーの「未確定: +5G 身+2 ...」表示は、`pendingDeltas` が `null` でないときだけ描画されていた
+
+- `page.tsx` では `calculateDayDeltas` の戻り値が **全項目 0**（習慣未チェック・ToDo 未完了・AI 未実行・権利未使用）のとき `pendingDeltas = null` にしていた
+
+- その結果、**今日の日誌が未確定でもポイント増減がまだ無い段階ではヘッダーに「未確定」が出ない**状態だった
+
+##### 要件
+
+- ToDo・習慣・権利・AI判定のいずれかでポイント増減が発生していて、まだ確定ボタンを押していない場合、**必ず**ヘッダーのアイコン下に未確定ポイントを表示する
+
+- ポイント増減がまだ無い（全 0）場合でも、未確定であること自体を示す「未確定:」ラベルを表示する
+
+---
+
+##### 修正: `gol-web/app/dashboard/page.tsx`（line 186-193）
+
+**Before**:
+
+```
+const deltas = await calculateDayDeltas(supabase, pendingLogId)
+if (deltas && (deltas.points_delta !== 0 || deltas.exp_body_delta !== 0 || deltas.exp_mind_delta !== 0 || deltas.exp_spirit_delta !== 0)) {
+  pendingDeltas = deltas
+}
+```
+
+- `calculateDayDeltas` が全 0 を返すと `pendingDeltas` は `null` のまま → ヘッダーに「未確定」が出ない
+
+**After**:
+
+```
+const deltas = await calculateDayDeltas(supabase, pendingLogId)
+pendingDeltas = deltas ?? { points_delta: 0, exp_body_delta: 0, exp_mind_delta: 0, exp_spirit_delta: 0 }
+```
+
+- 今日が未確定（`!todayDailyLogIsConfirmed`）なら **常に** `pendingDeltas` をセットする
+
+- `calculateDayDeltas` が `null` を返した場合も全 0 オブジェクトをフォールバックとして渡す
+
+---
+
+##### ヘッダー側（変更なし・既存ロジックで対応済み）
+
+`collapsible-dashboard-header.tsx` の描画ロジック:
+
+- `pendingDeltas &&` で「未確定:」ブロック全体をガード → `pendingDeltas` がオブジェクトなら常に描画
+
+- 各デルタ値は `!== 0` のときだけ数値を出す → 全 0 のときは「未確定:」ラベルのみ表示
+
+- 折りたたみ時（line 198-214）・展開時（line 426-441）の両方で同じロジック
+
+---
+
+##### `calculateDayDeltas` が拾うポイント源（確認）
+
+- **習慣ログ**: `habit_logs` のチェック済み習慣 → ゴルド/EXP 加減算
+
+- **ToDoログ**: `todo_logs` の `points_earned` / `exp_*_earned` を加算
+
+- **AI判定**: `daily_logs` の `ai_points_earned` / `ai_exp_*` を加算
+
+- **権利消費**: `daily_logs` の `right_*_count` × 権利設定 `points` を減算
+
+4種すべてが1つの `calculateDayDeltas` で合算されており、漏れはない
+
+---
+
 #### 260406-Mon｜.gitignore で Cursor デバッグログを無視
 
 **記載** Cursor

@@ -36,6 +36,7 @@ export interface DashboardHeaderProfile {
 }
 
 import type { DayDeltas } from "@/lib/score-calculator"
+import { MAX_UNCONFIRMED_LOGS_FOR_PENDING_HEADER_SUM } from "@/lib/pending-header-constants"
 
 interface CollapsibleDashboardHeaderProps {
   userProfile: DashboardHeaderProfile
@@ -46,6 +47,8 @@ interface CollapsibleDashboardHeaderProps {
   activeTab?: "journal" | "todo-summary" | "stats" | "journals" | "announcements"
   /** 未確定の日誌がある日の仮スコア（確定時に反映されるデルタ） */
   pendingDeltas?: DayDeltas | null
+  /** 未確定日誌が上限超過のときの総件数（内訳は表示しない） */
+  pendingUnconfirmedOverflowCount?: number | null
   /** 表示中の日誌が確定済みのとき true */
   isConfirmed?: boolean
 }
@@ -64,6 +67,7 @@ export default function CollapsibleDashboardHeader({
   screenName,
   activeTab,
   pendingDeltas,
+  pendingUnconfirmedOverflowCount,
   isConfirmed = false,
 }: CollapsibleDashboardHeaderProps) {
   const TabIcon = activeTab ? TAB_ICONS[activeTab] : null
@@ -195,7 +199,15 @@ export default function CollapsibleDashboardHeader({
                         <span className="translate-y-[1px]">確定済み</span>
                       </span>
                     )}
-                    {pendingDeltas && (
+                    {pendingUnconfirmedOverflowCount != null ? (
+                      <span
+                        className="text-xs text-zinc-400 shrink-0 ml-[15px] translate-y-[2px]"
+                        role="status"
+                        aria-label="未確定日誌が上限を超えています"
+                      >
+                        未確定: 日誌{pendingUnconfirmedOverflowCount}件（{MAX_UNCONFIRMED_LOGS_FOR_PENDING_HEADER_SUM}件超のため内訳は省略）
+                      </span>
+                    ) : pendingDeltas ? (
                       <span className="text-xs text-zinc-400 shrink-0 ml-[15px] translate-y-[2px]" role="status" aria-label="未確定スコア">
                         未確定:
                         {pendingDeltas.points_delta !== 0 && (
@@ -211,7 +223,7 @@ export default function CollapsibleDashboardHeader({
                           <span className="ml-1 text-exp-mind">精{pendingDeltas.exp_spirit_delta > 0 ? "+" : ""}{pendingDeltas.exp_spirit_delta}</span>
                         )}
                       </span>
-                    )}
+                    ) : null}
                   </>
                 )}
               </>
@@ -266,7 +278,15 @@ export default function CollapsibleDashboardHeader({
                     <span className="translate-y-[1px]">確定済み</span>
                   </span>
                 )}
-                {pendingDeltas && (
+                {pendingUnconfirmedOverflowCount != null ? (
+                  <span
+                    className="text-xs text-zinc-400 shrink-0"
+                    role="status"
+                    aria-label="未確定日誌が上限を超えています"
+                  >
+                    未確定: 日誌{pendingUnconfirmedOverflowCount}件（{MAX_UNCONFIRMED_LOGS_FOR_PENDING_HEADER_SUM}件超のため内訳は省略）
+                  </span>
+                ) : pendingDeltas ? (
                   <span className="text-xs text-zinc-400 shrink-0" role="status" aria-label="未確定スコア">
                     未確定:
                     {pendingDeltas.points_delta !== 0 && (
@@ -282,7 +302,7 @@ export default function CollapsibleDashboardHeader({
                       <span className="ml-1 text-exp-mind">精{pendingDeltas.exp_spirit_delta > 0 ? "+" : ""}{pendingDeltas.exp_spirit_delta}</span>
                     )}
                   </span>
-                )}
+                ) : null}
               </>
             )}
           </span>
@@ -423,7 +443,17 @@ export default function CollapsibleDashboardHeader({
               </div>
             </div>
 
-            {pendingDeltas && (
+            {pendingUnconfirmedOverflowCount != null ? (
+              <div
+                className="text-sm text-zinc-400 mt-[15px] flex flex-wrap items-center gap-x-3 gap-y-0.5"
+                role="status"
+                aria-label="未確定日誌が上限を超えています"
+              >
+                <span>
+                  未確定: 日誌{pendingUnconfirmedOverflowCount}件（{MAX_UNCONFIRMED_LOGS_FOR_PENDING_HEADER_SUM}件超のため内訳は省略）
+                </span>
+              </div>
+            ) : pendingDeltas ? (
               <div className="text-sm text-zinc-400 mt-[15px] flex flex-wrap items-center gap-x-3 gap-y-0.5" role="status" aria-label="未確定スコア">
                 <span className="font-medium text-zinc-400">未確定:</span>
                 {pendingDeltas.points_delta !== 0 && (
@@ -439,7 +469,7 @@ export default function CollapsibleDashboardHeader({
                   <span className="text-exp-mind">精神 {pendingDeltas.exp_spirit_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_spirit_delta)}</span>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}

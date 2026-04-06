@@ -3,7 +3,9 @@ import { createClient } from "@/lib/supabase/server"
 import type { DailyLog } from "@/lib/types"
 import DashboardClientLayout from "./dashboard-client-layout"
 import { syncProfileLevel } from "@/lib/sync-profile-level"
-import { calculateDayDeltas, calculateDayDeltasWithBreakdown } from "@/lib/score-calculator"
+import { getDateStringDaysAgoJST } from "@/lib/date-utils"
+import { MAX_UNCONFIRMED_LOGS_FOR_PENDING_HEADER_SUM } from "@/lib/pending-header-constants"
+import { calculateDayDeltas, calculateDayDeltasWithBreakdown, sumDayDeltas } from "@/lib/score-calculator"
 import { canManageAnnouncements as canManageAnnouncementsFn } from "@/lib/announcements"
 
 interface DashboardPageProps {
@@ -166,30 +168,59 @@ export default async function DashboardPage({
           .order("display_order", { ascending: true })
       : { data: [] }
 
-  // 今日の日誌IDと確定状態を取得（過去日誌確定後にToDoを完了させた場合、今日の日誌に報酬を記録するために使用）
+  // 今日の日誌IDを取得（過去日誌確定後にToDoを完了させた場合、今日の日誌に報酬を記録するために使用）
   let todayDailyLogId: string | null = null
-  let todayDailyLogIsConfirmed: boolean = false
   if (selectedDate === todayStr) {
     todayDailyLogId = dailyLogId
-    todayDailyLogIsConfirmed = dailyLogData?.is_confirmed ?? false
   } else {
     const { data: todayLog } = await supabase
       .from("daily_logs")
-      .select("id, is_confirmed")
+      .select("id")
       .eq("user_id", user.id)
       .eq("log_date", todayStr)
       .single()
     todayDailyLogId = todayLog?.id ?? null
-    todayDailyLogIsConfirmed = todayLog?.is_confirmed ?? false
   }
 
-  // 未確定スコアは常に今日の日誌で計算（どの日付の日誌を見ていても今日の未確定スコアを表示し続ける）
-  let pendingDeltas: { points_delta: number; exp_body_delta: number; exp_mind_delta: number; exp_spirit_delta: number } | null = null
-  const pendingLogId = !todayDailyLogIsConfirmed ? todayDailyLogId : null
-  if (pendingLogId) {
-    const deltas = await calculateDayDeltas(supabase, pendingLogId)
-    if (deltas && (deltas.points_delta !== 0 || deltas.exp_body_delta !== 0 || deltas.exp_mind_delta !== 0 || deltas.exp_spirit_delta !== 0)) {
-      pendingDeltas = deltas
+  // 未確定スコア: 直近30日以内（JST の「今日」基準）の未確定日誌のデルタを合算してヘッダーに表示
+  // 件数が MAX を超える場合は負荷・表示のため件数バッジのみ
+  const cutoffStr = getDateStringDaysAgoJST(
+    MAX_UNCONFIRMED_LOGS_FOR_PENDING_HEADER_SUM,
+  )
+
+  const { data: unconfirmedLogs } = await supabase
+    .from("daily_logs")
+    .select("id, log_date")
+    .eq("user_id", user.id)
+    .eq("is_confirmed", false)
+    .gte("log_date", cutoffStr)
+    .order("log_date", { ascending: true })
+
+  const unconfirmedIds = unconfirmedLogs?.map((r) => r.id) ?? []
+  const unconfirmedCount = unconfirmedIds.length
+
+  let pendingDeltas: {
+    points_delta: number
+    exp_body_delta: number
+    exp_mind_delta: number
+    exp_spirit_delta: number
+  } | null = null
+  let pendingUnconfirmedOverflowCount: number | null = null
+
+  if (unconfirmedCount > MAX_UNCONFIRMED_LOGS_FOR_PENDING_HEADER_SUM) {
+    pendingUnconfirmedOverflowCount = unconfirmedCount
+  } else if (unconfirmedCount > 0) {
+    const parts = await Promise.all(
+      unconfirmedIds.map((id) => calculateDayDeltas(supabase, id)),
+    )
+    const sum = sumDayDeltas(parts)
+    const hasNonZero =
+      sum.points_delta !== 0 ||
+      sum.exp_body_delta !== 0 ||
+      sum.exp_mind_delta !== 0 ||
+      sum.exp_spirit_delta !== 0
+    if (hasNonZero) {
+      pendingDeltas = sum
     }
   }
 
@@ -217,6 +248,7 @@ export default async function DashboardPage({
         isAdmin={isAdmin}
         canManageAnnouncements={canManageAnnouncements}
         pendingDeltas={pendingDeltas}
+        pendingUnconfirmedOverflowCount={pendingUnconfirmedOverflowCount}
         scoreBreakdown={scoreBreakdown}
         todayDailyLogId={todayDailyLogId}
       />

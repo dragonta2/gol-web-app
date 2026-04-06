@@ -29,3 +29,19 @@ export function isWeekendOrHoliday(dateStr: string | null | undefined): boolean 
 export function isWeekday(dateStr: string): boolean {
   return !isWeekendOrHoliday(dateStr);
 }
+
+/**
+ * 日本時間の「今日」の日付から N 日前を YYYY-MM-DD で返す（カレンダー上の日数）
+ * ヘッダー未確定の集計ウィンドウ下限などに使用
+ */
+export function getDateStringDaysAgoJST(daysAgo: number): string {
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tokyo' })
+  const todayStr = fmt.format(new Date())
+  const [y, m, d] = todayStr.split('-').map(Number)
+  const utc = new Date(Date.UTC(y, m - 1, d))
+  utc.setUTCDate(utc.getUTCDate() - daysAgo)
+  const y2 = utc.getUTCFullYear()
+  const m2 = utc.getUTCMonth() + 1
+  const d2 = utc.getUTCDate()
+  return `${y2}-${String(m2).padStart(2, '0')}-${String(d2).padStart(2, '0')}`
+}
