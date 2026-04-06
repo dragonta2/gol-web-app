@@ -265,7 +265,33 @@ ToDoと日誌は独立した存在として扱う。スコアを記録する日�
 
 #### 未確定スコアのヘッダー表示
 
-ヘッダーの「未確定: +XXG」は、**常に今日の日誌**のスコアで計算される。過去・未来の日誌に移動していても、今日の日誌が未確定である限り表示され続ける（`page.tsx`で`todayDailyLogId`を使って計算）。
+**記載** Cursor（`docs/2-support-of-progress.md` の案1・ガードを仕様化）
+
+ヘッダーの「未確定: …」は、**表示中の日付とは独立**し、ログインユーザー全体の「まだ確定していない日誌」のデルタを表す。
+
+##### 集計対象となる日誌
+
+- `daily_logs` のうち **`is_confirmed = false`** かつ **`log_date` が下限日以降** の行のみを対象とする
+
+- **下限日（cutoffStr）**: 日本時間（`Asia/Tokyo`）における **「今日」から 30 カレンダー日前** の日付（`YYYY-MM-DD`）。実装は `gol-web/lib/date-utils.ts` の **`getDateStringDaysAgoJST`**。件数の「30」と同じ定数 **`MAX_UNCONFIRMED_LOGS_FOR_PENDING_HEADER_SUM`**（`gol-web/lib/pending-header-constants.ts`）を日数としても用いる
+
+##### 件数が多いとき（負荷・表示の上限）
+
+- 上記条件を満たす未確定日誌の件数が **30 件を超える** 場合: 各日の `calculateDayDeltas` は実行せず、ヘッダーに **未確定日誌の総件数と「内訳省略」** のみを示す（数値の合算は出さない）
+
+##### 件数が 30 件以下のとき
+
+- 対象の各 `daily_log_id` について **`calculateDayDeltas`**（`gol-web/lib/score-calculator.ts`）を実行し、**`sumDayDeltas`** でポイント・身体・頭脳・精神のデルタを合算する（並列実行）
+
+##### ヘッダーに行を出す条件
+
+- 合算後のデルタが **すべて 0**（ポイント・各 EXP ともに）のときは、**「未確定」行自体を表示しない**（日付を開いただけの空の未確定日誌が複数あっても、ラベルだけの行は出ない）
+
+##### 表示の見た目
+
+- ラベル「未確定:」に続き、**0 ではない項目だけ** 数値を並べる
+
+- **ゴルド（`+○G` / `-○G`）** の数値部分は **`text-gold`**（`app/globals.css` の **`--color-gold`** と同系）。身体・頭脳・精神は既存の EXP 用クラス（`text-exp-body` 等）に従う
 
 ### Supabase Auth メール変更フロー（メモ）
 
