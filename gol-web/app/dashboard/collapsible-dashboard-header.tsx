@@ -211,7 +211,7 @@ export default function CollapsibleDashboardHeader({
                       <span className="text-xs text-zinc-400 shrink-0 ml-[15px] translate-y-[2px]" role="status" aria-label="未確定スコア">
                         未確定:
                         {pendingDeltas.points_delta !== 0 && (
-                          <span className="ml-1">{pendingDeltas.points_delta >= 0 ? "+" : ""}{pendingDeltas.points_delta}G</span>
+                          <span className="ml-1 text-gold">{pendingDeltas.points_delta >= 0 ? "+" : ""}{pendingDeltas.points_delta}G</span>
                         )}
                         {pendingDeltas.exp_body_delta !== 0 && (
                           <span className="ml-1 text-exp-body">身{pendingDeltas.exp_body_delta > 0 ? "+" : ""}{pendingDeltas.exp_body_delta}</span>
@@ -290,7 +290,7 @@ export default function CollapsibleDashboardHeader({
                   <span className="text-xs text-zinc-400 shrink-0" role="status" aria-label="未確定スコア">
                     未確定:
                     {pendingDeltas.points_delta !== 0 && (
-                      <span className="ml-1">{pendingDeltas.points_delta >= 0 ? "+" : ""}{pendingDeltas.points_delta}G</span>
+                      <span className="ml-1 text-gold">{pendingDeltas.points_delta >= 0 ? "+" : ""}{pendingDeltas.points_delta}G</span>
                     )}
                     {pendingDeltas.exp_body_delta !== 0 && (
                       <span className="ml-1 text-exp-body">身{pendingDeltas.exp_body_delta > 0 ? "+" : ""}{pendingDeltas.exp_body_delta}</span>
@@ -457,7 +457,7 @@ export default function CollapsibleDashboardHeader({
               <div className="text-sm text-zinc-400 mt-[15px] flex flex-wrap items-center gap-x-3 gap-y-0.5" role="status" aria-label="未確定スコア">
                 <span className="font-medium text-zinc-400">未確定:</span>
                 {pendingDeltas.points_delta !== 0 && (
-                  <span>{pendingDeltas.points_delta >= 0 ? '+' : '-'} {Math.abs(pendingDeltas.points_delta)}G</span>
+                  <span className="text-gold">{pendingDeltas.points_delta >= 0 ? '+' : '-'} {Math.abs(pendingDeltas.points_delta)}G</span>
                 )}
                 {pendingDeltas.exp_body_delta !== 0 && (
                   <span className="text-exp-body">身体 {pendingDeltas.exp_body_delta > 0 ? '+' : '-'} {Math.abs(pendingDeltas.exp_body_delta)}</span>

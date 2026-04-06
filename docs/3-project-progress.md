@@ -12,6 +12,16 @@
 
 ### 260406-Mon --------------
 
+#### 260406-Mon｜ヘッダー未確定のゴルド表記を GOLD 色（text-gold）に統一
+
+**記載** Cursor
+
+**実施内容:**
+
+- **`collapsible-dashboard-header.tsx`**: 未確定行の `+○G` 部分に **`text-gold`**（`globals.css` の `--color-gold`）を適用し、ヘッダー右上の GOLD 表示と色を揃えた
+
+---
+
 #### 260406-Mon｜ヘッダー「未確定」スコアの合算・30日窓・JST
 
 **記載** Cursor

@@ -10,6 +10,22 @@
 
 ### 260406-Mon
 
+#### 260406-Mon｜ヘッダー未確定のゴルド数値を text-gold で表示
+
+**記載** Cursor
+
+---
+
+##### 内容
+
+- 未確定ブロック内のポイント表示（例: `+12G`）が親の `text-zinc-400` を継承し灰色になっていた
+
+- `pendingDeltas.points_delta` 用の `<span>` に **`text-gold`** を追加した（折りたたみ時の日付行2パターン・ヘッダー展開時の未確定ブロックの計3箇所）
+
+- **`text-gold`** は `gol-web/app/globals.css` の `@theme inline` で定義した **`--color-gold`（`#facc15`）** を参照する Tailwind ユーティリティ。ヘッダー所持 GOLD（`Coins` 横の `text-gold`）と同系色
+
+---
+
 #### 260406-Mon｜ヘッダー未確定の集計（全未確定日合算・直近30日・JST・件数上限）
 
 **記載** Cursor
