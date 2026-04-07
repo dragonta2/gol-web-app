@@ -5,6 +5,7 @@ docs/ex-secret.md
 
 # Cursor デバッグセッション（NDJSON ログ等・コミットしない）
 .cursor/debug*.log
+.cursor/plans/
 
 # macOS
 .DS_Store
