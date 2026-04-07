@@ -197,6 +197,7 @@ export async function POST(request: Request) {
           ai_exp_mind: d.ai_exp_mind ?? null,
           ai_exp_spirit: d.ai_exp_spirit ?? null,
           ai_advice: d.ai_advice ?? null,
+          ai_advice_tension: d.ai_advice_tension ?? null,
           ai_story_past: d.ai_story_past ?? null,
           ai_story_future: d.ai_story_future ?? null,
         }

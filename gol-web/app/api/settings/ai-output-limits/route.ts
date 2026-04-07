@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { isAdmin } from '@/lib/auth/admin';
 import {
   rowToAiOutputLimits,
@@ -76,29 +77,51 @@ export async function PATCH(request: NextRequest) {
     }
 
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
+    }
 
-    const { error } = await supabase
+    // RLS は profiles.is_admin=true を要求。メールベース管理者のみの環境でも保存できるよう、
+    // service role が設定されていれば server-side でそれを利用して更新する。
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseForWrite =
+      serviceRoleKey && process.env.NEXT_PUBLIC_SUPABASE_URL
+        ? createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL, serviceRoleKey)
+        : supabase;
+
+    const { data: updatedRow, error } = await supabaseForWrite
       .from('ai_output_limits')
-      .upsert(
-        {
-          id: 1,
-          ...updates,
-          updated_by: user?.id ?? null,
-        },
-        { onConflict: 'id' }
-      );
+      .update({
+        ...updates,
+        updated_by: user.id,
+      })
+      .eq('id', 1)
+      .select('id')
+      .maybeSingle();
 
     if (error) {
       const isMissing = error.code === '42P01' || error.message?.includes('does not exist');
+      const isRls = /row-level security|permission denied/i.test(error.message ?? '');
       return NextResponse.json(
         {
           error: isMissing
             ? 'ai_output_limits テーブルが存在しません。add-ai-output-limits.sql を実行してください。'
             : '文字数制限の保存に失敗しました',
-          details: error.message,
+          details: isRls
+            ? 'RLS により更新が拒否されました。profiles.is_admin=true を付与するか、.env.local に SUPABASE_SERVICE_ROLE_KEY を設定してください。'
+            : error.message,
         },
         { status: isMissing ? 503 : 500 }
+      );
+    }
+    if (!updatedRow) {
+      return NextResponse.json(
+        {
+          error: '文字数制限の保存に失敗しました',
+          details: 'ai_output_limits の初期行(id=1)がありません。add-ai-output-limits.sql を実行して初期行を作成してください。',
+        },
+        { status: 500 }
       );
     }
 

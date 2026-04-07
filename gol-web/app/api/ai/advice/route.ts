@@ -1,19 +1,23 @@
 /**
  * AIアドバイス生成API Route
  *
- * 辛口コーチング アドバイスを生成（世界観に応じて口調を変化）
+ * 弛緩コーチング / 緊張コーチングを生成（variant で切り替え）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getOpenAIClient, createAdvicePrompt, getAdviceSystemMessage } from '@/lib/ai/openai';
+import {
+  getOpenAIClient,
+  createRelaxAdvicePrompt,
+  createTensionAdvicePrompt,
+  getAdviceSystemMessage,
+} from '@/lib/ai/openai';
 import { mergeStoryWorldConfig, type StoryWorldId } from '@/lib/ai/story-worlds';
+import { rowToAiOutputLimits } from '@/lib/ai/ai-output-limits';
 import {
   getPersonalityPromptAddition,
   isValidPersonalityTypeId,
-  STRICT_COACH_SNIPPET,
   DEFAULT_PERSONALITY_TYPE_ID,
-  DEFAULT_STRICT_COACH_ENABLED,
 } from '@/lib/ai/personality-types';
 import { validateJournalText, validateImpressionText, validateScore, validateAll } from '@/lib/validation';
 
@@ -28,10 +32,9 @@ export async function POST(request: NextRequest) {
       conditionMood,
       storyWorldId: rawWorldId,
       personalityTypeId: rawPersonalityTypeId,
-      strictCoachEnabled: rawStrictCoachEnabled,
+      variant: rawVariant,
     } = body;
 
-    // サーバー側バリデーション
     const validation = validateAll([
       validateJournalText(journalText),
       validateImpressionText(impressionText),
@@ -46,13 +49,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 体調スコアと気分スコアが必要
     if (conditionBody === undefined || conditionMood === undefined) {
       return NextResponse.json(
         { error: '体調スコアと気分スコアが必要です' },
         { status: 400 }
       );
     }
+
+    const variant = rawVariant === 'tension' ? 'tension' : 'relax';
 
     const storyWorldId: StoryWorldId =
       rawWorldId === 'dq' || rawWorldId === 'ghost' ? rawWorldId : 'ghost';
@@ -66,10 +70,14 @@ export async function POST(request: NextRequest) {
     const [
       { data: profile, error: profileError },
       { data: overrideRows, error: overrideError },
+      { data: limitsRow },
     ] = await Promise.all([
       supabase.from('profiles').select('username, use_username_as_display_name').eq('id', user.id).single(),
       supabase.from('story_world_configs').select('config_json').eq('world_id', storyWorldId).maybeSingle(),
+      supabase.from('ai_output_limits').select('*').eq('id', 1).maybeSingle(),
     ]);
+
+    const aiLimits = rowToAiOutputLimits(limitsRow as Record<string, unknown> | null);
 
     let finalProfile = profile;
     if (profileError) {
@@ -86,7 +94,6 @@ export async function POST(request: NextRequest) {
     const useAsDisplayName = finalProfile?.use_username_as_display_name !== false;
     const nickname = useAsDisplayName ? (finalProfile?.username ?? '').trim() : '';
 
-    // dailyLogId がある場合は習慣・ToDoデータをDBから取得
     let completedHabits: string[] = [];
     let missedHabits: string[] = [];
     let completedTodos: string[] = [];
@@ -126,12 +133,7 @@ export async function POST(request: NextRequest) {
     const personalityTypeId = isValidPersonalityTypeId(rawPersonalityTypeId)
       ? rawPersonalityTypeId
       : DEFAULT_PERSONALITY_TYPE_ID;
-    const strictCoachEnabled =
-      typeof rawStrictCoachEnabled === 'boolean' ? rawStrictCoachEnabled : DEFAULT_STRICT_COACH_ENABLED;
-    const personalityBase = getPersonalityPromptAddition(personalityTypeId);
-    const personalityAddition = strictCoachEnabled
-      ? `${personalityBase} 加えて、${STRICT_COACH_SNIPPET}`
-      : personalityBase;
+    const personalityAddition = getPersonalityPromptAddition(personalityTypeId);
 
     const openai = getOpenAIClient();
     if (!openai) {
@@ -143,7 +145,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = createAdvicePrompt(
+    if (variant === 'tension') {
+      const prompt = createTensionAdvicePrompt(
+        journalText || '',
+        impressionText || '',
+        conditionBody,
+        conditionMood,
+        worldConfig,
+        nickname,
+        {
+          advice_tension_min: aiLimits.advice_tension_min,
+          advice_tension_max: aiLimits.advice_tension_max,
+        },
+        completedHabits,
+        missedHabits,
+        completedTodos
+      );
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: getAdviceSystemMessage(worldConfig, 'tension') },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.8,
+        max_tokens: 500,
+      });
+      const advice = completion.choices[0]?.message?.content?.trim();
+      if (!advice) throw new Error('AIからの応答がありません');
+      return NextResponse.json({ advice, variant: 'tension' as const });
+    }
+
+    const prompt = createRelaxAdvicePrompt(
       journalText || '',
       impressionText || '',
       conditionBody,
@@ -151,36 +183,24 @@ export async function POST(request: NextRequest) {
       worldConfig,
       personalityAddition,
       nickname,
-      null,
+      { advice_min: aiLimits.advice_min, advice_max: aiLimits.advice_max },
       completedHabits,
       missedHabits,
       completedTodos
     );
-
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        {
-          role: 'system',
-          content: getAdviceSystemMessage(worldConfig),
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
+        { role: 'system', content: getAdviceSystemMessage(worldConfig, 'relax') },
+        { role: 'user', content: prompt },
       ],
       temperature: 0.8,
       max_tokens: 500,
     });
+    const advice = completion.choices[0]?.message?.content?.trim();
+    if (!advice) throw new Error('AIからの応答がありません');
 
-    const advice = completion.choices[0]?.message?.content;
-    if (!advice) {
-      throw new Error('AIからの応答がありません');
-    }
-
-    return NextResponse.json({
-      advice: advice.trim(),
-    });
+    return NextResponse.json({ advice, variant: 'relax' as const });
   } catch (error) {
     console.error('AIアドバイス生成エラー:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';

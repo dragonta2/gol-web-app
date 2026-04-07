@@ -153,11 +153,13 @@ export interface DailyLog {
   ai_exp_mind: number | null;
   /** AI判定: 獲得精神EXP */
   ai_exp_spirit: number | null;
-  /** AI生成: 厳しめコーチングアドバイス */
+  /** AI生成: 弛緩（飴）コーチングアドバイス */
   ai_advice: string | null;
-  /** AI生成: これまでの冒険（あらすじ・過去） */
+  /** AI生成: 緊張（ムチ）コーチングアドバイス */
+  ai_advice_tension: string | null;
+  /** AI生成: あらすじ（統合。旧「これまでの冒険」カラムを流用） */
   ai_story_past: string | null;
-  /** AI生成: これからの冒険（あらすじ・未来） */
+  /** AI生成: 互換用。現在一括生成では null（将来「これからの冒険」再分割時に使用可） */
   ai_story_future: string | null;
   /** AI一括生成の実行回数（当該日誌あたり2回まで。未適用時は0） */
   ai_batch_run_count?: number;
