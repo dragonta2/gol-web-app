@@ -8,6 +8,40 @@
 
 ## 2604 --------------
 
+### 260407-Tue
+
+#### 260407-Tue｜AIコーチング再構成・文字数制限保存不具合修正・同期運用更新
+
+**記載** Cursor
+
+---
+
+##### 実装・修正
+
+- AI構成を「統合あらすじ + 弛緩/緊張コーチング」に再構成。`openai.ts` / `batch` / `story` / `advice` / `types` / `ai-output-limits` / `journal-form` / `admin-settings` / `user/import` を一式更新
+
+- `journal-form.tsx` の JSX 閉じタグ不整合を修正し、ビルド通過を確認
+
+- 文字数制限保存での RLS エラーを解消するため、`/api/settings/ai-output-limits` の PATCH を改善（`upsert` 依存排除、`id=1` 更新、RLS時の詳細エラー返却、service role 利用分岐）
+
+##### SQL・運用
+
+- `add-ai-output-limits.sql` を再実行可能化（`DROP TRIGGER IF EXISTS` / `DROP POLICY IF EXISTS` を追加）
+
+- SQL作成先ルールを `/.cursor/rules/sql-snippet-placement.mdc` として新規作成し、既存ルールと同様に iCloud 実体参照の symlink 化
+
+- M1↔M5 同期ドキュメントを更新（`SETUP-NEW-MAC.md` / `SYNC-M1-M5.md` / `README-TOP.md` / `_INDEX-TOP.md`）
+
+##### 仕上げ
+
+- `docs/6-todo-progress.md` に `260407実装済み` を追記
+
+- PR作成（#3）→ マージ完了
+
+- `.cursor/plans/` を `.gitignore` に追加し、運用時のコミットノイズを防止
+
+---
+
 ### 260406-Mon
 
 #### 260406-Mon｜ヘッダー未確定のゴルド数値を text-gold で表示
