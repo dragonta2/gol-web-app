@@ -31,7 +31,9 @@ INSERT INTO ai_output_limits (id, reasoning_min, reasoning_max, story_past_min, 
 VALUES (1, 50, 500, 200, 600, 200, 600, 150, 500)
 ON CONFLICT (id) DO NOTHING;
 
--- 更新日時トリガー（既存の update_updated_at_column を使用）
+-- 更新日時トリガー（再実行可能にするため、既存があれば作り直す）
+DROP TRIGGER IF EXISTS update_ai_output_limits_updated_at ON ai_output_limits;
+
 CREATE TRIGGER update_ai_output_limits_updated_at
 BEFORE UPDATE ON ai_output_limits
 FOR EACH ROW
@@ -39,19 +41,25 @@ EXECUTE FUNCTION update_updated_at_column();
 
 ALTER TABLE ai_output_limits ENABLE ROW LEVEL SECURITY;
 
--- 全認証ユーザーが読み取り可能（AI一括生成時に参照）
+-- 全認証ユーザーが読み取り可能（再実行可能にするため、既存があれば作り直す）
+DROP POLICY IF EXISTS "Authenticated users can read ai_output_limits" ON ai_output_limits;
+
 CREATE POLICY "Authenticated users can read ai_output_limits"
 ON ai_output_limits FOR SELECT
 TO authenticated
 USING (true);
 
--- 管理者のみ挿入・更新可能（upsert で INSERT が走る場合に必要）
+-- 管理者のみ挿入・更新可能（再実行可能にするため、既存があれば作り直す）
+DROP POLICY IF EXISTS "Admins can insert ai_output_limits" ON ai_output_limits;
+
 CREATE POLICY "Admins can insert ai_output_limits"
 ON ai_output_limits FOR INSERT
 TO authenticated
 WITH CHECK (
   EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND is_admin = true)
 );
+
+DROP POLICY IF EXISTS "Admins can update ai_output_limits" ON ai_output_limits;
 
 CREATE POLICY "Admins can update ai_output_limits"
 ON ai_output_limits FOR UPDATE

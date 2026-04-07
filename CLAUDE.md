@@ -116,3 +116,13 @@ NEXT_PUBLIC_ADMIN_EMAILS=
 
 - ユーザーが確認・OKを出したら `[x]` をつける（AIはつけない）
 - 実装後の日付追記を忘れた場合、次のユーザーメッセージで指摘される前に自己修正する
+
+## SQLスニペット配置ルール（補助説明）
+
+正本ルールは Cursor のルールファイル `/.cursor/rules/sql-snippet-placement.mdc` を参照すること。
+
+このファイルでは補助説明として以下を記載する。
+
+- 新規で作成する SQL ファイルは `docs/appendix/DB-related/sql-snippet` 直下に作成する。
+
+- `docs/appendix/DB-related/sql-snippet/doned` は「実行済み（マイグレーション完了）」SQL の保管先として扱い、新規作成時には使わない。

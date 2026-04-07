@@ -1,12 +1,12 @@
 /**
  * AIあらすじ生成API Route
- * 
- * RPG物語風のあらすじを生成（ユーザーのニックネームを主人公名に反映）
+ *
+ * RPG物語風の統合あらすじを生成（ユーザーのニックネームを主人公名に反映）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getOpenAIClient, createStoryPrompt, createStoryFuturePrompt, getStorySystemMessage } from '@/lib/ai/openai';
+import { getOpenAIClient, createStoryPrompt, getStorySystemMessage } from '@/lib/ai/openai';
 import { mergeStoryWorldConfig, type StoryWorldId } from '@/lib/ai/story-worlds';
 import { validateJournalText, validateImpressionText, validateAll } from '@/lib/validation';
 
@@ -19,10 +19,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { journalText, impressionText, habits, todos, storyWorldId: rawWorldId, variant } = body;
-    const storyVariant = variant === 'future' ? 'future' : 'past';
+    const { journalText, impressionText, habits, todos, storyWorldId: rawWorldId } = body;
 
-    // サーバー側バリデーション
     const validation = validateAll([
       validateJournalText(journalText),
       validateImpressionText(impressionText),
@@ -35,7 +33,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // habitsとtodosが配列かどうかをチェック
     if (habits !== undefined && !Array.isArray(habits)) {
       return NextResponse.json(
         { error: 'habitsは配列である必要があります' },
@@ -90,24 +87,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt =
-      storyVariant === 'future'
-        ? createStoryFuturePrompt(
-            journalText || '',
-            impressionText || '',
-            habits || [],
-            todos || [],
-            nickname,
-            worldConfig
-          )
-        : createStoryPrompt(
-            journalText || '',
-            impressionText || '',
-            habits || [],
-            todos || [],
-            nickname,
-            worldConfig
-          );
+    const prompt = createStoryPrompt(
+      journalText || '',
+      impressionText || '',
+      habits || [],
+      todos || [],
+      nickname,
+      worldConfig
+    );
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',

@@ -19,9 +19,7 @@ import { applyAiTextLineBreaks, insertBlankLineEveryTwoLines, isSubmitShortcut }
 import { useSpeech, SPEECH_RATES } from '@/lib/use-speech';
 import {
   STORAGE_AI_PERSONALITY_TYPE,
-  STORAGE_AI_STRICT_COACH_ENABLED,
   DEFAULT_PERSONALITY_TYPE_ID,
-  DEFAULT_STRICT_COACH_ENABLED,
   isValidPersonalityTypeId,
 } from '@/lib/ai/personality-types';
 import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp, Settings, Check, Unlock, Volume2, VolumeX } from 'lucide-react';
@@ -172,19 +170,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   // 日誌が確定済みかどうか
   const isConfirmed = dailyLog?.is_confirmed ?? false;
 
-  /** 「これからの冒険」本文から、AIが付けた見出し行（あらすじ：これからの冒険）を除く */
-  const stripFutureAdventureHeading = (text: string) => {
-    return text
-      .split('\n')
-      .filter((line) => {
-        const t = line.replace(/\*\*/g, '').trim();
-        return !/^あらすじ[：:]\s*これからの冒険\s*$/.test(t) && t !== 'これからの冒険';
-      })
-      .join('\n')
-      .trim();
-  };
-
-  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines: 2行ごとに空行（これまでの冒険・これからの冒険・アドバイス用）。連続改行は \n{3,} を \n\n に揃える（空行は最大1つ）。 */
+  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines: 2行ごとに空行（あらすじ・コーチング用）。連続改行は \n{3,} を \n\n に揃える（空行は最大1つ）。 */
   const renderAiText = (text: string, options?: { blankEveryTwoLines?: boolean }) => {
     let formatted = applyAiTextLineBreaks(text);
     if (options?.blankEveryTwoLines) formatted = insertBlankLineEveryTwoLines(formatted);
@@ -265,15 +251,15 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   const [isResettingBatchCount, setIsResettingBatchCount] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
 
-  // AIアドバイス
+  // AIアドバイス（弛緩・緊張）
   const [aiAdvice, setAIAdvice] = useState<string | null>(dailyLog?.ai_advice || null);
+  const [aiAdviceTension, setAIAdviceTension] = useState<string | null>(dailyLog?.ai_advice_tension ?? null);
 
   // 音声読み上げ
   const { speakingTarget, speak, speechRate, setSpeechRate } = useSpeech((msg) => toast.error(msg));
 
-  // AIあらすじ（これまでの冒険 / これからの冒険）
+  // AIあらすじ（統合・ai_story_past）
   const [aiStoryPast, setAIStoryPast] = useState<string | null>(dailyLog?.ai_story_past || null);
-  const [aiStoryFuture, setAIStoryFuture] = useState<string | null>(dailyLog?.ai_story_future ?? null);
   // 一括生成直後は router.refresh で渡る dailyLog がまだ古いことがあるため、その1回は上書きしない
   const skipNextAiStorySyncRef = useRef(false);
   const skipNextAiJudgmentSyncRef = useRef(false);
@@ -285,8 +271,13 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       return;
     }
     setAIStoryPast(dailyLog?.ai_story_past ?? null);
-    setAIStoryFuture(dailyLog?.ai_story_future ?? null);
-  }, [dailyLog?.id, dailyLog?.ai_story_past, dailyLog?.ai_story_future]);
+  }, [dailyLog?.id, dailyLog?.ai_story_past]);
+
+  // 日誌が変わったらコーチング文を同期
+  useEffect(() => {
+    setAIAdvice(dailyLog?.ai_advice ?? null);
+    setAIAdviceTension(dailyLog?.ai_advice_tension ?? null);
+  }, [dailyLog?.id, dailyLog?.ai_advice, dailyLog?.ai_advice_tension]);
 
   // 日誌が変わったらAI判定結果（総評含む）を同期。ページ遷移・確定後も永続表示するため dailyLog から復元
   useEffect(() => {
@@ -477,10 +468,6 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                 : isValidPersonalityTypeId(localStorage.getItem(STORAGE_AI_PERSONALITY_TYPE))
                   ? localStorage.getItem(STORAGE_AI_PERSONALITY_TYPE)
                   : DEFAULT_PERSONALITY_TYPE_ID,
-            strictCoachEnabled:
-              typeof window !== 'undefined'
-                ? localStorage.getItem(STORAGE_AI_STRICT_COACH_ENABLED) !== 'false'
-                : DEFAULT_STRICT_COACH_ENABLED,
           }),
         },
         { maxRetries: 2, initialDelay: 2000, maxDelay: 15000 }
@@ -503,9 +490,9 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       });
       skipNextAiStorySyncRef.current = true;
       skipNextAiJudgmentSyncRef.current = true;
-      setAIStoryPast(data.storyPast ?? null);
-      setAIStoryFuture(data.storyFuture ?? null);
-      setAIAdvice(data.advice ?? null);
+      setAIStoryPast(data.story ?? null);
+      setAIAdvice(data.adviceRelax ?? null);
+      setAIAdviceTension(data.adviceTension ?? null);
 
       toast.success('AI判定・あらすじ・アドバイスを生成しました', {
         description: data._debug_nickname_used != null
@@ -810,13 +797,13 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             <Button
               onClick={handleBatchRun}
               disabled={isJudging || (dailyLog?.ai_batch_run_count ?? 0) >= 2}
-              aria-label={aiJudgmentResult || aiStoryPast || aiAdvice ? 'AIを再生成する' : 'AI判定を実行する'}
+              aria-label={aiJudgmentResult || aiStoryPast || aiAdvice || aiAdviceTension ? 'AIを再生成する' : 'AI判定を実行する'}
               aria-busy={isJudging}
               className="bg-purple-600 hover:bg-purple-700 text-white"
               size="lg"
             >
               <Bot className="w-4 h-4 mr-1.5" />
-              {isJudging ? '生成中...' : (aiJudgmentResult || aiStoryPast || aiAdvice ? '再生成' : 'AI判定を実行')}
+              {isJudging ? '生成中...' : (aiJudgmentResult || aiStoryPast || aiAdvice || aiAdviceTension ? '再生成' : 'AI判定を実行')}
             </Button>
             <p className="text-zinc-500 text-xs">再生成回数は2回まで</p>
             {isAdmin && (
@@ -1015,121 +1002,17 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           </button>
           {isStoryExpanded && (
             <div id="ai-story-content" className="space-y-3">
-              <div>
-                <p className="text-lg font-medium text-white mb-1">これまでの冒険</p>
-                {isJudging ? (
-                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                    <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-                    <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-                    <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-                    <Skeleton className="h-4 w-3/4 bg-zinc-700" />
-                  </div>
-                ) : aiStoryPast ? (
-                  <>
-                    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                      <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryPast, { blankEveryTwoLines: true })}</p>
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
-                      <div className="flex items-center gap-1">
-                        {SPEECH_RATES.map(({ label, rate }) => (
-                          <button
-                            key={rate}
-                            type="button"
-                            onClick={() => setSpeechRate(rate)}
-                            className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${speechRate === rate ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => speak(aiStoryPast, 'storyPast')}
-                        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
-                        aria-label={speakingTarget === 'storyPast' ? '読み上げを停止' : 'これまでの冒険を音声で読み上げ'}
-                      >
-                        {speakingTarget === 'storyPast' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                        <span className="hidden sm:inline">{speakingTarget === 'storyPast' ? '停止' : '読み上げ'}</span>
-                      </button>
-                      <span className="text-xs text-zinc-600">{(aiStoryPast ?? '').length}文字</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-                    <p className="text-zinc-500 text-sm">未生成</p>
-                  </div>
-                )}
-              </div>
-              <div>
-                <p className="text-lg font-medium text-white mb-1">これからの冒険</p>
-                {aiStoryFuture ? (
-                  <>
-                    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                      <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(stripFutureAdventureHeading(aiStoryFuture), { blankEveryTwoLines: true })}</p>
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
-                      <div className="flex items-center gap-1">
-                        {SPEECH_RATES.map(({ label, rate }) => (
-                          <button
-                            key={rate}
-                            type="button"
-                            onClick={() => setSpeechRate(rate)}
-                            className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${speechRate === rate ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => speak(stripFutureAdventureHeading(aiStoryFuture), 'storyFuture')}
-                        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
-                        aria-label={speakingTarget === 'storyFuture' ? '読み上げを停止' : 'これからの冒険を音声で読み上げ'}
-                      >
-                        {speakingTarget === 'storyFuture' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                        <span className="hidden sm:inline">{speakingTarget === 'storyFuture' ? '停止' : '読み上げ'}</span>
-                      </button>
-                      <span className="text-xs text-zinc-600">{(aiStoryFuture ?? '').length}文字</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-                    <p className="text-zinc-500 text-sm">未生成</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 辛口コーチング アドバイス（一括生成で生成）・アコーディオン */}
-        <div className="space-y-3">
-          <button
-            type="button"
-            onClick={() => setIsAdviceExpanded(!isAdviceExpanded)}
-            className="w-full flex items-center justify-between gap-2 hover:opacity-80 transition-opacity text-left"
-            aria-expanded={isAdviceExpanded}
-            aria-controls="ai-advice-content"
-          >
-            <h3 className="text-lg font-medium text-cyan-400">辛口コーチング アドバイス</h3>
-            {isAdviceExpanded ? (
-              <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-cyan-400 shrink-0" />
-            )}
-          </button>
-          {isAdviceExpanded && (
-            <div id="ai-advice-content">
               {isJudging ? (
                 <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
                   <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
                   <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+                  <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
                   <Skeleton className="h-4 w-3/4 bg-zinc-700" />
                 </div>
-              ) : aiAdvice ? (
+              ) : aiStoryPast ? (
                 <>
                   <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true })}</p>
+                    <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiStoryPast, { blankEveryTwoLines: true })}</p>
                   </div>
                   <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
                     <div className="flex items-center gap-1">
@@ -1146,25 +1029,133 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                     </div>
                     <button
                       type="button"
-                      onClick={() => speak(aiAdvice, 'advice')}
+                      onClick={() => speak(aiStoryPast, 'story')}
                       className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
-                      aria-label={speakingTarget === 'advice' ? '読み上げを停止' : 'アドバイスを音声で読み上げ'}
+                      aria-label={speakingTarget === 'story' ? '読み上げを停止' : 'あらすじを音声で読み上げ'}
                     >
-                      {speakingTarget === 'advice' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                      <span className="hidden sm:inline">{speakingTarget === 'advice' ? '停止' : '読み上げ'}</span>
+                      {speakingTarget === 'story' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                      <span className="hidden sm:inline">{speakingTarget === 'story' ? '停止' : '読み上げ'}</span>
                     </button>
-                    <span className="text-xs text-zinc-600">{(aiAdvice ?? '').length}文字</span>
+                    <span className="text-xs text-zinc-600">{(aiStoryPast ?? '').length}文字</span>
                   </div>
                 </>
               ) : (
                 <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-                  <p className="text-zinc-500 text-sm">未生成（上の「AI判定を実行」で一括生成）</p>
+                  <p className="text-zinc-500 text-sm">未生成</p>
                 </div>
               )}
             </div>
           )}
         </div>
+
+        {/* コーチング アドバイス（弛緩・緊張・一括生成）・アコーディオン */}
+        <div className="space-y-3">
+          <button
+            type="button"
+            onClick={() => setIsAdviceExpanded(!isAdviceExpanded)}
+            className="w-full flex items-center justify-between gap-2 hover:opacity-80 transition-opacity text-left"
+            aria-expanded={isAdviceExpanded}
+            aria-controls="ai-advice-content"
+          >
+            <h3 className="text-lg font-medium text-cyan-400">コーチング アドバイス</h3>
+            {isAdviceExpanded ? (
+              <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-cyan-400 shrink-0" />
+            )}
+          </button>
+          {isAdviceExpanded && (
+            <div id="ai-advice-content" className="space-y-6">
+              <div>
+                <p className="text-base font-medium text-zinc-200 mb-2">弛緩のコーチング</p>
+                {isJudging ? (
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                    <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+                    <Skeleton className="h-4 w-3/4 bg-zinc-700" />
+                  </div>
+                ) : aiAdvice ? (
+                  <>
+                    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                      <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true })}</p>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
+                      <div className="flex items-center gap-1">
+                        {SPEECH_RATES.map(({ label, rate }) => (
+                          <button
+                            key={rate}
+                            type="button"
+                            onClick={() => setSpeechRate(rate)}
+                            className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${speechRate === rate ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => speak(aiAdvice, 'adviceRelax')}
+                        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
+                        aria-label={speakingTarget === 'adviceRelax' ? '読み上げを停止' : '弛緩コーチングを音声で読み上げ'}
+                      >
+                        {speakingTarget === 'adviceRelax' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{speakingTarget === 'adviceRelax' ? '停止' : '読み上げ'}</span>
+                      </button>
+                      <span className="text-xs text-zinc-600">{(aiAdvice ?? '').length}文字</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+                    <p className="text-zinc-500 text-sm">未生成（上の「AI判定を実行」で一括生成）</p>
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="text-base font-medium text-zinc-200 mb-2">緊張のコーチング</p>
+                {isJudging ? (
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                    <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+                    <Skeleton className="h-4 w-3/4 bg-zinc-700" />
+                  </div>
+                ) : aiAdviceTension ? (
+                  <>
+                    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                      <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdviceTension, { blankEveryTwoLines: true })}</p>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
+                      <div className="flex items-center gap-1">
+                        {SPEECH_RATES.map(({ label, rate }) => (
+                          <button
+                            key={rate}
+                            type="button"
+                            onClick={() => setSpeechRate(rate)}
+                            className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${speechRate === rate ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => speak(aiAdviceTension, 'adviceTension')}
+                        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
+                        aria-label={speakingTarget === 'adviceTension' ? '読み上げを停止' : '緊張コーチングを音声で読み上げ'}
+                      >
+                        {speakingTarget === 'adviceTension' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{speakingTarget === 'adviceTension' ? '停止' : '読み上げ'}</span>
+                      </button>
+                      <span className="text-xs text-zinc-600">{(aiAdviceTension ?? '').length}文字</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+                    <p className="text-zinc-500 text-sm">未生成（上の「AI判定を実行」で一括生成）</p>
+                  </div>
+                )}
+              </div>
             </div>
+          )}
+        </div>
+      </div>
           )}
         </div>
       )}

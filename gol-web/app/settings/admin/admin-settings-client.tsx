@@ -14,9 +14,9 @@ import { LevelThresholdsEditor } from "@/components/level-thresholds-editor"
 
 const AI_LIMITS_KEYS = [
   { key: "reasoning" as const, label: "総評" },
-  { key: "story_past" as const, label: "これまでの冒険" },
-  { key: "story_future" as const, label: "これからの冒険" },
-  { key: "advice" as const, label: "辛口コーチング アドバイス" },
+  { key: "story_past" as const, label: "あらすじ（統合）" },
+  { key: "advice" as const, label: "弛緩コーチング" },
+  { key: "advice_tension" as const, label: "緊張コーチング" },
 ] as const
 
 export default function AdminSettingsClient() {
@@ -252,7 +252,7 @@ export default function AdminSettingsClient() {
             文字数制限
           </h2>
           <p className="text-sm text-zinc-400 mb-4">
-            AI生成テキストの最低・最大文字数。総評・あらすじ・アドバイスに適用。世界観共通です。
+            AI生成テキストの最低・最大文字数。総評・あらすじ・弛緩/緊張コーチングに適用。世界観共通です。（story_future は互換列のため管理画面からは省略）
           </p>
           {aiLimitsLoading && <p className="text-sm text-zinc-500 py-2">読み込み中...</p>}
           {aiLimitsLoadError && !aiLimitsLoading && (

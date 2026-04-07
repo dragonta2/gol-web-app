@@ -6,6 +6,7 @@
 
 import OpenAI from 'openai';
 import type { StoryWorldConfig } from '@/lib/ai/story-worlds';
+import { TENSION_COACH_SNIPPET } from '@/lib/ai/personality-types';
 
 // OpenAIクライアントの初期化
 export function getOpenAIClient(): OpenAI | null {
@@ -75,24 +76,9 @@ ${habitsBlock}${todosBlock}${referenceNote}以下のJSON形式で回答してく
 }
 
 /**
- * AIアドバイス生成用のプロンプト生成
- *
- * 世界観の口調を主とし、personalityAddition は従として追加する（世界観 > 性格）。
- *
- * @param journalText 日誌本文
- * @param impressionText 一言感想
- * @param conditionBody 体調スコア
- * @param conditionMood 気分スコア
- * @param worldConfig 世界観設定（未指定時はゴースト・オブ・ヨウテイ風のデフォルト）
- * @param personalityAddition 性格タイプによる追加指示（省略可）。世界観の口調の後に「加えて」で結合
- * @param nickname ユーザーのニックネーム（アドバイス冒頭の「〇〇よ。」に使用。未設定時は世界観のデフォルト名）
- * @param limits アドバイスの文字数制限（省略時は 200-300 文字の指示）
- * @param completedHabits 今日達成した習慣の名前一覧
- * @param missedHabits 習慣として登録しているが今日達成できなかった習慣の名前一覧
- * @param completedTodos 今日完了したToDoの名前一覧
- * @returns プロンプト文字列
+ * 弛緩（飴）コーチング用プロンプト
  */
-export function createAdvicePrompt(
+export function createRelaxAdvicePrompt(
   journalText: string,
   impressionText: string,
   conditionBody: number,
@@ -105,38 +91,34 @@ export function createAdvicePrompt(
   missedHabits?: string[],
   completedTodos?: string[]
 ): string {
-  const toneInstruction =
-    worldConfig?.adviceToneInstruction ??
-    'ゴースト・オブ・ヨウテイ風で、厳しめの師匠口調。辛口だが本質を突くコーチングアドバイスをしてください。';
+  const relaxCore =
+    '弛緩（飴）のコーチングとして、共感・褒め・認める・激励を心がけてください。厳しい叱責や欠点の列挙は避け、今日の小さな前進を認めたうえで背中を押してください。';
   const toneBlock =
     personalityAddition?.trim()
-      ? `${toneInstruction} 加えて、${personalityAddition.trim()}`
-      : toneInstruction;
+      ? `${relaxCore} 加えて、${personalityAddition.trim()}`
+      : relaxCore;
   const displayName = nickname.trim() || (worldConfig?.protagonistName ?? '勇者');
   const nameInstruction = `【重要】アドバイスの冒頭の1行目は「${displayName}よ。」という呼びかけのみにしてください。呼びかけ以外の文章は2行目以降に書いてください。`;
 
-  const completedHabitsBlock = completedHabits && completedHabits.length > 0
-    ? completedHabits.join('、')
-    : 'なし';
-  const missedHabitsBlock = missedHabits && missedHabits.length > 0
-    ? missedHabits.join('、')
-    : 'なし';
-  const completedTodosBlock = completedTodos && completedTodos.length > 0
-    ? completedTodos.join('、')
-    : 'なし';
+  const completedHabitsBlock =
+    completedHabits && completedHabits.length > 0 ? completedHabits.join('、') : 'なし';
+  const missedHabitsBlock =
+    missedHabits && missedHabits.length > 0 ? missedHabits.join('、') : 'なし';
+  const completedTodosBlock =
+    completedTodos && completedTodos.length > 0 ? completedTodos.join('、') : 'なし';
 
   return `${toneBlock}
 
 ${nameInstruction}
 
-以下の情報を基に、コーチングアドバイスを生成してください。
+以下の情報を基に、弛緩コーチングを生成してください。
 
 【今日達成した習慣】
 ${completedHabitsBlock}
 
 【今日できなかった習慣（目標として登録済み）】
 ${missedHabitsBlock}
-※「今日できなかった習慣」は「やりたい意欲がある証拠」です。できなかった事実を責めず、なぜできなかったかの本質を指摘してください。
+※できなかった事実を責めず、共感と前向きな視点で触れてください。
 
 【完了したToDo】
 ${completedTodosBlock}
@@ -150,25 +132,71 @@ ${impressionText || '（未記入）'}
 【体調スコア】${conditionBody}/100
 【気分スコア】${conditionMood}/100
 
-アドバイスは以下の3段構成で書いてください：
-① できたことを1文で認める
-② 課題・指摘を「〜だから〜が問題だ」と理由付きで述べる
-③ 明日への具体的なアクションを1つ示す
+構成の目安：①共感 ②できたことへの認めと褒め ③短い激励（明日への一歩を軽く示してもよい）
 
 ${limits && limits.advice_max > 0 ? `${limits.advice_min}-${limits.advice_max}文字で生成してください。` : '200-300文字で生成してください。'}`;
 }
 
 /**
- * AIあらすじ生成用のプロンプト生成
- *
- * @param journalText 日誌本文
- * @param impressionText 一言感想
- * @param habits 習慣の実行状況
- * @param todos 完了したToDo
- * @param nickname ユーザーのニックネーム（あらすじ内の主人公名に使用）
- * @param worldConfig 世界観設定（未指定時はゴースト・オブ・ヨウテイ風のデフォルト）
- * @param limits これまでの冒険の文字数制限（省略時は 300-400 文字の指示）
- * @returns プロンプト文字列
+ * 緊張（ムチ）コーチング用プロンプト
+ */
+export function createTensionAdvicePrompt(
+  journalText: string,
+  impressionText: string,
+  conditionBody: number,
+  conditionMood: number,
+  worldConfig?: StoryWorldConfig | null,
+  nickname: string = '',
+  limits?: { advice_tension_min: number; advice_tension_max: number } | null,
+  completedHabits?: string[],
+  missedHabits?: string[],
+  completedTodos?: string[]
+): string {
+  const toneInstruction =
+    worldConfig?.adviceToneInstruction ??
+    'ゴースト・オブ・ヨウテイ風で、厳しめの師匠口調。辛口だが本質を突くコーチングアドバイスをしてください。';
+  const toneBlock = `${toneInstruction} 加えて、${TENSION_COACH_SNIPPET}`;
+  const displayName = nickname.trim() || (worldConfig?.protagonistName ?? '勇者');
+  const nameInstruction = `【重要】アドバイスの冒頭の1行目は「${displayName}よ。」という呼びかけのみにしてください。呼びかけ以外の文章は2行目以降に書いてください。`;
+
+  const completedHabitsBlock =
+    completedHabits && completedHabits.length > 0 ? completedHabits.join('、') : 'なし';
+  const missedHabitsBlock =
+    missedHabits && missedHabits.length > 0 ? missedHabits.join('、') : 'なし';
+  const completedTodosBlock =
+    completedTodos && completedTodos.length > 0 ? completedTodos.join('、') : 'なし';
+
+  return `${toneBlock}
+
+${nameInstruction}
+
+以下の情報を基に、緊張コーチングを生成してください。
+
+【今日達成した習慣】
+${completedHabitsBlock}
+
+【今日できなかった習慣（目標として登録済み）】
+${missedHabitsBlock}
+
+【完了したToDo】
+${completedTodosBlock}
+
+【日誌本文】
+${journalText || '（未記入）'}
+
+【一言感想】
+${impressionText || '（未記入）'}
+
+【体調スコア】${conditionBody}/100
+【気分スコア】${conditionMood}/100
+
+構成の目安：①客観的な事実の整理 ②日誌に表れる価値観と行動のズレがあれば指摘 ③気づきと叱咤、明日への具体的なアクションを1つ
+
+${limits && limits.advice_tension_max > 0 ? `${limits.advice_tension_min}-${limits.advice_tension_max}文字で生成してください。` : '200-300文字で生成してください。'}`;
+}
+
+/**
+ * AIあらすじ生成用のプロンプト（統合1本：その日の物語として過去の振り返りとこれからの一歩を自然に織り込む）
  */
 export function createStoryPrompt(
   journalText: string,
@@ -184,7 +212,7 @@ export function createStoryPrompt(
     ? `【重要】主人公の名前は、ユーザーが設定したニックネーム「${nickname.trim()}」を省略・短縮・置き換えせず、そのまま全文で使ってください。表記例: 「${protagonist}${nickname.trim()}」。デフォルト名（${protagonist}）だけでは表記しないでください。`
     : `【重要】主人公の名前は「${protagonist}」と表記してください。`;
 
-  return `以下の情報を基に、今日の出来事を物語風のあらすじとして生成してください。
+  return `以下の情報を基に、今日の日誌の内容を**1本のあらすじ**にまとめてください。RPG物語風で、今日起きた出来事の描写に加え、必要なら軽く振り返りや、これから進む一歩の示唆を**自然に織り込んで**ください。「これまで」と「これから」を別パートに分けず、ひと続きの物語として書いてください。
 
 ${heroInstruction}
 
@@ -201,45 +229,7 @@ ${habits.length > 0 ? habits.join('、') : 'なし'}
 ${todos.length > 0 ? todos.join('、') : 'なし'}
 
 ${limits && limits.story_past_max > 0 ? `${limits.story_past_min}-${limits.story_past_max}文字で` : '300-400文字で'}物語風のあらすじを生成してください。
-【禁止】「彼」「彼女」など性別を特定する代名詞は使わないでください。主人公を指すときは名前や「主人公」など中性な表現を使ってください。`;
-}
-
-/**
- * AIあらすじ「これからの冒険」用のプロンプト生成
- * 明日への展望・今後への意気込みを物語風に
- */
-export function createStoryFuturePrompt(
-  journalText: string,
-  impressionText: string,
-  habits: string[],
-  todos: string[],
-  nickname: string = '',
-  worldConfig?: StoryWorldConfig | null,
-  limits?: { story_future_min: number; story_future_max: number } | null
-): string {
-  const protagonist = worldConfig?.protagonistName ?? '勇者';
-  const heroInstruction = nickname.trim()
-    ? `【重要】主人公の名前は、ユーザーが設定したニックネーム「${nickname.trim()}」を省略・短縮・置き換えせず、そのまま全文で使ってください。表記例: 「${protagonist}${nickname.trim()}」。デフォルト名（${protagonist}）だけでは表記しないでください。`
-    : `【重要】主人公の名前は「${protagonist}」と表記してください。`;
-
-  return `以下の情報を基に、「これからの冒険」として、明日への展望や今後への意気込みをRPG物語風のあらすじで生成してください。
-
-${heroInstruction}
-
-【日誌本文】
-${journalText || '（未記入）'}
-
-【一言感想】
-${impressionText || '（未記入）'}
-
-【実行した習慣】
-${habits.length > 0 ? habits.join('、') : 'なし'}
-
-【完了したToDo】
-${todos.length > 0 ? todos.join('、') : 'なし'}
-
-${limits && limits.story_future_max > 0 ? `${limits.story_future_min}-${limits.story_future_max}文字で` : '300-400文字で'}、前向きな展望・これからへの物語を生成してください。
-【禁止】出力に「あらすじ」「これからの冒険」などの見出し・タイトル行を含めないでください。物語本文のみを出力してください。
+【禁止】出力に「あらすじ」「これまでの冒険」「これからの冒険」などの見出し・タイトル行を含めないでください。物語本文のみを出力してください。
 【禁止】「彼」「彼女」など性別を特定する代名詞は使わないでください。主人公を指すときは名前や「主人公」など中性な表現を使ってください。`;
 }
 
@@ -259,11 +249,21 @@ export function getStorySystemMessage(
   return `${base}\n${noGender}`;
 }
 
-/** アドバイス生成用のシステムメッセージを返す */
-export function getAdviceSystemMessage(worldConfig?: StoryWorldConfig | null): string {
+/** アドバイス生成用のシステムメッセージ（弛緩 / 緊張） */
+export function getAdviceSystemMessage(
+  worldConfig?: StoryWorldConfig | null,
+  variant: 'relax' | 'tension' = 'relax'
+): string {
+  if (variant === 'relax') {
+    return (
+      worldConfig?.adviceToneInstruction
+        ? `あなたは弛緩（飴）のコーチです。次の口調を尊重しつつ、共感・褒め・認める・激励を軸にしてください: ${worldConfig.adviceToneInstruction}`
+        : 'あなたは弛緩（飴）のコーチです。共感・褒め・認める・激励を軸にしたコーチングを生成してください。'
+    );
+  }
   return (
-    worldConfig?.adviceToneInstruction ??
-    'あなたは厳格なコーチ（ゴースト・オブ・ヨウテイ風）です。辛口のコーチングアドバイスを生成してください。'
+    worldConfig?.adviceToneInstruction
+      ? `あなたは緊張（ムチ）のコーチです。次の口調を土台に、客観指摘・気づき・叱咤で成長を促してください: ${worldConfig.adviceToneInstruction}`
+      : 'あなたは緊張（ムチ）のコーチです。客観指摘・気づき・叱咤で本人の行動を促すコーチングを生成してください。'
   );
 }
-

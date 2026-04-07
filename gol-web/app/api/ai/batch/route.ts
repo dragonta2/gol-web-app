@@ -1,7 +1,7 @@
 /**
  * AI一括生成API Route
  *
- * 判定・これまでの冒険・これからの冒険・辛口コーチングアドバイスを一括生成。
+ * 判定・統合あらすじ・弛緩/緊張コーチングを一括生成。
  * 日誌（daily_log）ごと2回まで（ai_batch_run_count で制限。日付が変わっても別日誌の値は共有しない）。
  */
 
@@ -11,9 +11,9 @@ import {
   getOpenAIClient,
   createJudgmentPrompt,
   createStoryPrompt,
-  createStoryFuturePrompt,
   getStorySystemMessage,
-  createAdvicePrompt,
+  createRelaxAdvicePrompt,
+  createTensionAdvicePrompt,
   getAdviceSystemMessage,
 } from '@/lib/ai/openai';
 import { mergeStoryWorldConfig, type StoryWorldId } from '@/lib/ai/story-worlds';
@@ -21,9 +21,7 @@ import { rowToAiOutputLimits } from '@/lib/ai/ai-output-limits';
 import {
   getPersonalityPromptAddition,
   isValidPersonalityTypeId,
-  STRICT_COACH_SNIPPET,
   DEFAULT_PERSONALITY_TYPE_ID,
-  DEFAULT_STRICT_COACH_ENABLED,
 } from '@/lib/ai/personality-types';
 import { validateJournalText, validateImpressionText, validateAll } from '@/lib/validation';
 
@@ -59,7 +57,6 @@ export async function POST(request: NextRequest) {
       impressionText,
       storyWorldId: rawWorldId,
       personalityTypeId: rawPersonalityTypeId,
-      strictCoachEnabled: rawStrictCoachEnabled,
     } = body;
 
     if (!dailyLogId || typeof dailyLogId !== 'string') {
@@ -243,8 +240,8 @@ export async function POST(request: NextRequest) {
     const conditionMood = Math.max(0, Math.min(100, parseInt(String(judgmentResult.condition_mood)) || 50));
     const { points, exp_body, exp_mind, exp_spirit } = calculatePointsAndExp(conditionBody, conditionMood);
 
-    // 2. これまでの冒険
-    const storyPastPrompt = createStoryPrompt(
+    // 2. 統合あらすじ（ai_story_past に保存）
+    const storyPrompt = createStoryPrompt(
       journalText || '',
       impressionText || '',
       habits,
@@ -253,48 +250,22 @@ export async function POST(request: NextRequest) {
       worldConfig,
       { story_past_min: aiLimits.story_past_min, story_past_max: aiLimits.story_past_max }
     );
-    const storyPastCompletion = await openai.chat.completions.create({
+    const storyCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: getStorySystemMessage(worldConfig, nickname) },
-        { role: 'user', content: storyPastPrompt },
+        { role: 'user', content: storyPrompt },
       ],
       temperature: 0.9,
       max_tokens: 600,
     });
-    const storyPast = storyPastCompletion.choices[0]?.message?.content?.trim();
-    if (!storyPast) throw new Error('あらすじ（これまでの冒険）の応答がありません');
+    const story = storyCompletion.choices[0]?.message?.content?.trim();
+    if (!story) throw new Error('あらすじの応答がありません');
 
-    // 3. これからの冒険
-    const storyFuturePrompt = createStoryFuturePrompt(
-      journalText || '',
-      impressionText || '',
-      habits,
-      todos,
-      nickname,
-      worldConfig,
-      { story_future_min: aiLimits.story_future_min, story_future_max: aiLimits.story_future_max }
-    );
-    const storyFutureCompletion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: getStorySystemMessage(worldConfig, nickname) },
-        { role: 'user', content: storyFuturePrompt },
-      ],
-      temperature: 0.9,
-      max_tokens: 600,
-    });
-    const storyFuture = storyFutureCompletion.choices[0]?.message?.content?.trim();
-    if (!storyFuture) throw new Error('あらすじ（これからの冒険）の応答がありません');
-
-    // 4. 辛口コーチングアドバイス
+    // 3. 弛緩コーチング（ai_advice）
     const personalityTypeId = isValidPersonalityTypeId(rawPersonalityTypeId) ? rawPersonalityTypeId : DEFAULT_PERSONALITY_TYPE_ID;
-    const strictCoachEnabled = typeof rawStrictCoachEnabled === 'boolean' ? rawStrictCoachEnabled : DEFAULT_STRICT_COACH_ENABLED;
-    const personalityBase = getPersonalityPromptAddition(personalityTypeId);
-    const personalityAddition = strictCoachEnabled
-      ? `${personalityBase} 加えて、${STRICT_COACH_SNIPPET}`
-      : personalityBase;
-    const advicePrompt = createAdvicePrompt(
+    const personalityAddition = getPersonalityPromptAddition(personalityTypeId);
+    const relaxPrompt = createRelaxAdvicePrompt(
       journalText || '',
       impressionText || '',
       conditionBody,
@@ -307,17 +278,45 @@ export async function POST(request: NextRequest) {
       missedHabits,
       todos
     );
-    const adviceCompletion = await openai.chat.completions.create({
+    const relaxCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system', content: getAdviceSystemMessage(worldConfig) },
-        { role: 'user', content: advicePrompt },
+        { role: 'system', content: getAdviceSystemMessage(worldConfig, 'relax') },
+        { role: 'user', content: relaxPrompt },
       ],
       temperature: 0.8,
       max_tokens: 500,
     });
-    const advice = adviceCompletion.choices[0]?.message?.content?.trim();
-    if (!advice) throw new Error('アドバイスの応答がありません');
+    const adviceRelax = relaxCompletion.choices[0]?.message?.content?.trim();
+    if (!adviceRelax) throw new Error('弛緩コーチングの応答がありません');
+
+    // 4. 緊張コーチング（ai_advice_tension）
+    const tensionPrompt = createTensionAdvicePrompt(
+      journalText || '',
+      impressionText || '',
+      conditionBody,
+      conditionMood,
+      worldConfig,
+      nickname,
+      {
+        advice_tension_min: aiLimits.advice_tension_min,
+        advice_tension_max: aiLimits.advice_tension_max,
+      },
+      completedHabits,
+      missedHabits,
+      todos
+    );
+    const tensionCompletion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: getAdviceSystemMessage(worldConfig, 'tension') },
+        { role: 'user', content: tensionPrompt },
+      ],
+      temperature: 0.8,
+      max_tokens: 500,
+    });
+    const adviceTension = tensionCompletion.choices[0]?.message?.content?.trim();
+    if (!adviceTension) throw new Error('緊張コーチングの応答がありません');
 
     // 5. daily_logs 更新（一括＋実行回数インクリメント）
     const { error: updateLogError } = await supabase
@@ -330,9 +329,10 @@ export async function POST(request: NextRequest) {
         ai_exp_body: exp_body,
         ai_exp_mind: exp_mind,
         ai_exp_spirit: exp_spirit,
-        ai_story_past: storyPast,
-        ai_story_future: storyFuture,
-        ai_advice: advice,
+        ai_story_past: story,
+        ai_story_future: null,
+        ai_advice: adviceRelax,
+        ai_advice_tension: adviceTension,
         ai_batch_run_count: currentCount + 1,
       })
       .eq('id', dailyLogId);
@@ -350,9 +350,9 @@ export async function POST(request: NextRequest) {
       condition_body: conditionBody,
       condition_mood: conditionMood,
       reasoning: judgmentResult.reasoning ?? '',
-      storyPast,
-      storyFuture,
-      advice,
+      story,
+      adviceRelax,
+      adviceTension,
       ai_batch_run_count: currentCount + 1,
       // 調査用: APIがプロンプトに渡した表示名（原因切り分け用・本番では削除可）
       ...(process.env.NODE_ENV !== 'production' && {
