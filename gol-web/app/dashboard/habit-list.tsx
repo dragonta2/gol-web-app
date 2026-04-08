@@ -2411,7 +2411,10 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   onChange={(e) => setModalFormData((prev) => ({ ...prev, is_low_frequency: e.target.checked }))}
                   className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-700 rounded focus:ring-cyan-500 disabled:opacity-30"
                 />
-                <Label htmlFor="habit_is_low_frequency" className="text-base text-zinc-300 cursor-pointer">
+                <Label
+                  htmlFor="habit_is_low_frequency"
+                  className={`text-base ${modalFormData.parent_habit_id ? 'text-zinc-300/30 cursor-not-allowed' : 'text-zinc-300 cursor-pointer'}`}
+                >
                   低頻度エリアに表示する（日誌で折りたたみ）
                 </Label>
               </div>
@@ -2419,7 +2422,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                 ONにすると、この習慣は日誌の「低頻度」折りたたみブロックにまとめて表示されます。親習慣をONにした場合、子習慣も同じブロックに含まれます。
               </p>
               {modalFormData.parent_habit_id ? (
-                <p className="text-xs mt-1 text-zinc-500">
+                <p className="text-xs mt-1 text-zinc-300">
                   子習慣は単独で低頻度にできません。親習慣側で設定してください。
                 </p>
               ) : null}
