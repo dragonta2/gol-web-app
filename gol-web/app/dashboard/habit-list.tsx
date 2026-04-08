@@ -61,6 +61,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
     input_type: 'checkbox',
     exclude_weekends: false,
     exclude_from_complete: false,
+    is_low_frequency: false,
     parent_habit_id: '',
   };
   const [formData, setFormData] = useState<HabitFormData>(defaultFormData);
@@ -480,6 +481,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
       input_type: habit.input_type,
       exclude_weekends: habit.exclude_weekends,
       exclude_from_complete: habit.exclude_from_complete,
+      is_low_frequency: habit.is_low_frequency ?? false,
       parent_habit_id: parentId,
     };
     setFormData(initial);
@@ -525,6 +527,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
           input_type: 'checkbox',
           exclude_weekends: modalFormData.exclude_weekends,
           exclude_from_complete: modalFormData.exclude_from_complete,
+          is_low_frequency: modalFormData.is_low_frequency,
           parent_habit_id: modalFormData.parent_habit_id || null,
         })
         .eq('id', editingHabit.id);
@@ -741,6 +744,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               input_type: 'checkbox',
               exclude_weekends: modalFormData.exclude_weekends,
               exclude_from_complete: modalFormData.exclude_from_complete,
+              is_low_frequency: modalFormData.is_low_frequency,
               parent_habit_id: null,
             }),
           });
@@ -771,6 +775,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   input_type: 'checkbox',
                   exclude_weekends: false,
                   exclude_from_complete: false,
+                  is_low_frequency: false,
                   parent_habit_id: editingHabit.id,
                 }),
               });
@@ -795,6 +800,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   input_type: 'checkbox',
                   exclude_weekends: false,
                   exclude_from_complete: false,
+                  is_low_frequency: false,
                   parent_habit_id: editingHabit.id,
                 }),
               });
@@ -822,6 +828,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
               input_type: 'checkbox',
               exclude_weekends: modalFormData.exclude_weekends,
               exclude_from_complete: modalFormData.exclude_from_complete,
+              is_low_frequency: modalFormData.is_low_frequency,
               parent_habit_id: null,
             }),
           });
@@ -848,6 +855,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                 input_type: 'checkbox',
                 exclude_weekends: false,
                 exclude_from_complete: false,
+                is_low_frequency: false,
                 parent_habit_id: parentId,
               }),
             });
@@ -876,6 +884,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
             input_type: 'checkbox',
             exclude_weekends: modalFormData.exclude_weekends,
             exclude_from_complete: modalFormData.exclude_from_complete,
+            is_low_frequency: modalFormData.is_low_frequency,
             parent_habit_id: modalFormData.parent_habit_id || null,
           }),
         });
@@ -906,6 +915,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
             input_type: 'checkbox',
             exclude_weekends: modalFormData.exclude_weekends,
             exclude_from_complete: modalFormData.exclude_from_complete,
+            is_low_frequency: modalFormData.is_low_frequency,
             parent_habit_id: modalFormData.parent_habit_id || null,
           }),
         });
@@ -2392,6 +2402,27 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   Completeボーナス対象外にする
                 </Label>
               </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="habit_is_low_frequency"
+                  checked={modalFormData.is_low_frequency}
+                  disabled={!!modalFormData.parent_habit_id}
+                  onChange={(e) => setModalFormData((prev) => ({ ...prev, is_low_frequency: e.target.checked }))}
+                  className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-700 rounded focus:ring-cyan-500"
+                />
+                <Label htmlFor="habit_is_low_frequency" className="text-base text-zinc-300 cursor-pointer">
+                  低頻度エリアに表示する（日誌で折りたたみ）
+                </Label>
+              </div>
+              <p className="text-xs mt-0.5 text-zinc-400">
+                ONにすると、この習慣は日誌の「低頻度」折りたたみブロックにまとめて表示されます。親習慣をONにした場合、子習慣も同じブロックに含まれます。
+              </p>
+              {modalFormData.parent_habit_id ? (
+                <p className="text-xs mt-1 text-zinc-500">
+                  子習慣は単独で低頻度にできません。親習慣側で設定してください。
+                </p>
+              ) : null}
             </div>
 
       </Modal>
@@ -2401,10 +2432,14 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
         open={isManagementModalOpen}
         onOpenChange={setIsManagementModalOpen}
         title="習慣を管理"
-        description="習慣の編集、削除、並び替えができます"
+        description="習慣の編集・削除・並び替え、および低頻度ゾーンへの出し分けができます。一覧の「高頻度／低頻度」ボタン、または各習慣の「編集」から設定を変更できます。"
         maxWidth="2xl"
       >
         <div className="space-y-6">
+          <p className="text-sm text-zinc-400 rounded-lg border border-zinc-700 bg-zinc-900/40 px-3 py-2">
+            <span className="text-zinc-200 font-medium">低頻度ゾーン：</span>
+            各行の <span className="text-yellow-400">低頻度</span> / <span className="text-zinc-500">高頻度</span> は、日誌画面の折りたたみエリアへの振り分けです（編集モーダル内のチェックと同じ設定）。
+          </p>
           {/* 良習慣（D&Dと↑↓で並び替え） */}
           <div>
             <h4 className="text-base font-medium text-cyan-400 mb-3">良習慣</h4>
@@ -2440,7 +2475,14 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                               <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <button type="button" onClick={() => toggleIsLowFrequency(child.id)} title={child.is_low_frequency ? '低頻度（クリックで解除）' : '高頻度（クリックで低頻度に）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_low_frequency ? 'text-yellow-400 bg-yellow-900/40 hover:bg-yellow-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}>{child.is_low_frequency ? '低頻度' : '高頻度'}</button>
+                              <button
+                                type="button"
+                                disabled
+                                title="子習慣は単独で低頻度にできません（親習慣側で設定）"
+                                className="text-xs px-2 py-0.5 rounded h-7 transition-colors text-zinc-500 bg-zinc-700/60 cursor-not-allowed"
+                              >
+                                {child.is_low_frequency ? '低頻度' : '高頻度'}
+                              </button>
                               <button type="button" onClick={() => toggleIsActive(child.id)} title={child.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{child.is_active !== false ? '活性' : '非活性'}</button>
                               <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                               {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
@@ -2490,7 +2532,14 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                               <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
                             </div>
                             <div className="flex items-center gap-1">
-                              <button type="button" onClick={() => toggleIsLowFrequency(child.id)} title={child.is_low_frequency ? '低頻度（クリックで解除）' : '高頻度（クリックで低頻度に）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_low_frequency ? 'text-yellow-400 bg-yellow-900/40 hover:bg-yellow-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}>{child.is_low_frequency ? '低頻度' : '高頻度'}</button>
+                              <button
+                                type="button"
+                                disabled
+                                title="子習慣は単独で低頻度にできません（親習慣側で設定）"
+                                className="text-xs px-2 py-0.5 rounded h-7 transition-colors text-zinc-500 bg-zinc-700/60 cursor-not-allowed"
+                              >
+                                {child.is_low_frequency ? '低頻度' : '高頻度'}
+                              </button>
                               <button type="button" onClick={() => toggleIsActive(child.id)} title={child.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{child.is_active !== false ? '活性' : '非活性'}</button>
                               <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                               {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}
@@ -2541,7 +2590,14 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                                 <span className="text-base text-zinc-400">{child.points}G / {child.exp_body + child.exp_mind + child.exp_spirit}ex</span>
                               </div>
                               <div className="flex items-center gap-1">
-                                <button type="button" onClick={() => toggleIsLowFrequency(child.id)} title={child.is_low_frequency ? '低頻度（クリックで解除）' : '高頻度（クリックで低頻度に）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_low_frequency ? 'text-yellow-400 bg-yellow-900/40 hover:bg-yellow-900/60' : 'text-zinc-400 bg-zinc-700 hover:bg-zinc-600'}`}>{child.is_low_frequency ? '低頻度' : '高頻度'}</button>
+                                <button
+                                  type="button"
+                                  disabled
+                                  title="子習慣は単独で低頻度にできません（親習慣側で設定）"
+                                  className="text-xs px-2 py-0.5 rounded h-7 transition-colors text-zinc-500 bg-zinc-700/60 cursor-not-allowed"
+                                >
+                                  {child.is_low_frequency ? '低頻度' : '高頻度'}
+                                </button>
                               <button type="button" onClick={() => toggleIsActive(child.id)} title={child.is_active !== false ? '活性中（クリックで非活性）' : '非活性（クリックで活性）'} className={`text-xs px-2 py-0.5 rounded h-7 transition-colors cursor-pointer ${child.is_active !== false ? 'text-green-400 bg-green-900/40 hover:bg-green-900/60' : 'text-red-400 bg-red-900/30 hover:bg-red-900/50'}`}>{child.is_active !== false ? '活性' : '非活性'}</button>
                                 <Button onClick={() => handleOpenEditModal(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を編集する`} className="h-7 px-2 text-base text-cyan-400 hover:text-cyan-300">編集</Button>
                                 {child.is_custom && <Button onClick={() => handleDeleteHabit(child)} variant="ghost" size="sm" aria-label={`${child.habit_name}を削除する`} className="h-7 px-2 text-base text-red-400 hover:text-red-300">削除</Button>}

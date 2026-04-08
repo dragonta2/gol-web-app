@@ -70,6 +70,8 @@ export interface HabitFormData {
   input_type: 'checkbox' | 'number';
   exclude_weekends: boolean;
   exclude_from_complete: boolean;
+  /** 日誌の低頻度ゾーン（折りたたみ）に出す。親がONなら子も同ゾーンに含まれる */
+  is_low_frequency: boolean;
   parent_habit_id: string;
 }
 
