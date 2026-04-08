@@ -1524,17 +1524,66 @@ function TodoSummaryTab({
       status === "active" ? "アクティブタスク" : status === "in_progress" ? "進行中" : "完了済み"
     const isCompleted = status === "completed"
 
+    const hasExpandableSubtasks = todos.some((t) => getSubtasksForTodo(t.id).length > 0)
+    const hasExpandedInColumn = todos.some((t) => expandedTodos.has(t.id))
+
+    const handleExpandAllSubtasksInColumn = () => {
+      setExpandedTodos((prev) => {
+        const next = new Set(prev)
+        for (const t of todos) {
+          if (getSubtasksForTodo(t.id).length > 0) next.add(t.id)
+        }
+        return next
+      })
+    }
+
+    const handleCollapseAllSubtasksInColumn = () => {
+      setExpandedTodos((prev) => {
+        const next = new Set(prev)
+        for (const t of todos) next.delete(t.id)
+        return next
+      })
+    }
+
     return (
       <div className="flex flex-col h-full min-h-0">
         <div className="bg-zinc-800 rounded-lg p-3 mb-3 shrink-0">
-          <h3 className="font-medium text-zinc-300 text-base flex items-center justify-between">
-            <span>{columnLabel}</span>
-            <span
-              className="text-base text-zinc-500"
-              aria-label={`${todos.length}件のタスク`}
-            >
-              ({todos.length})
-            </span>
+          <h3 className="font-medium text-zinc-300 text-base flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span>{columnLabel}</span>
+              <span
+                className="text-base text-zinc-500 shrink-0"
+                aria-label={`${todos.length}件のタスク`}
+              >
+                ({todos.length})
+              </span>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleExpandAllSubtasksInColumn()
+                }}
+                disabled={!hasExpandableSubtasks}
+                className="text-xs px-2 py-1 rounded border border-zinc-600 bg-zinc-900/80 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 disabled:opacity-40 disabled:pointer-events-none"
+                aria-label={`${columnLabel}のサブタスクをすべて展開する`}
+              >
+                サブ全開
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleCollapseAllSubtasksInColumn()
+                }}
+                disabled={!hasExpandedInColumn}
+                className="text-xs px-2 py-1 rounded border border-zinc-600 bg-zinc-900/80 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 disabled:opacity-40 disabled:pointer-events-none"
+                aria-label={`${columnLabel}のサブタスクをすべて折りたたむ`}
+              >
+                サブ全閉
+              </button>
+            </div>
           </h3>
         </div>
         <div
