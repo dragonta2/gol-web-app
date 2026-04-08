@@ -2418,7 +2418,9 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   低頻度エリアに表示する（日誌で折りたたみ）
                 </Label>
               </div>
-              <p className="text-xs mt-0.5 text-zinc-400">
+              <p
+                className={`text-xs mt-0.5 ${modalFormData.parent_habit_id ? 'text-zinc-300/30' : 'text-zinc-400'}`}
+              >
                 ONにすると、この習慣は日誌の「低頻度」折りたたみブロックにまとめて表示されます。親習慣をONにした場合、子習慣も同じブロックに含まれます。
               </p>
               {modalFormData.parent_habit_id ? (
