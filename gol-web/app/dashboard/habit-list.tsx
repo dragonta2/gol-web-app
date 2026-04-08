@@ -2409,7 +2409,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                   checked={modalFormData.is_low_frequency}
                   disabled={!!modalFormData.parent_habit_id}
                   onChange={(e) => setModalFormData((prev) => ({ ...prev, is_low_frequency: e.target.checked }))}
-                  className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-700 rounded focus:ring-cyan-500"
+                  className="w-4 h-4 text-cyan-600 bg-zinc-800 border-zinc-700 rounded focus:ring-cyan-500 disabled:opacity-30"
                 />
                 <Label htmlFor="habit_is_low_frequency" className="text-base text-zinc-300 cursor-pointer">
                   低頻度エリアに表示する（日誌で折りたたみ）
@@ -2479,7 +2479,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                                 type="button"
                                 disabled
                                 title="子習慣は単独で低頻度にできません（親習慣側で設定）"
-                                className="text-xs px-2 py-0.5 rounded h-7 transition-colors text-zinc-500 bg-zinc-700/60 cursor-not-allowed"
+                                className="text-xs px-2 py-0.5 rounded h-7 transition-colors text-zinc-500/40 bg-zinc-800/30 border border-zinc-700/40 cursor-not-allowed opacity-60"
                               >
                                 {child.is_low_frequency ? '低頻度' : '高頻度'}
                               </button>
@@ -2536,7 +2536,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                                 type="button"
                                 disabled
                                 title="子習慣は単独で低頻度にできません（親習慣側で設定）"
-                                className="text-xs px-2 py-0.5 rounded h-7 transition-colors text-zinc-500 bg-zinc-700/60 cursor-not-allowed"
+                                className="text-xs px-2 py-0.5 rounded h-7 transition-colors text-zinc-500/40 bg-zinc-800/30 border border-zinc-700/40 cursor-not-allowed opacity-60"
                               >
                                 {child.is_low_frequency ? '低頻度' : '高頻度'}
                               </button>
@@ -2594,7 +2594,7 @@ function HabitList({ habits, habitLogs, dailyLogId, logDate, isConfirmed = false
                                   type="button"
                                   disabled
                                   title="子習慣は単独で低頻度にできません（親習慣側で設定）"
-                                  className="text-xs px-2 py-0.5 rounded h-7 transition-colors text-zinc-500 bg-zinc-700/60 cursor-not-allowed"
+                                  className="text-xs px-2 py-0.5 rounded h-7 transition-colors text-zinc-500/40 bg-zinc-800/30 border border-zinc-700/40 cursor-not-allowed opacity-60"
                                 >
                                   {child.is_low_frequency ? '低頻度' : '高頻度'}
                                 </button>
