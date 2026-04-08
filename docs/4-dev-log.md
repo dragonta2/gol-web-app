@@ -8,6 +8,54 @@
 
 ## 2604 --------------
 
+### 260408-Wed
+
+#### 260408-Wed｜作業締めログ（ToDo/習慣UI調整・ブランチ整合・ドキュメント反映）
+
+**記載** Cursor
+
+---
+
+##### 実装（ToDo）
+
+- `gol-web/app/dashboard/todo-summary-tab.tsx`:
+  アクティブ/進行中/完了済みの見出しに「サブ全開」「サブ全閉」を追加。列内ToDoを対象に `expandedTodos` を一括更新する処理を追加
+
+- `gol-web/app/dashboard/kanban-board.tsx`:
+  日誌カンバンにも同様の列見出しボタンを追加。`expandedSubtaskTodoIds` を列単位で一括更新するハンドラを実装
+
+- `docs/6-todo-progress.md`:
+  ToDo見出しボタン対応の行に `260408実装済み` を追記
+
+---
+
+##### 実装（習慣）
+
+- `gol-web/app/dashboard/habit-list-utils.tsx`:
+  `HabitFormData` に `is_low_frequency` を追加
+
+- `gol-web/app/dashboard/habit-list.tsx`:
+  編集モーダルに「低頻度エリアに表示する（日誌で折りたたみ）」を追加し、保存系 API 呼び出し（POST/PUT）に `is_low_frequency` を反映
+
+- 子習慣の低頻度は単独設定不可の仕様に合わせ、管理モーダルの子行ボタンを `disabled` 化。編集モーダルも子習慣時は低頻度チェックを `disabled` にして注意文を表示
+
+- UI微調整:
+  子習慣の無効ボタンをより薄いグレーへ調整し、注意文の明度を上げた。さらに説明文（`ONにすると...`）は子習慣時にチェックボックスと同等の明度へ調整
+
+---
+
+##### Git運用
+
+- 誤って feature で行った変更は、`main` へ cherry-pick して反映
+
+- feature 側は `main` をマージして履歴を合流
+
+- `.cursor/plans/` が追跡対象に出ていたため、ルート `.gitignore` に `.cursor/plans/` を追加
+
+- 最終的に `main` へ順次 push し、反映を確認
+
+---
+
 ### 260406-Mon
 
 #### 260406-Mon｜ヘッダー未確定のゴルド数値を text-gold で表示
