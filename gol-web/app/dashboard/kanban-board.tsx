@@ -451,6 +451,8 @@ function DroppableColumn({
   formatSubtaskCompletedDate,
   isReadOnly = false,
   onAddTask,
+  onExpandAllSubtasksInColumn,
+  onCollapseAllSubtasksInColumn,
 }: {
   id: string;
   title: string;
@@ -475,61 +477,94 @@ function DroppableColumn({
   isReadOnly?: boolean;
   /** アクティブタスク列のときのみ使用。列の一番下に「タスクを追加」ボタンを表示 */
   onAddTask?: () => void;
+  onExpandAllSubtasksInColumn: () => void;
+  onCollapseAllSubtasksInColumn: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
     id,
   });
 
+  const hasExpandableSubtasks = todos.some((t) => getSubtasksForTodo(t.id).length > 0);
+  const hasExpandedInColumn = todos.some((t) => expandedSubtaskTodoIds.has(t.id));
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="bg-zinc-800 rounded-lg p-3 mb-3 shrink-0">
-        <h3 className="font-medium text-zinc-300 text-base flex items-center justify-between gap-2">
-          <span>{title}</span>
-          <span className="flex items-center gap-1 shrink-0">
-            {dueOrder !== undefined && onDueOrderChange && dateSortLabel && (
-              <span className="flex items-center gap-1 text-xs text-zinc-500" aria-label={`${dateSortLabel}で並び替え`}>
-                <button
-                  type="button"
-                  onClick={() => onDueOrderChange('far')}
-                  className={`px-1.5 py-0.5 rounded ${dueOrder === 'far' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
-                  title="期限が遠い順（日付の大きい方が上）"
-                >
-                  遠い順
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onDueOrderChange('near')}
-                  className={`px-1.5 py-0.5 rounded ${dueOrder === 'near' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
-                  title="期限が近い順（日付の小さい方が上）"
-                >
-                  近い順
-                </button>
+        <h3 className="font-medium text-zinc-300 text-base flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <span>{title}</span>
+            <span className="flex items-center gap-1 shrink-0">
+              {dueOrder !== undefined && onDueOrderChange && dateSortLabel && (
+                <span className="flex items-center gap-1 text-xs text-zinc-500" aria-label={`${dateSortLabel}で並び替え`}>
+                  <button
+                    type="button"
+                    onClick={() => onDueOrderChange('far')}
+                    className={`px-1.5 py-0.5 rounded ${dueOrder === 'far' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+                    title="期限が遠い順（日付の大きい方が上）"
+                  >
+                    遠い順
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDueOrderChange('near')}
+                    className={`px-1.5 py-0.5 rounded ${dueOrder === 'near' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+                    title="期限が近い順（日付の小さい方が上）"
+                  >
+                    近い順
+                  </button>
+                </span>
+              )}
+              {sortOrder !== undefined && onSortChange && dateSortLabel && dueOrder === undefined && (
+                <span className="flex items-center gap-1 text-xs text-zinc-500" aria-label={`${dateSortLabel}で並び替え`}>
+                  <button
+                    type="button"
+                    onClick={() => onSortChange('asc')}
+                    className={`px-1.5 py-0.5 rounded ${sortOrder === 'asc' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+                    title="完了が古い順（日時が早い方が上）"
+                  >
+                    遠い順
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSortChange('desc')}
+                    className={`px-1.5 py-0.5 rounded ${sortOrder === 'desc' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
+                    title="完了が新しい順（日時が遅い方が上）"
+                  >
+                    近い順
+                  </button>
+                </span>
+              )}
+              <span className="text-base text-zinc-500" aria-label={`${todos.length}件のタスク`}>
+                ({todos.length})
               </span>
-            )}
-            {sortOrder !== undefined && onSortChange && dateSortLabel && dueOrder === undefined && (
-              <span className="flex items-center gap-1 text-xs text-zinc-500" aria-label={`${dateSortLabel}で並び替え`}>
-                <button
-                  type="button"
-                  onClick={() => onSortChange('asc')}
-                  className={`px-1.5 py-0.5 rounded ${sortOrder === 'asc' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
-                  title="完了が古い順（日時が早い方が上）"
-                >
-                  遠い順
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onSortChange('desc')}
-                  className={`px-1.5 py-0.5 rounded ${sortOrder === 'desc' ? 'bg-cyan-600 text-white' : 'bg-zinc-700 text-zinc-400 hover:bg-zinc-600'}`}
-                  title="完了が新しい順（日時が遅い方が上）"
-                >
-                  近い順
-                </button>
-              </span>
-            )}
-            <span className="text-base text-zinc-500" aria-label={`${todos.length}件のタスク`}>
-              ({todos.length})
             </span>
-          </span>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onExpandAllSubtasksInColumn();
+              }}
+              disabled={!hasExpandableSubtasks}
+              className="text-xs px-2 py-1 rounded border border-zinc-600 bg-zinc-900/80 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 disabled:opacity-40 disabled:pointer-events-none"
+              aria-label={`${title}のサブタスクをすべて展開する`}
+            >
+              サブ全開
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCollapseAllSubtasksInColumn();
+              }}
+              disabled={!hasExpandedInColumn}
+              className="text-xs px-2 py-1 rounded border border-zinc-600 bg-zinc-900/80 text-zinc-300 hover:bg-zinc-700 hover:text-zinc-100 disabled:opacity-40 disabled:pointer-events-none"
+              aria-label={`${title}のサブタスクをすべて折りたたむ`}
+            >
+              サブ全閉
+            </button>
+          </div>
         </h3>
       </div>
       <div
@@ -880,6 +915,24 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
       const next = new Set(prev);
       if (next.has(todoId)) next.delete(todoId);
       else next.add(todoId);
+      return next;
+    });
+  };
+
+  const expandSubtasksForColumnTodos = (columnTodos: Todo[]) => {
+    setExpandedSubtaskTodoIds((prev) => {
+      const next = new Set(prev);
+      for (const t of columnTodos) {
+        if (getSubtasksForTodo(t.id).length > 0) next.add(t.id);
+      }
+      return next;
+    });
+  };
+
+  const collapseSubtasksForColumnTodos = (columnTodos: Todo[]) => {
+    setExpandedSubtaskTodoIds((prev) => {
+      const next = new Set(prev);
+      for (const t of columnTodos) next.delete(t.id);
       return next;
     });
   };
@@ -1358,6 +1411,8 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
             formatSubtaskCompletedDate={formatSubtaskCompletedDate}
             isReadOnly={false}
             onAddTask={onOpenCreateModal}
+            onExpandAllSubtasksInColumn={() => expandSubtasksForColumnTodos(activeTodos)}
+            onCollapseAllSubtasksInColumn={() => collapseSubtasksForColumnTodos(activeTodos)}
           />
 
           {/* 進行中カラム */}
@@ -1381,6 +1436,8 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
             onToggleSubtaskCompletion={handleToggleSubtaskCompletion}
             formatSubtaskCompletedDate={formatSubtaskCompletedDate}
             isReadOnly={false}
+            onExpandAllSubtasksInColumn={() => expandSubtasksForColumnTodos(inProgressTodos)}
+            onCollapseAllSubtasksInColumn={() => collapseSubtasksForColumnTodos(inProgressTodos)}
           />
 
           {/* 完了済みカラム */}
@@ -1403,6 +1460,8 @@ function KanbanBoard({ userId, todos: initialTodos, todoSubtasks: initialSubtask
             onToggleSubtaskCompletion={handleToggleSubtaskCompletion}
             formatSubtaskCompletedDate={formatSubtaskCompletedDate}
             isReadOnly={false}
+            onExpandAllSubtasksInColumn={() => expandSubtasksForColumnTodos(completedTodos)}
+            onCollapseAllSubtasksInColumn={() => collapseSubtasksForColumnTodos(completedTodos)}
           />
         </div>
 
