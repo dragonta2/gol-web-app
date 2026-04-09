@@ -22,7 +22,7 @@ import {
   DEFAULT_PERSONALITY_TYPE_ID,
   isValidPersonalityTypeId,
 } from '@/lib/ai/personality-types';
-import { Edit, MessageSquare, Gift, Save, Bot, ChevronDown, ChevronUp, Settings, Check, Unlock, Volume2, VolumeX } from 'lucide-react';
+import { Edit, Gift, Save, Bot, ChevronDown, ChevronUp, Settings, Check, Unlock, Volume2, VolumeX, Leaf, Flame, Trophy, BookOpen, Lightbulb, ClipboardCheck } from 'lucide-react';
 import { ExpWithIcons } from '@/components/exp-with-icons';
 
 /** 権利の利用回数上限（スライダー・＋ボタン用） */
@@ -829,7 +829,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         {/* AI判定結果表示（一括生成のローディング時も同じスケルトン） */}
         {isJudging ? (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-4">
-            <h3 className="text-lg font-medium text-cyan-400">判定結果</h3>
+            <h3 className="inline-flex items-center gap-2 text-lg font-bold text-cyan-400">
+              <ClipboardCheck className="h-5 w-5" aria-hidden />
+              <span>判定結果</span>
+            </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Skeleton className="h-4 w-20 mb-2 bg-zinc-700" />
@@ -845,7 +848,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           </div>
         ) : aiJudgmentResult ? (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-4">
-            <h3 className="text-lg font-medium text-cyan-400">判定結果</h3>
+            <h3 className="inline-flex items-center gap-2 text-lg font-bold text-cyan-400">
+              <ClipboardCheck className="h-5 w-5" aria-hidden />
+              <span>判定結果</span>
+            </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <div className="text-lg text-zinc-400 mb-1">体調スコア</div>
@@ -901,7 +907,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
         {/* 獲得スコア（内訳・総計）。ToDo・習慣・悪習慣・AI・権利を含む。権利消費は「本日消費ゴルド合計」と整合させるためクライアントの totalPoints を使用 */}
         {scoreBreakdown && scoreDisplay && (
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 space-y-2">
-            <h3 className="text-lg font-medium text-cyan-400">獲得スコア</h3>
+            <h3 className="inline-flex items-center gap-2 text-lg font-bold text-cyan-400">
+              <Trophy className="h-5 w-5" aria-hidden />
+              <span>獲得スコア</span>
+            </h3>
             <p className="text-zinc-300 text-xs">日誌確定後にスコアは獲得されます</p>
             <div className="text-base space-y-2 text-zinc-300">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -993,7 +1002,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             aria-expanded={isStoryExpanded}
             aria-controls="ai-story-content"
           >
-            <h3 className="text-xl font-medium text-cyan-400">あらすじ</h3>
+            <h3 className="inline-flex items-center gap-2 text-xl font-bold text-cyan-400">
+              <BookOpen className="h-5 w-5" aria-hidden />
+              <span>あらすじ</span>
+            </h3>
             {isStoryExpanded ? (
               <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
             ) : (
@@ -1057,7 +1069,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             aria-expanded={isAdviceExpanded}
             aria-controls="ai-advice-content"
           >
-            <h3 className="text-lg font-medium text-cyan-400">コーチング アドバイス</h3>
+            <h3 className="inline-flex items-center gap-2 text-lg font-bold text-cyan-400">
+              <Lightbulb className="h-5 w-5" aria-hidden />
+              <span>コーチング アドバイス</span>
+            </h3>
             {isAdviceExpanded ? (
               <ChevronUp className="w-5 h-5 text-zinc-400 shrink-0" />
             ) : (
@@ -1067,7 +1082,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           {isAdviceExpanded && (
             <div id="ai-advice-content" className="space-y-6">
               <div>
-                <p className="text-base font-medium text-zinc-200 mb-2">弛緩のコーチング</p>
+                <p className="mb-2 inline-flex items-center gap-2 text-base font-bold text-zinc-200">
+                  <Leaf className="h-4 w-4 text-emerald-400" aria-hidden />
+                  <span>弛緩のコーチング</span>
+                </p>
                 {isJudging ? (
                   <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
                     <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
@@ -1110,7 +1128,10 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                 )}
               </div>
               <div>
-                <p className="text-base font-medium text-zinc-200 mb-2">緊張のコーチング</p>
+                <p className="mb-2 inline-flex items-center gap-2 text-base font-bold text-zinc-200">
+                  <Flame className="h-4 w-4 text-orange-400" aria-hidden />
+                  <span>緊張のコーチング</span>
+                </p>
                 {isJudging ? (
                   <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
                     <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
