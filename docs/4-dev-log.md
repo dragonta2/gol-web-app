@@ -8,6 +8,24 @@
 
 ## 2604 --------------
 
+### 260410-Fri
+
+#### 260410-Fri｜1番仕様の日付追記スクリプトパス更新・0番追記・締めログ
+
+**記載** Cursor
+
+---
+
+##### 内容
+
+- **`docs/1-spec-sheet.md`**: 自動日付追記スクリプトの「実体」を `~/Library/Mobile Documents/com~apple~CloudDocs/ALL-DTA2-iCloud/1-i-IT/i-Script/add-daily-prompt.sh` と明記し、従来記載の `/Users/ta2/ALL-DTA2/.automation/scripts/add-daily-prompt.sh` は互換用 symlink と説明する形に更新した。構成ファイル・詳細 README の参照先も `i-Script/README.md` に合わせた
+
+- **`docs/0-AI-prompt-memo.md`**: `## 2604` 配下に `### 260410-Fri` を追加（続きから再開するための短文・日付・3番参照）
+
+- **締め**: 本セッションの作業をここまでとし、`docs/3-project-progress.md`（概要）と本ファイル（詳細）に記録した
+
+---
+
 ### 260409-Thu
 
 #### 260409-Thu｜日誌AIセクション見出しの太字化・アイコン調整

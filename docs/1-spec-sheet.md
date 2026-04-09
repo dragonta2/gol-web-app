@@ -53,7 +53,7 @@ https://www.notion.so/22feac3fdfa4478caca2d75c1d5e35c5?v=91034d9fb8324ba783bff7a
 
 - **起動**: macOS の **launchd** が `~/Library/LaunchAgents/com.ta2.daily-prompt.plist` を読み、定義どおり **`add-daily-prompt.sh`** を実行する。
 
-- **実体**: スクリプトは **`/Users/ta2/ALL-DTA2/.automation/scripts/add-daily-prompt.sh`**（gol-web リポジトリ外）。bash で `TARGETS` 配列に列挙された各 Markdown パスに対し、同日のブロックが無ければ追記する。
+- **実体**: スクリプトは **`~/Library/Mobile Documents/com~apple~CloudDocs/ALL-DTA2-iCloud/1-i-IT/i-Script/add-daily-prompt.sh`**（iCloud 上・gol-web 外）。互換のため **`/Users/ta2/ALL-DTA2/.automation/scripts/add-daily-prompt.sh`** から symlink を張っている。bash で `TARGETS` 配列に列挙された各 Markdown パスに対し、同日のブロックが無ければ追記する。
 
 - **処理対象（スクリプト内の例）**: `gol-web` の `docs/0-AI-prompt-memo.md`、および別リポジトリの `0-1-AI-prompt-memo.md` など（`TARGETS` に追加したファイルが対象）。
 
@@ -87,7 +87,7 @@ https://www.notion.so/22feac3fdfa4478caca2d75c1d5e35c5?v=91034d9fb8324ba783bff7a
 
 ### 構成ファイル
 
-- **スクリプト**: `/Users/ta2/ALL-DTA2/.automation/scripts/add-daily-prompt.sh`
+- **スクリプト（実体）**: `~/Library/Mobile Documents/com~apple~CloudDocs/ALL-DTA2-iCloud/1-i-IT/i-Script/add-daily-prompt.sh`（**symlink**: `/Users/ta2/ALL-DTA2/.automation/scripts/add-daily-prompt.sh`）
 - **launchd plist**: `~/Library/LaunchAgents/com.ta2.daily-prompt.plist`
 - **ログ**: `~/Library/Logs/daily-prompt.log` / `daily-prompt.error.log`
 
@@ -96,7 +96,7 @@ https://www.notion.so/22feac3fdfa4478caca2d75c1d5e35c5?v=91034d9fb8324ba783bff7a
 スクリプトの詳細、注意事項、トラブルシューティングは以下を参照してください：
 
 ```
-/Users/ta2/ALL-DTA2/.automation/README.md
+~/Library/Mobile Documents/com~apple~CloudDocs/ALL-DTA2-iCloud/1-i-IT/i-Script/README.md
 ```
 
 ### launchd の登録・解除コマンド
