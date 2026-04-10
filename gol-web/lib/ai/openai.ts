@@ -180,6 +180,7 @@ ${missedHabitsBlock}
 
 【完了したToDo】
 ${completedTodosBlock}
+※参考情報です。ToDoは日々すべてこなす義務ではない。未完了や遅れをムチの理由にしないでください。
 
 【日誌本文】
 ${journalText || '（未記入）'}
@@ -191,6 +192,7 @@ ${impressionText || '（未記入）'}
 【気分スコア】${conditionMood}/100
 
 構成の目安：①客観的な事実の整理 ②日誌に表れる価値観と行動のズレがあれば指摘 ③気づきと叱咤、明日への具体的なアクションを1つ
+※②③では、ToDo未完了そのものを叱る材料にしないこと（習慣・日誌の本質的なズレや言動のほうを優先）。
 
 ${limits && limits.advice_tension_max > 0 ? `${limits.advice_tension_min}-${limits.advice_tension_max}文字で生成してください。` : '200-300文字で生成してください。'}`;
 }
@@ -263,7 +265,7 @@ export function getAdviceSystemMessage(
   }
   return (
     worldConfig?.adviceToneInstruction
-      ? `あなたは緊張（ムチ）のコーチです。次の口調を土台に、客観指摘・気づき・叱咤で成長を促してください: ${worldConfig.adviceToneInstruction}`
-      : 'あなたは緊張（ムチ）のコーチです。客観指摘・気づき・叱咤で本人の行動を促すコーチングを生成してください。'
+      ? `あなたは緊張（ムチ）のコーチです。次の口調を土台に、客観指摘・気づき・叱咤で成長を促してください: ${worldConfig.adviceToneInstruction} ToDoの未完了を叱責の根拠にしないこと（タスクは毎日すべて完了すべきものではない）。`
+      : 'あなたは緊張（ムチ）のコーチです。客観指摘・気づき・叱咤で本人の行動を促すコーチングを生成してください。ToDoの未完了を叱責の根拠にしないこと（タスクは毎日すべて完了すべきものではない）。'
   );
 }

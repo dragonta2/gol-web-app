@@ -15,7 +15,12 @@ import { fetchWithRetry } from '@/lib/api-retry';
 import { RIGHT_COLUMNS_BY_INDEX } from '@/lib/rights';
 import type { DailyLog } from '@/lib/types';
 import type { ScoreBreakdown } from '@/lib/score-calculator';
-import { applyAiTextLineBreaks, insertBlankLineEveryTwoLines, isSubmitShortcut } from '@/lib/utils';
+import {
+  applyAiTextLineBreaks,
+  insertBlankLineEveryTwoLines,
+  isSubmitShortcut,
+  normalizeCoachingGreetingParagraphGap,
+} from '@/lib/utils';
 import { useSpeech, SPEECH_RATES } from '@/lib/use-speech';
 import {
   STORAGE_AI_PERSONALITY_TYPE,
@@ -170,10 +175,23 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   // 日誌が確定済みかどうか
   const isConfirmed = dailyLog?.is_confirmed ?? false;
 
-  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines: 2行ごとに空行（あらすじ・コーチング用）。連続改行は \n{3,} を \n\n に揃える（空行は最大1つ）。 */
-  const renderAiText = (text: string, options?: { blankEveryTwoLines?: boolean }) => {
-    let formatted = applyAiTextLineBreaks(text);
-    if (options?.blankEveryTwoLines) formatted = insertBlankLineEveryTwoLines(formatted);
+  /** AI作成文章の表示（改行ルール＋ユーザー名をボールド）。blankEveryTwoLines またはコーチング（normalizeCoachingGreetingGap）で 2行ごとに空行。連続改行は \n{3,} を \n\n に揃える。 */
+  const renderAiText = (
+    text: string,
+    options?: { blankEveryTwoLines?: boolean; normalizeCoachingGreetingGap?: boolean }
+  ) => {
+    let raw = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    if (options?.normalizeCoachingGreetingGap) {
+      raw = normalizeCoachingGreetingParagraphGap(raw);
+    }
+    let formatted = applyAiTextLineBreaks(raw);
+    if (options?.blankEveryTwoLines || options?.normalizeCoachingGreetingGap) {
+      formatted = insertBlankLineEveryTwoLines(formatted);
+    }
+    formatted = formatted.replace(/\n{3,}/g, '\n\n');
+    if (options?.normalizeCoachingGreetingGap) {
+      formatted = normalizeCoachingGreetingParagraphGap(formatted);
+    }
     formatted = formatted.replace(/\n{3,}/g, '\n\n');
     if (!userName) return formatted;
     const parts = formatted.split(userName);
@@ -1083,52 +1101,6 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
             <div id="ai-advice-content" className="space-y-6">
               <div>
                 <p className="mb-2 inline-flex items-center gap-2 text-base font-bold text-zinc-200">
-                  <Leaf className="h-4 w-4 text-emerald-400" aria-hidden />
-                  <span>弛緩のコーチング</span>
-                </p>
-                {isJudging ? (
-                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                    <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
-                    <Skeleton className="h-4 w-3/4 bg-zinc-700" />
-                  </div>
-                ) : aiAdvice ? (
-                  <>
-                    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                      <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdvice, { blankEveryTwoLines: true })}</p>
-                    </div>
-                    <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
-                      <div className="flex items-center gap-1">
-                        {SPEECH_RATES.map(({ label, rate }) => (
-                          <button
-                            key={rate}
-                            type="button"
-                            onClick={() => setSpeechRate(rate)}
-                            className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${speechRate === rate ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => speak(aiAdvice, 'adviceRelax')}
-                        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
-                        aria-label={speakingTarget === 'adviceRelax' ? '読み上げを停止' : '弛緩コーチングを音声で読み上げ'}
-                      >
-                        {speakingTarget === 'adviceRelax' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-                        <span className="hidden sm:inline">{speakingTarget === 'adviceRelax' ? '停止' : '読み上げ'}</span>
-                      </button>
-                      <span className="text-xs text-zinc-600">{(aiAdvice ?? '').length}文字</span>
-                    </div>
-                  </>
-                ) : (
-                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-                    <p className="text-zinc-500 text-sm">未生成（上の「AI判定を実行」で一括生成）</p>
-                  </div>
-                )}
-              </div>
-              <div>
-                <p className="mb-2 inline-flex items-center gap-2 text-base font-bold text-zinc-200">
                   <Flame className="h-4 w-4 text-orange-400" aria-hidden />
                   <span>緊張のコーチング</span>
                 </p>
@@ -1140,7 +1112,11 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                 ) : aiAdviceTension ? (
                   <>
                     <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
-                      <p className="text-zinc-300 whitespace-pre-wrap">{renderAiText(aiAdviceTension, { blankEveryTwoLines: true })}</p>
+                      <p className="text-zinc-300 whitespace-pre-wrap">
+                        {renderAiText(aiAdviceTension, {
+                          normalizeCoachingGreetingGap: true,
+                        })}
+                      </p>
                     </div>
                     <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
                       <div className="flex items-center gap-1">
@@ -1165,6 +1141,56 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                         <span className="hidden sm:inline">{speakingTarget === 'adviceTension' ? '停止' : '読み上げ'}</span>
                       </button>
                       <span className="text-xs text-zinc-600">{(aiAdviceTension ?? '').length}文字</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+                    <p className="text-zinc-500 text-sm">未生成（上の「AI判定を実行」で一括生成）</p>
+                  </div>
+                )}
+              </div>
+              <div>
+                <p className="mb-2 inline-flex items-center gap-2 text-base font-bold text-zinc-200">
+                  <Leaf className="h-4 w-4 text-emerald-400" aria-hidden />
+                  <span>弛緩のコーチング</span>
+                </p>
+                {isJudging ? (
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                    <Skeleton className="h-4 w-full mb-2 bg-zinc-700" />
+                    <Skeleton className="h-4 w-3/4 bg-zinc-700" />
+                  </div>
+                ) : aiAdvice ? (
+                  <>
+                    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                      <p className="text-zinc-300 whitespace-pre-wrap">
+                        {renderAiText(aiAdvice, {
+                          normalizeCoachingGreetingGap: true,
+                        })}
+                      </p>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-end gap-3 flex-wrap" aria-live="polite">
+                      <div className="flex items-center gap-1">
+                        {SPEECH_RATES.map(({ label, rate }) => (
+                          <button
+                            key={rate}
+                            type="button"
+                            onClick={() => setSpeechRate(rate)}
+                            className={`text-[11px] px-1.5 py-0.5 rounded transition-colors ${speechRate === rate ? 'bg-cyan-700 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => speak(aiAdvice, 'adviceRelax')}
+                        className="inline-flex items-center gap-1 text-xs text-zinc-400 hover:text-cyan-400 transition-colors"
+                        aria-label={speakingTarget === 'adviceRelax' ? '読み上げを停止' : '弛緩コーチングを音声で読み上げ'}
+                      >
+                        {speakingTarget === 'adviceRelax' ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                        <span className="hidden sm:inline">{speakingTarget === 'adviceRelax' ? '停止' : '読み上げ'}</span>
+                      </button>
+                      <span className="text-xs text-zinc-600">{(aiAdvice ?? '').length}文字</span>
                     </div>
                   </>
                 ) : (

@@ -12,6 +12,22 @@
 
 ### 260410-Fri --------------
 
+#### 260410-Fri｜日誌コーチングの表示整形と緊張（ムチ）プロンプト調整
+
+**記載** Cursor
+
+**実施内容:**
+
+- コーチング冒頭「◯◯よ。」直後の空行を一定にするため、`normalizeCoachingGreetingParagraphGap` で `よ。` 直後の余白（Markdown 行末スペース＋改行など）を除去
+
+- 緊張コーチングのプロンプトで、ToDo 未完了を叱咤の根拠にしない旨を `openai.ts`・`TENSION_COACH_SNIPPET` に追記
+
+- コーチング本文は `applyAiTextLineBreaks` のあと **2行ごとに空行**（`insertBlankLineEveryTwoLines`）で読みやすく表示
+
+- `docs/6-todo-progress.md` の該当チェックリストに実装日を追記
+
+---
+
 #### 260410-Fri｜仕様書の日付追記スクリプトパス整理と本日の締め
 
 **記載** Cursor

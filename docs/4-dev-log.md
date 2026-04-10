@@ -10,6 +10,62 @@
 
 ### 260410-Fri
 
+#### 260410-Fri｜日誌コーチング表示（改行・段落）と緊張コーチの ToDo 扱い
+
+**記載** Cursor
+
+---
+
+##### 背景
+
+- 緊張コーチが ToDo 未達を「ムチ」の材料にしやすく、かつ「◯◯よ。」直後の空行が大きすぎる／本文の改行が読みにくい、という表示・プロンプトの課題があった
+
+---
+
+##### 実装ファイル
+
+- `gol-web/lib/utils.ts`
+
+- `gol-web/lib/__tests__/utils.test.ts`
+
+- `gol-web/app/dashboard/journal-form.tsx`
+
+- `gol-web/lib/ai/openai.ts`
+
+- `gol-web/lib/ai/personality-types.ts`
+
+- `docs/6-todo-progress.md`
+
+---
+
+##### 表示・整形（`lib/utils.ts` / `journal-form.tsx`）
+
+- `normalizeCoachingGreetingParagraphGap`: 挨拶 `…よ[。．]` の直後を `\n\n` に統一。`よ。` の直後に残る空白類を `after` 先頭で `/^\s+/u` により除去（LLM の `  \n` 等で空行が倍加しないようにした）
+
+- `renderAiText`: コーチング（`normalizeCoachingGreetingGap`）でもあらすじと同様、`applyAiTextLineBreaks` の後に `insertBlankLineEveryTwoLines` を適用し、**2行ごとに空行**で本文を区切る
+
+- 一時的に入れていたデバッグ用の ingest ログは検証後に削除済み
+
+---
+
+##### 緊張（ムチ）プロンプト（`openai.ts` / `personality-types.ts`）
+
+- 緊張アドバイス用ユーザープロンプトの ToDo ブロック付近に注記: 参考情報であり、未完了をムチの理由にしないこと
+
+- 構成の目安のあとに注記: ②③ で ToDo 未完了そのものを叱る材料にしないこと
+
+- `getAdviceSystemMessage`: 緊張コーチのシステムメッセージに、ToDo 未完了を叱責根拠にしない一文を追加
+
+- `TENSION_COACH_SNIPPET`: ToDo を毎日すべて完了すべきものとみなさず、未完・遅れを叱咤の根拠にしない旨を追記
+
+---
+
+##### チェックリスト
+
+- `docs/6-todo-progress.md` のコーチング関連項目に `260410実装済み` を追記
+
+---
+
 #### 260410-Fri｜1番仕様の日付追記スクリプトパス更新・0番追記・締めログ
 
 **記載** Cursor
