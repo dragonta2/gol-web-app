@@ -53,10 +53,13 @@ export const DEFAULT_PERSONALITY_TYPE_ID: PersonalityTypeId = 'neutral';
 
 /** デフォルトで辛口コーチのコメントを出すか（未設定時は true） */
 export const DEFAULT_STRICT_COACH_ENABLED = true;
+/** デフォルトで弛緩コーチングを出すか（未設定時は true） */
+export const DEFAULT_RELAX_COACH_ENABLED = true;
 
 /** localStorage のキー（設定画面・日誌画面で共通） */
 export const STORAGE_AI_PERSONALITY_TYPE = 'gol-ai-personality-type';
 export const STORAGE_AI_STRICT_COACH_ENABLED = 'gol-ai-strict-coach-enabled';
+export const STORAGE_AI_RELAX_COACH_ENABLED = 'gol-ai-relax-coach-enabled';
 
 /** 性格タイプIDが有効か（strict は廃止・独立した辛口コーチに移行） */
 export function isValidPersonalityTypeId(

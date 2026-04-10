@@ -20,9 +20,11 @@ import {
   type PersonalityTypeId,
   PERSONALITY_TYPES,
   DEFAULT_PERSONALITY_TYPE_ID,
+  DEFAULT_RELAX_COACH_ENABLED,
   DEFAULT_STRICT_COACH_ENABLED,
   isValidPersonalityTypeId,
   STORAGE_AI_PERSONALITY_TYPE,
+  STORAGE_AI_RELAX_COACH_ENABLED,
   STORAGE_AI_STRICT_COACH_ENABLED,
 } from "@/lib/ai/personality-types"
 import {
@@ -63,6 +65,9 @@ export default function AccountSettingsClient({
   const [strictCoachEnabled, setStrictCoachEnabled] = useState(
     DEFAULT_STRICT_COACH_ENABLED,
   )
+  const [relaxCoachEnabled, setRelaxCoachEnabled] = useState(
+    DEFAULT_RELAX_COACH_ENABLED,
+  )
   const [aiStorySaving, setAiStorySaving] = useState(false)
 
   const [storyWorldId, setStoryWorldId] = useState<StoryWorldId>("ghost")
@@ -93,6 +98,8 @@ export default function AccountSettingsClient({
       setAiPersonalityType(DEFAULT_PERSONALITY_TYPE_ID)
     const storedStrict = localStorage.getItem(STORAGE_AI_STRICT_COACH_ENABLED)
     setStrictCoachEnabled(storedStrict !== "false")
+    const storedRelax = localStorage.getItem(STORAGE_AI_RELAX_COACH_ENABLED)
+    setRelaxCoachEnabled(storedRelax !== "false")
     const stored = localStorage.getItem(STORAGE_STORY_WORLD)
     if (stored === "dq" || stored === "ghost") setStoryWorldId(stored)
   }, [])
@@ -194,6 +201,10 @@ export default function AccountSettingsClient({
         localStorage.setItem(
           STORAGE_AI_STRICT_COACH_ENABLED,
           String(strictCoachEnabled),
+        )
+        localStorage.setItem(
+          STORAGE_AI_RELAX_COACH_ENABLED,
+          String(relaxCoachEnabled),
         )
         localStorage.setItem(STORAGE_STORY_WORLD, storyWorldId)
         notifyStoryWorldChanged()
@@ -414,21 +425,26 @@ export default function AccountSettingsClient({
 
               <div id="strict-coach" className="pt-4 border-t border-zinc-700">
                 <h3 className="text-base font-semibold text-zinc-100 mb-2">
-                  辛口コーチ
+                  コーチングアドバイス
                 </h3>
                 <p className="text-sm text-zinc-400 mb-3">
-                  AIアドバイスに辛口コーチのコメントを出すかどうか。
+                  日誌のアドバイス表示を設定します。弛緩・緊張それぞれを切り替えできます。
                 </p>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
-                  <Switch
-                    checked={strictCoachEnabled}
-                    onCheckedChange={setStrictCoachEnabled}
-                  />
-                  <span className="text-zinc-100 text-sm">
-                    {strictCoachEnabled
-                      ? "コメントを出す"
-                      : "コメントを出さない"}
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                    <span className="text-zinc-100 text-sm">弛緩のコーチングを表示</span>
+                    <Switch
+                      checked={relaxCoachEnabled}
+                      onCheckedChange={setRelaxCoachEnabled}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                    <span className="text-zinc-100 text-sm">緊張のコーチングを表示</span>
+                    <Switch
+                      checked={strictCoachEnabled}
+                      onCheckedChange={setStrictCoachEnabled}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

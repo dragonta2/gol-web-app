@@ -23,7 +23,11 @@ import {
 } from '@/lib/utils';
 import { useSpeech, SPEECH_RATES } from '@/lib/use-speech';
 import {
+  DEFAULT_RELAX_COACH_ENABLED,
+  DEFAULT_STRICT_COACH_ENABLED,
   STORAGE_AI_PERSONALITY_TYPE,
+  STORAGE_AI_RELAX_COACH_ENABLED,
+  STORAGE_AI_STRICT_COACH_ENABLED,
   DEFAULT_PERSONALITY_TYPE_ID,
   isValidPersonalityTypeId,
 } from '@/lib/ai/personality-types';
@@ -272,6 +276,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
   // AIアドバイス（弛緩・緊張）
   const [aiAdvice, setAIAdvice] = useState<string | null>(dailyLog?.ai_advice || null);
   const [aiAdviceTension, setAIAdviceTension] = useState<string | null>(dailyLog?.ai_advice_tension ?? null);
+  const [relaxCoachEnabled, setRelaxCoachEnabled] = useState(DEFAULT_RELAX_COACH_ENABLED);
+  const [strictCoachEnabled, setStrictCoachEnabled] = useState(DEFAULT_STRICT_COACH_ENABLED);
 
   // 音声読み上げ
   const { speakingTarget, speak, speechRate, setSpeechRate } = useSpeech((msg) => toast.error(msg));
@@ -322,6 +328,22 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
     dailyLog?.ai_condition_mood,
     dailyLog?.ai_reasoning,
   ]);
+
+  // 設定画面で保存した「弛緩/緊張コーチング表示」設定を反映
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const loadFlags = () => {
+      setRelaxCoachEnabled(
+        localStorage.getItem(STORAGE_AI_RELAX_COACH_ENABLED) !== 'false'
+      );
+      setStrictCoachEnabled(
+        localStorage.getItem(STORAGE_AI_STRICT_COACH_ENABLED) !== 'false'
+      );
+    };
+    loadFlags();
+    window.addEventListener('storage', loadFlags);
+    return () => window.removeEventListener('storage', loadFlags);
+  }, []);
 
   // 権利の回数更新（上限なし・使用単位は自由記述のため）
   const updateRightCount = (rightId: string, newCount: number) => {
@@ -1099,6 +1121,7 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
           </button>
           {isAdviceExpanded && (
             <div id="ai-advice-content" className="space-y-6">
+              {strictCoachEnabled && (
               <div>
                 <p className="mb-2 inline-flex items-center gap-2 text-base font-bold text-zinc-200">
                   <Flame className="h-4 w-4 text-orange-400" aria-hidden />
@@ -1149,6 +1172,8 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                   </div>
                 )}
               </div>
+              )}
+              {relaxCoachEnabled && (
               <div>
                 <p className="mb-2 inline-flex items-center gap-2 text-base font-bold text-zinc-200">
                   <Leaf className="h-4 w-4 text-emerald-400" aria-hidden />
@@ -1199,6 +1224,14 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
                   </div>
                 )}
               </div>
+              )}
+              {!strictCoachEnabled && !relaxCoachEnabled && (
+                <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+                  <p className="text-zinc-500 text-sm">
+                    コーチングアドバイスは設定でオフになっています。
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
