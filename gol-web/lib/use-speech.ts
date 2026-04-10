@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 
 export const SPEECH_RATES = [
   { label: '1.0x', rate: 1.0 },
-  { label: '1.3x', rate: 1.3 },
+  { label: '1.5x', rate: 1.5 },
   { label: '2.0x', rate: 2.0 },
 ] as const;
 
