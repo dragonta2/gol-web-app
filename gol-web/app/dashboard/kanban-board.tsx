@@ -23,6 +23,10 @@ import { CompletedAtDialog } from '@/components/completed-at-dialog';
 import { ClipboardList, ChevronDown, ChevronUp, Edit, Plus, Coins, Dumbbell, Brain, Sparkles } from 'lucide-react';
 import { TodoSourceYidBadge } from '@/components/todo-source-yid-badge';
 import { ExpandableTaskTitle } from '@/components/expandable-task-title';
+import {
+  COMPLETED_TODO_LIST_COLLAPSE_THRESHOLD,
+  COMPLETED_TODO_LIST_COLLAPSED_HEAD,
+} from '@/lib/todo-completed-list-collapse';
 
 // ドラッグ可能なカードコンポーネント
 type Reward = { points: number; exp_body: number; exp_mind: number; exp_spirit: number };
@@ -487,6 +491,19 @@ function DroppableColumn({
   const hasExpandableSubtasks = todos.some((t) => getSubtasksForTodo(t.id).length > 0);
   const hasExpandedInColumn = todos.some((t) => expandedSubtaskTodoIds.has(t.id));
 
+  const [showAllCompleted, setShowAllCompleted] = useState(false);
+  const isCompletedColumn = title === '完了済み';
+  const shouldCollapseCompleted =
+    isCompletedColumn && todos.length >= COMPLETED_TODO_LIST_COLLAPSE_THRESHOLD;
+  const todosToRender =
+    shouldCollapseCompleted && !showAllCompleted
+      ? todos.slice(0, COMPLETED_TODO_LIST_COLLAPSED_HEAD)
+      : todos;
+  const completedHiddenCount =
+    shouldCollapseCompleted && !showAllCompleted
+      ? todos.length - COMPLETED_TODO_LIST_COLLAPSED_HEAD
+      : 0;
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="bg-zinc-800 rounded-lg p-3 mb-3 shrink-0">
@@ -582,53 +599,77 @@ function DroppableColumn({
             {title === '完了済み' && '完了済みのタスクはありません'}
           </div>
         ) : (
-          todos.map((todo) => {
-            const overdue = isOverdue(todo.due_date, todo.status);
-            const icon = getIcon(todo.status);
-            const reward = getReward(todo);
+          <>
+            {todosToRender.map((todo) => {
+              const overdue = isOverdue(todo.due_date, todo.status);
+              const icon = getIcon(todo.status);
+              const reward = getReward(todo);
 
-            const subtasksForTodo = getSubtasksForTodo(todo.id);
-            const isSubtaskExpanded = expandedSubtaskTodoIds.has(todo.id);
+              const subtasksForTodo = getSubtasksForTodo(todo.id);
+              const isSubtaskExpanded = expandedSubtaskTodoIds.has(todo.id);
 
-            if (todo.status === 'completed') {
+              if (todo.status === 'completed') {
+                return (
+                  <DraggableCompletedTodoCard
+                    key={todo.id}
+                    todo={todo}
+                    icon={icon}
+                    reward={reward}
+                    formatCompletedDate={formatCompletedDate}
+                    onEditTodo={onEditTodo}
+                    subtasks={subtasksForTodo}
+                    isSubtaskExpanded={isSubtaskExpanded}
+                    onSubtaskExpandToggle={() => onSubtaskExpandToggle(todo.id)}
+                    onToggleSubtaskCompletion={onToggleSubtaskCompletion}
+                    formatSubtaskCompletedDate={formatSubtaskCompletedDate}
+                    isReadOnly={isReadOnly}
+                  />
+                );
+              }
+
               return (
-                <DraggableCompletedTodoCard
-                  key={todo.id}
-                  todo={todo}
-                  icon={icon}
-                  reward={reward}
-                  formatCompletedDate={formatCompletedDate}
-                  onEditTodo={onEditTodo}
-                  subtasks={subtasksForTodo}
-                  isSubtaskExpanded={isSubtaskExpanded}
-                  onSubtaskExpandToggle={() => onSubtaskExpandToggle(todo.id)}
-                  onToggleSubtaskCompletion={onToggleSubtaskCompletion}
-                  formatSubtaskCompletedDate={formatSubtaskCompletedDate}
-                  isReadOnly={isReadOnly}
-                />
+                <DroppableCardSlot key={todo.id} id={todo.id}>
+                  <DraggableTodoCard
+                    todo={todo}
+                    isOverdue={overdue}
+                    icon={icon}
+                    reward={reward}
+                    formatDeadline={formatDeadline}
+                    onMoveToActive={onMoveToActive ? () => onMoveToActive(todo.id) : undefined}
+                    onEditTodo={onEditTodo}
+                    subtasks={subtasksForTodo}
+                    isSubtaskExpanded={isSubtaskExpanded}
+                    onSubtaskExpandToggle={() => onSubtaskExpandToggle(todo.id)}
+                    onToggleSubtaskCompletion={onToggleSubtaskCompletion}
+                    formatSubtaskCompletedDate={formatSubtaskCompletedDate}
+                    isReadOnly={isReadOnly}
+                  />
+                </DroppableCardSlot>
               );
-            }
-
-            return (
-              <DroppableCardSlot key={todo.id} id={todo.id}>
-                <DraggableTodoCard
-                  todo={todo}
-                  isOverdue={overdue}
-                  icon={icon}
-                  reward={reward}
-                  formatDeadline={formatDeadline}
-                  onMoveToActive={onMoveToActive ? () => onMoveToActive(todo.id) : undefined}
-                  onEditTodo={onEditTodo}
-                  subtasks={subtasksForTodo}
-                  isSubtaskExpanded={isSubtaskExpanded}
-                  onSubtaskExpandToggle={() => onSubtaskExpandToggle(todo.id)}
-                  onToggleSubtaskCompletion={onToggleSubtaskCompletion}
-                  formatSubtaskCompletedDate={formatSubtaskCompletedDate}
-                  isReadOnly={isReadOnly}
-                />
-              </DroppableCardSlot>
-            );
-          })
+            })}
+            {shouldCollapseCompleted && !showAllCompleted ? (
+              <button
+                type="button"
+                onClick={() => setShowAllCompleted(true)}
+                className="w-full py-2 text-sm text-cyan-400 hover:text-cyan-300 hover:underline"
+                aria-expanded={false}
+                aria-label={`完了済みをさらに${completedHiddenCount}件表示する`}
+              >
+                続きをみる（あと {completedHiddenCount} 件）
+              </button>
+            ) : null}
+            {shouldCollapseCompleted && showAllCompleted ? (
+              <button
+                type="button"
+                onClick={() => setShowAllCompleted(false)}
+                className="w-full py-2 text-sm text-zinc-400 hover:text-zinc-300 hover:underline"
+                aria-expanded
+                aria-label="完了済みの一覧をたたむ"
+              >
+                たたむ
+              </button>
+            ) : null}
+          </>
         )}
       </div>
       {/* アクティブタスク列の一番下：トレロ風「タスクを追加」ボタン */}

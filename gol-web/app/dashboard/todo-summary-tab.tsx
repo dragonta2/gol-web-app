@@ -23,6 +23,10 @@ import { CompletedAtDialog } from "@/components/completed-at-dialog"
 import { TodoSourceYidBadge } from "@/components/todo-source-yid-badge"
 import { ExpandableTaskTitle } from "@/components/expandable-task-title"
 import { FormCard } from "@/components/ui/form-card"
+import {
+  COMPLETED_TODO_LIST_COLLAPSE_THRESHOLD,
+  COMPLETED_TODO_LIST_COLLAPSED_HEAD,
+} from "@/lib/todo-completed-list-collapse"
 import { toast } from "sonner"
 import { ClipboardList, Edit, Search, Coins, Dumbbell, Brain, Sparkles, Copy, Plus, Loader2 } from "lucide-react"
 import {
@@ -1524,6 +1528,18 @@ function TodoSummaryTab({
       status === "active" ? "アクティブタスク" : status === "in_progress" ? "進行中" : "完了済み"
     const isCompleted = status === "completed"
 
+    const [showAllCompleted, setShowAllCompleted] = useState(false)
+    const shouldCollapseCompleted =
+      isCompleted && todos.length >= COMPLETED_TODO_LIST_COLLAPSE_THRESHOLD
+    const todosToRender =
+      shouldCollapseCompleted && !showAllCompleted
+        ? todos.slice(0, COMPLETED_TODO_LIST_COLLAPSED_HEAD)
+        : todos
+    const completedHiddenCount =
+      shouldCollapseCompleted && !showAllCompleted
+        ? todos.length - COMPLETED_TODO_LIST_COLLAPSED_HEAD
+        : 0
+
     const hasExpandableSubtasks = todos.some((t) => getSubtasksForTodo(t.id).length > 0)
     const hasExpandedInColumn = todos.some((t) => expandedTodos.has(t.id))
 
@@ -1597,7 +1613,31 @@ function TodoSummaryTab({
               {columnLabel}なタスクはありません
             </div>
           ) : (
-            todos.map((todo) => renderTodoCard(todo, isCompleted))
+            <>
+              {todosToRender.map((todo) => renderTodoCard(todo, isCompleted))}
+              {shouldCollapseCompleted && !showAllCompleted ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCompleted(true)}
+                  className="w-full py-2 text-sm text-cyan-400 hover:text-cyan-300 hover:underline"
+                  aria-expanded={false}
+                  aria-label={`完了済みをさらに${completedHiddenCount}件表示する`}
+                >
+                  続きをみる（あと {completedHiddenCount} 件）
+                </button>
+              ) : null}
+              {shouldCollapseCompleted && showAllCompleted ? (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCompleted(false)}
+                  className="w-full py-2 text-sm text-zinc-400 hover:text-zinc-300 hover:underline"
+                  aria-expanded
+                  aria-label="完了済みの一覧をたたむ"
+                >
+                  たたむ
+                </button>
+              ) : null}
+            </>
           )}
         </div>
         {onAddTask && (

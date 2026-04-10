@@ -10,6 +10,42 @@
 
 ### 260410-Fri
 
+#### 260410-Fri｜完了ToDo列の「続きをみる」折りたたみ（5件以上）
+
+**記載** Cursor
+
+---
+
+##### 背景
+
+- 日誌の ToDo カンバン・ToDo サマリーとも、完了済み列だけタスクが縦に伸びて画面が長くなるため、件数が多いときは折りたたみで先頭だけ見せたいという要望
+
+---
+
+##### 実装ファイル
+
+- `gol-web/lib/todo-completed-list-collapse.ts`（新規・閾値5件・折りたたみ時先頭4件）
+
+- `gol-web/app/dashboard/kanban-board.tsx`（日誌カンバンの完了済み列）
+
+- `gol-web/app/dashboard/todo-summary-tab.tsx`（ToDo サマリーの完了済み列）
+
+- `docs/6-todo-progress.md`（チェック完了・文言「5つ以上」）
+
+---
+
+##### 挙動
+
+- `COMPLETED_TODO_LIST_COLLAPSE_THRESHOLD = 5`：完了が **5件以上** のとき折りたたみ対象
+
+- `COMPLETED_TODO_LIST_COLLAPSED_HEAD = 4`：折りたたみ中は **先頭4件** のみ表示
+
+- 折りたたみ中は **「続きをみる（あと N 件）」**、全件表示中は **「たたむ」**（当初は「閉じる」だったが文言変更）
+
+- 列ヘッダの件数表示は **全完了件数** のまま
+
+---
+
 #### 260410-Fri｜日誌コーチング表示（改行・段落）と緊張コーチの ToDo 扱い
 
 **記載** Cursor
