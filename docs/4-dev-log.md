@@ -10,6 +10,60 @@
 
 ### 260410-Fri
 
+#### 260410-Fri｜コーチング表示設定のトグル化と仕様書への確定反映
+
+**記載** Cursor
+
+---
+
+##### 背景
+
+- 「辛口コーチ」という旧名称だと機能実態（弛緩/緊張の2種類のコーチング表示）とズレるため、設定画面の名称とトグル構成を現在仕様に合わせる必要があった
+
+- あわせて「非表示でもAI判定時に裏で生成・保存されるか」を仕様として明文化する依頼があった
+
+---
+
+##### 実装ファイル
+
+- `gol-web/lib/ai/personality-types.ts`
+
+- `gol-web/app/settings/account/account-settings-client.tsx`
+
+- `gol-web/app/dashboard/journal-form.tsx`
+
+- `docs/1-spec-sheet.md`
+
+---
+
+##### 実装内容
+
+- 設定画面の見出しを「コーチングアドバイス」に変更し、トグルを2つに分離
+
+  - `弛緩のコーチングを表示`
+
+  - `緊張のコーチングを表示`
+
+- localStorage キーを追加して保存・復元
+
+  - `gol-ai-relax-coach-enabled`（弛緩）
+
+  - `gol-ai-strict-coach-enabled`（緊張）
+
+- 日誌画面で上記トグルに応じて表示を切替（弛緩/緊張ブロックを個別に表示制御）
+
+- 両方オフ時は「コーチングアドバイスは設定でオフ」の案内のみ表示
+
+---
+
+##### 仕様確定（docs 反映）
+
+- `docs/1-spec-sheet.md` の AI 判定仕様に「表示オフは生成抑止ではなく表示制御」であることを追記
+
+- 現行は `AI判定を実行` 時に弛緩・緊張の両方を生成し、`daily_logs.ai_advice` / `daily_logs.ai_advice_tension` に保存する
+
+---
+
 #### 260410-Fri｜完了ToDo列の「続きをみる」折りたたみ（5件以上）
 
 **記載** Cursor
