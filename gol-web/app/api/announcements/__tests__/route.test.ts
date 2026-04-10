@@ -156,7 +156,7 @@ describe('/api/announcements', () => {
         select: vi.fn().mockReturnThis(),
         order: vi.fn().mockReturnThis(),
         limit: vi.fn().mockReturnThis(),
-        single: vi.fn().mockResolvedValue({ data: { display_order: 0 }, error: null }),
+        maybeSingle: vi.fn().mockResolvedValue({ data: { display_order: 0 }, error: null }),
       };
       const chain2 = {
         insert: vi.fn().mockReturnThis(),

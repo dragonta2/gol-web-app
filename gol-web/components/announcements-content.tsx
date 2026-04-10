@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus } from 'lucide-react';
+import { Pencil, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,6 +26,10 @@ export function AnnouncementsContent({
   const [date, setDate] = useState('');
   const [subject, setSubject] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editSubject, setEditSubject] = useState('');
+  const [savingEditId, setSavingEditId] = useState<string | null>(null);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -71,7 +75,10 @@ export function AnnouncementsContent({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data.error || '追加に失敗しました');
+        const parts = [data.error, data.details, data.hint].filter(
+          (x: unknown) => typeof x === 'string' && x.length > 0
+        ) as string[];
+        throw new Error(parts.length > 0 ? parts.join(' — ') : '追加に失敗しました');
       }
       setDate('');
       setSubject('');
@@ -80,6 +87,48 @@ export function AnnouncementsContent({
       setError(e instanceof Error ? e.message : 'お知らせの追加に失敗しました');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const startEdit = (item: AnnouncementItem) => {
+    setEditingId(item.id);
+    setEditDate(item.notice_date);
+    setEditSubject(item.subject);
+    setError(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditDate('');
+    setEditSubject('');
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent, id: string) => {
+    e.preventDefault();
+    const d = editDate.trim();
+    const s = editSubject.trim();
+    if (!d || !s) return;
+    setSavingEditId(id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/announcements/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notice_date: d, subject: s }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const parts = [data.error, data.details, data.hint].filter(
+          (x: unknown) => typeof x === 'string' && x.length > 0
+        ) as string[];
+        throw new Error(parts.length > 0 ? parts.join(' — ') : '更新に失敗しました');
+      }
+      cancelEdit();
+      await fetchList();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'お知らせの更新に失敗しました');
+    } finally {
+      setSavingEditId(null);
     }
   };
 
@@ -101,8 +150,83 @@ export function AnnouncementsContent({
                   key={item.id}
                   className="border-b border-zinc-800 last:border-0 pb-4 last:pb-0 first:pt-0"
                 >
-                  <div className="text-sm text-zinc-400 mb-1">{item.notice_date}</div>
-                  <div className="text-zinc-100 font-medium">{item.subject}</div>
+                  {canManageAnnouncements && editingId === item.id ? (
+                    <form
+                      onSubmit={(e) => handleSaveEdit(e, item.id)}
+                      className="space-y-3 rounded-lg border border-zinc-700 bg-zinc-800/50 p-3"
+                    >
+                      <div>
+                        <Label
+                          htmlFor={`notice-edit-date-${item.id}`}
+                          className="text-zinc-300"
+                        >
+                          日付
+                        </Label>
+                        <Input
+                          id={`notice-edit-date-${item.id}`}
+                          type="text"
+                          value={editDate}
+                          onChange={(e) => setEditDate(e.target.value)}
+                          className="mt-1 bg-zinc-800 border-zinc-600 text-zinc-100"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor={`notice-edit-subject-${item.id}`}
+                          className="text-zinc-300"
+                        >
+                          件名
+                        </Label>
+                        <Input
+                          id={`notice-edit-subject-${item.id}`}
+                          type="text"
+                          value={editSubject}
+                          onChange={(e) => setEditSubject(e.target.value)}
+                          className="mt-1 bg-zinc-800 border-zinc-600 text-zinc-100"
+                        />
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="submit"
+                          className="bg-cyan-600 hover:bg-cyan-700"
+                          disabled={savingEditId === item.id}
+                        >
+                          {savingEditId === item.id ? '保存中…' : '保存'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="border-zinc-600 bg-zinc-800 text-zinc-200"
+                          disabled={savingEditId === item.id}
+                          onClick={cancelEdit}
+                        >
+                          キャンセル
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm text-zinc-400 mb-1">
+                          {item.notice_date}
+                        </div>
+                        <div className="text-zinc-100 font-medium wrap-break-word">
+                          {item.subject}
+                        </div>
+                      </div>
+                      {canManageAnnouncements ? (
+                        <button
+                          type="button"
+                          onClick={() => startEdit(item)}
+                          className="shrink-0 inline-flex items-center gap-1.5 text-sm text-cyan-400 hover:text-cyan-300 hover:underline"
+                          aria-label={`お知らせ「${item.subject.slice(0, 40)}${item.subject.length > 40 ? '…' : ''}」を編集`}
+                        >
+                          <Pencil className="w-3.5 h-3.5" aria-hidden />
+                          編集
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

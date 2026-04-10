@@ -743,7 +743,7 @@ WHERE table_name = 'profiles';
 - **テーブル作成・RLS:** `docs/sql-snippet/create-announcements-table.sql` を Supabase SQL Editor で実行
 - **カラム:** id, notice_date（TEXT）, subject（TEXT）, display_order（INTEGER）, created_at, updated_at
 - **RLS:** 認証ユーザーは SELECT 可能。INSERT/UPDATE/DELETE は管理アカウント（指定メールまたは profiles.is_admin）のみ
-- **API:** GET /api/announcements（一覧）、POST /api/announcements（追加・管理のみ）
+- **API:** GET `/api/announcements`（一覧）、POST `/api/announcements`（追加・管理のみ）、PATCH `/api/announcements/[id]`（更新・管理のみ）
 
 ---
 

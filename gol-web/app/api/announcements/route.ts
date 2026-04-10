@@ -3,10 +3,12 @@
  *
  * GET: 認証ユーザー全員が一覧取得（DB保存・全ユーザー共通）
  * POST: 管理アカウント・指定メールのみ追加可能
+ * PATCH: `app/api/announcements/[id]/route.ts`（1件更新）
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAnnouncementsServiceClient } from '@/lib/announcements-service-client';
 import { isAdmin } from '@/lib/auth/admin';
 import { canManageAnnouncements } from '@/lib/announcements';
 
@@ -70,17 +72,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 最大 display_order の次を付与
-    const { data: maxRow } = await supabase
+    const supabaseForWrite = createAnnouncementsServiceClient(supabase);
+
+    // 最大 display_order の次を付与（空テーブルでもエラーにしない）
+    const { data: maxRow, error: maxErr } = await supabaseForWrite
       .from('announcements')
       .select('display_order')
       .order('display_order', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
+
+    if (maxErr) {
+      console.error('announcements POST max display_order error:', maxErr);
+      return NextResponse.json(
+        {
+          error: 'お知らせの追加に失敗しました',
+          details: maxErr.message,
+        },
+        { status: 500 }
+      );
+    }
 
     const display_order = maxRow ? (maxRow.display_order ?? 0) + 1 : 0;
 
-    const { data: inserted, error: insertError } = await supabase
+    const { data: inserted, error: insertError } = await supabaseForWrite
       .from('announcements')
       .insert({ notice_date, subject, display_order })
       .select('id, notice_date, subject, display_order, created_at')
@@ -88,8 +103,17 @@ export async function POST(request: NextRequest) {
 
     if (insertError) {
       console.error('announcements POST error:', insertError);
+      const isRls =
+        insertError.code === '42501' ||
+        /row-level security|permission denied/i.test(insertError.message ?? '');
       return NextResponse.json(
-        { error: 'お知らせの追加に失敗しました', details: insertError.message },
+        {
+          error: 'お知らせの追加に失敗しました',
+          details: insertError.message,
+          hint: isRls
+            ? 'Vercel に SUPABASE_SERVICE_ROLE_KEY を設定するか、profiles.is_admin を true にするか、RLS の許可メールとログイン中のメールを一致させてください。'
+            : undefined,
+        },
         { status: 500 }
       );
     }
