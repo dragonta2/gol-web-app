@@ -7,8 +7,15 @@
 ## 構成
 
 - `gol-web/` — Next.js アプリ本体。起動・ビルド・環境変数は `gol-web/README.md` を参照
-- `docs/` — 設計・進捗・DBスキーマ・運用メモなど
+
 - `PROJECT_STRUCTURE.md` — ディレクトリ構造の説明
+
+## docs/ について
+
+プロジェクトドキュメントは iCloud に移動しました。
+
+iCloud パス:
+`/Users/ta2/Library/Mobile Documents/com~apple~CloudDocs/ALL-DTA2-iCloud/i-Develop/i-docs/i-gol-web-docs/`
 
 ## クイックスタート
 
@@ -44,7 +51,7 @@ npm run dev
 
 1. PC起動時に`general/git-auto-commit.sh`が自動実行されます
 2. スクリプトは「今日すでにコミットしたか」を確認します（`.last-commit-date.md`を参照）
-3. 変更がある場合、`gol-web/`と`docs/`ディレクトリをコミット・プッシュします
+3. 変更がある場合、`gol-web/` ディレクトリをコミット・プッシュします
 4. 実行結果はログファイルに記録されます：
    - `/Users/ta2/Library/Logs/com.gol.web-app.git-auto-commit.log`
    - `/Users/ta2/Library/Logs/com.gol.web-app.git-auto-commit.error.log`
@@ -148,7 +155,7 @@ tail -f ~/Library/Logs/com.gol.web-app.git-auto-commit.log
 
 - `main` — 本番ブランチ。直接 push は小規模修正のみ
 - `feature/xxx` / `refactor/xxx` — 機能追加・リファクタリング用。PR を通して main にマージ
-- PR 下書きは `docs/appendix/git-draft/` に保存
+- PR 下書きは iCloud の `i-gol-web-docs/appendix/git-draft/` に保存
 
 ## CI / デプロイ構成
 
