@@ -8,6 +8,48 @@
 
 ## 2604 --------------
 
+### 260413-Mon
+
+#### 260413-Mon｜レベルアップ画面「ダッシュボードに戻る」で再表示ループする不具合を修正
+
+**記載** Cursor
+
+---
+
+##### 背景
+
+- レベルアップ演出で「ダッシュボードに戻る」を押して閉じても、条件次第で演出が即時再表示され、画面遷移できないループに見える不具合が報告された
+
+---
+
+##### 実装ファイル
+
+- `gol-web/components/level-up-celebration.tsx`
+
+- `docs/6-todo-progress.md`
+
+- `docs/3-project-progress.md`
+
+- `docs/4-dev-log.md`
+
+---
+
+##### 原因
+
+- `LevelUpCelebrationTrigger` の `useEffect` が `if (levelChanged && !show) setShow(true)` だったため、`levelChanged=true` の間は `onEnd` で `show=false` に戻すたび再び `true` にされる構造だった
+
+---
+
+##### 修正内容
+
+- `show` の初期値を `false` に変更し、`handledCurrentLevelUp`（`useRef`）で同一 `levelChanged=true` イベントの再表示を抑止
+
+- `levelChanged=false` になったタイミングでフラグをリセットし、次回の正規レベルアップ時のみ再表示できるようにした
+
+- チェックリスト `docs/6-todo-progress.md` の対象項目へ `260413実装済み` を追記
+
+---
+
 ### 260410-Fri
 
 #### 260410-Fri｜コーチング表示設定のトグル化と仕様書への確定反映

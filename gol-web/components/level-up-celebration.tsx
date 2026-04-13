@@ -143,10 +143,21 @@ export function LevelUpCelebrationTrigger({
   levelChanged: boolean
   newLevel?: number
 }) {
-  const [show, setShow] = useState(levelChanged)
+  const [show, setShow] = useState(false)
+  const handledCurrentLevelUp = useRef(false)
+
   useEffect(() => {
-    if (levelChanged && !show) setShow(true)
-  }, [levelChanged, show])
+    if (!levelChanged) {
+      handledCurrentLevelUp.current = false
+      return
+    }
+
+    if (handledCurrentLevelUp.current) return
+
+    handledCurrentLevelUp.current = true
+    setShow(true)
+  }, [levelChanged])
+
   return (
     <LevelUpCelebration
       show={show}
