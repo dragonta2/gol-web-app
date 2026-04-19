@@ -24,6 +24,10 @@ import {
   DEFAULT_PERSONALITY_TYPE_ID,
 } from '@/lib/ai/personality-types';
 import { validateJournalText, validateImpressionText, validateAll } from '@/lib/validation';
+import {
+  buildHabitNamesForAiCoaching,
+  type HabitRowForPrompt,
+} from '@/lib/ai/habit-prompt-lists';
 
 const JOURNAL_MAX_LENGTH = 3000;
 const IMPRESSION_MAX_LENGTH = 3000;
@@ -179,23 +183,39 @@ export async function POST(request: NextRequest) {
       .select('habit_id, is_checked')
       .eq('daily_log_id', dailyLogId);
     const habitLogsAll = habitLogs ?? [];
-    const habitIdsCompleted = [...new Set(habitLogsAll.filter((h) => h.is_checked).map((h) => h.habit_id))];
-    const habitIdsMissed = [...new Set(habitLogsAll.filter((h) => !h.is_checked).map((h) => h.habit_id))];
-    const allHabitIds = [...new Set([...habitIdsCompleted, ...habitIdsMissed])];
+    const allHabitIds = [...new Set(habitLogsAll.map((h) => h.habit_id))];
     const { data: habitsRows } =
       allHabitIds.length > 0
-        ? await supabase.from('habits').select('id, habit_name').in('id', allHabitIds)
+        ? await supabase.from('habits').select('id, habit_name, habit_type, parent_habit_id').in('id', allHabitIds)
         : { data: [] };
-    const habitMap = new Map(
-      habitsRows?.map((h) => [h.id, (h as { id: string; habit_name: string }).habit_name?.trim()]) ?? []
+    const habitsForBuilder = (habitsRows ?? [])
+      .map((h) => {
+        const row = h as {
+          id: string;
+          habit_name: string | null;
+          habit_type: string;
+          parent_habit_id: string | null;
+        };
+        const t = row.habit_type;
+        if (t !== 'good' && t !== 'bad' && t !== 'bonus') return null;
+        return {
+          id: row.id,
+          habit_name: (row.habit_name ?? '').trim(),
+          habit_type: t,
+          parent_habit_id: row.parent_habit_id ?? null,
+        };
+      })
+      .filter(Boolean) as HabitRowForPrompt[];
+
+    const { completedGoodBonus, missedGoodBonus, resistedBad, committedBad } = buildHabitNamesForAiCoaching(
+      habitLogsAll,
+      habitsForBuilder
     );
-    const completedHabits: string[] = habitIdsCompleted
-      .map((id) => habitMap.get(id))
-      .filter(Boolean) as string[];
-    const missedHabits: string[] = habitIdsMissed
-      .map((id) => habitMap.get(id))
-      .filter(Boolean) as string[];
-    const habits = completedHabits; // judgment / story 用（達成した習慣のみ）
+    const completedHabits = completedGoodBonus;
+    const missedHabits = missedGoodBonus;
+    const resistedBadHabits = resistedBad;
+    const committedBadHabits = committedBad;
+    const habits = [...completedGoodBonus, ...resistedBad];
 
     const { data: todoLogs } = await supabase
       .from('todo_logs')
@@ -276,7 +296,9 @@ export async function POST(request: NextRequest) {
       { advice_min: aiLimits.advice_min, advice_max: aiLimits.advice_max },
       completedHabits,
       missedHabits,
-      todos
+      todos,
+      resistedBadHabits,
+      committedBadHabits
     );
     const relaxCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -304,7 +326,9 @@ export async function POST(request: NextRequest) {
       },
       completedHabits,
       missedHabits,
-      todos
+      todos,
+      resistedBadHabits,
+      committedBadHabits
     );
     const tensionCompletion = await openai.chat.completions.create({
       model: 'gpt-4o-mini',

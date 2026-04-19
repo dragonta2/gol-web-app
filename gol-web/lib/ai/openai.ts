@@ -56,9 +56,12 @@ export function createJudgmentPrompt(
     todos && todos.length > 0
       ? `\n【完了したToDo】\n${todos.join('、')}\n`
       : '';
+  const habitSemanticsNote = habitsBlock
+    ? '\n※習慣の解釈: 【実行した習慣】には、チェック済みの良習慣・ボーナスに加え、「悪習慣を今日は実施しなかった（回避）」として扱うべき表記が含まれる場合があります。**悪習慣は実施しないことが望ましい**ので、回避を「未達」や「サボり」と誤解しないでください。親子の良習慣では、親または子のいずれかが実施されていれば十分な前進とみなしてください。\n'
+    : '';
   const referenceNote =
     habitsBlock || todosBlock
-      ? '\n上記の習慣・ToDoの達成状況も体調・気分の判定の参考にしてください。reasoning（判定理由）には、日誌・一言の内容に加え、習慣やToDoの達成に触れても構いません。\n'
+      ? `${habitSemanticsNote}上記の習慣・ToDoの達成状況も体調・気分の判定の参考にしてください。reasoning（判定理由）には、日誌・一言の内容に加え、習慣やToDoの達成に触れても構いません。\n`
       : '';
   return `あなたは厳格なコーチです。以下の日誌と一言感想を読んで、体調スコアと気分スコアを0-100点で判定してください。
 
@@ -89,7 +92,9 @@ export function createRelaxAdvicePrompt(
   limits?: { advice_min: number; advice_max: number } | null,
   completedHabits?: string[],
   missedHabits?: string[],
-  completedTodos?: string[]
+  completedTodos?: string[],
+  resistedBadHabits: string[] = [],
+  committedBadHabits: string[] = []
 ): string {
   const relaxCore =
     '弛緩（飴）のコーチングとして、共感・褒め・認める・激励を心がけてください。厳しい叱責や欠点の列挙は避け、今日の小さな前進を認めたうえで背中を押してください。';
@@ -104,6 +109,10 @@ export function createRelaxAdvicePrompt(
     completedHabits && completedHabits.length > 0 ? completedHabits.join('、') : 'なし';
   const missedHabitsBlock =
     missedHabits && missedHabits.length > 0 ? missedHabits.join('、') : 'なし';
+  const resistedBadBlock =
+    resistedBadHabits.length > 0 ? resistedBadHabits.join('、') : 'なし';
+  const committedBadBlock =
+    committedBadHabits.length > 0 ? committedBadHabits.join('、') : 'なし';
   const completedTodosBlock =
     completedTodos && completedTodos.length > 0 ? completedTodos.join('、') : 'なし';
 
@@ -113,10 +122,17 @@ ${nameInstruction}
 
 以下の情報を基に、弛緩コーチングを生成してください。
 
-【今日達成した習慣】
+【今日達成した良習慣・ボーナス（チェック済み）】
 ${completedHabitsBlock}
 
-【今日できなかった習慣（目標として登録済み）】
+【守れた悪習慣（今日は実施しなかった＝望ましい結果。未チェックが正解）】
+${resistedBadBlock}
+※ここに挙がった項目を「できなかった」「サボった」と表現しないでください。回避は評価に値します。
+
+【実施してしまった悪習慣（チェックあり＝悪習慣をした）】
+${committedBadBlock}
+
+【今日できなかった良習慣・ボーナス（目標として未チェック）】
 ${missedHabitsBlock}
 ※できなかった事実を責めず、共感と前向きな視点で触れてください。
 
@@ -150,7 +166,9 @@ export function createTensionAdvicePrompt(
   limits?: { advice_tension_min: number; advice_tension_max: number } | null,
   completedHabits?: string[],
   missedHabits?: string[],
-  completedTodos?: string[]
+  completedTodos?: string[],
+  resistedBadHabits: string[] = [],
+  committedBadHabits: string[] = []
 ): string {
   const toneInstruction =
     worldConfig?.adviceToneInstruction ??
@@ -163,6 +181,10 @@ export function createTensionAdvicePrompt(
     completedHabits && completedHabits.length > 0 ? completedHabits.join('、') : 'なし';
   const missedHabitsBlock =
     missedHabits && missedHabits.length > 0 ? missedHabits.join('、') : 'なし';
+  const resistedBadBlock =
+    resistedBadHabits.length > 0 ? resistedBadHabits.join('、') : 'なし';
+  const committedBadBlock =
+    committedBadHabits.length > 0 ? committedBadHabits.join('、') : 'なし';
   const completedTodosBlock =
     completedTodos && completedTodos.length > 0 ? completedTodos.join('、') : 'なし';
 
@@ -172,10 +194,17 @@ ${nameInstruction}
 
 以下の情報を基に、緊張コーチングを生成してください。
 
-【今日達成した習慣】
+【今日達成した良習慣・ボーナス（チェック済み）】
 ${completedHabitsBlock}
 
-【今日できなかった習慣（目標として登録済み）】
+【守れた悪習慣（今日は実施しなかった＝望ましい結果。未チェックが正解）】
+${resistedBadBlock}
+※ここに挙がった項目を「できなかった」と叱らないこと。回避は評価に値する。
+
+【実施してしまった悪習慣（チェックあり）】
+${committedBadBlock}
+
+【今日できなかった良習慣・ボーナス（目標として未チェック）】
 ${missedHabitsBlock}
 
 【完了したToDo】
@@ -231,9 +260,9 @@ ${journalText || '（未記入）'}
 【一言感想】
 ${impressionText || '（未記入）'}
 
-【実行した習慣】
+【実行した習慣（良習慣・ボーナスのチェック済み＋悪習慣の「今日は回避」表記を含む場合あり）】
 ${habits.length > 0 ? habits.join('、') : 'なし'}
-
+${habits.length > 0 ? '※悪習慣は実施しないことが望ましい。親子の良習慣はいずれか実施があれば前進とみなすこと。\n' : ''}
 【完了したToDo】
 ${todos.length > 0 ? todos.join('、') : 'なし'}
 
