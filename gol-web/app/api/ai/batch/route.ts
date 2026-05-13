@@ -6,6 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { APIError } from 'openai';
 import { createClient } from '@/lib/supabase/server';
 import {
   getOpenAIClient,
@@ -29,6 +30,9 @@ import {
   type HabitRowForPrompt,
 } from '@/lib/ai/habit-prompt-lists';
 
+/** Vercel 等では既定10秒で打ち切られるため、4連続の OpenAI 呼び出しが完了できるよう上限まで延長 */
+export const maxDuration = 60;
+
 const JOURNAL_MAX_LENGTH = 3000;
 const IMPRESSION_MAX_LENGTH = 3000;
 
@@ -44,6 +48,25 @@ function calculatePointsAndExp(conditionBody: number, conditionMood: number) {
     exp_mind: Math.round(averageScore / AI_EXP_DIVISOR),
     exp_spirit: Math.round(conditionMood / AI_EXP_DIVISOR),
   };
+}
+
+/** 空応答時は finish_reason を載せて 500 の原因（length / content_filter 等）を切り分けしやすくする */
+function requireAssistantContent(
+  completion: {
+    choices: Array<{
+      message?: { content?: string | null };
+      finish_reason?: string | null;
+    }>;
+  },
+  stepLabel: string
+): string {
+  const choice = completion.choices[0];
+  const raw = choice?.message?.content;
+  if (typeof raw === 'string' && raw.trim().length > 0) {
+    return raw;
+  }
+  const fr = choice?.finish_reason ?? 'none';
+  throw new Error(`${stepLabel}の応答がありません（finish_reason=${String(fr)}）`);
 }
 
 export async function POST(request: NextRequest) {
@@ -248,8 +271,7 @@ export async function POST(request: NextRequest) {
       temperature: 0.7,
       max_tokens: 500,
     });
-    const judgmentContent = judgmentCompletion.choices[0]?.message?.content;
-    if (!judgmentContent) throw new Error('AI判定の応答がありません');
+    const judgmentContent = requireAssistantContent(judgmentCompletion, 'AI判定');
     let judgmentResult: { condition_body?: number; condition_mood?: number; reasoning?: string };
     try {
       judgmentResult = JSON.parse(judgmentContent);
@@ -279,8 +301,7 @@ export async function POST(request: NextRequest) {
       temperature: 0.9,
       max_tokens: 600,
     });
-    const story = storyCompletion.choices[0]?.message?.content?.trim();
-    if (!story) throw new Error('あらすじの応答がありません');
+    const story = requireAssistantContent(storyCompletion, 'あらすじ').trim();
 
     // 3. 弛緩コーチング（ai_advice）
     const personalityTypeId = isValidPersonalityTypeId(rawPersonalityTypeId) ? rawPersonalityTypeId : DEFAULT_PERSONALITY_TYPE_ID;
@@ -309,8 +330,7 @@ export async function POST(request: NextRequest) {
       temperature: 0.8,
       max_tokens: 500,
     });
-    const adviceRelax = relaxCompletion.choices[0]?.message?.content?.trim();
-    if (!adviceRelax) throw new Error('弛緩コーチングの応答がありません');
+    const adviceRelax = requireAssistantContent(relaxCompletion, '弛緩コーチング').trim();
 
     // 4. 緊張コーチング（ai_advice_tension）
     const tensionPrompt = createTensionAdvicePrompt(
@@ -339,8 +359,7 @@ export async function POST(request: NextRequest) {
       temperature: 0.8,
       max_tokens: 500,
     });
-    const adviceTension = tensionCompletion.choices[0]?.message?.content?.trim();
-    if (!adviceTension) throw new Error('緊張コーチングの応答がありません');
+    const adviceTension = requireAssistantContent(tensionCompletion, '緊張コーチング').trim();
 
     // 5. daily_logs 更新（一括＋実行回数インクリメント）
     const { error: updateLogError } = await supabase
@@ -363,8 +382,17 @@ export async function POST(request: NextRequest) {
 
     if (updateLogError) {
       console.error('daily_logs update error:', updateLogError);
+      const hint =
+        /column|schema|PGRST/i.test(updateLogError.message ?? '')
+          ? 'daily_logs に ai_advice_tension / ai_batch_run_count などのカラム追加マイグレーションが未適用の可能性があります。'
+          : undefined;
       return NextResponse.json(
-        { error: '保存に失敗しました', details: updateLogError.message },
+        {
+          error: '保存に失敗しました',
+          details: updateLogError.message,
+          code: 'DAILY_LOG_UPDATE_FAILED',
+          ...(hint ? { hint } : {}),
+        },
         { status: 500 }
       );
     }
@@ -385,6 +413,23 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error('AI一括生成エラー:', error);
+    if (error instanceof APIError) {
+      const httpStatus =
+        error.status === 401 || error.status === 403
+          ? 503
+          : error.status === 429
+            ? 429
+            : 502;
+      return NextResponse.json(
+        {
+          error: 'AI一括生成に失敗しました',
+          details: error.message,
+          code: 'OPENAI_API_ERROR',
+          openai_status: error.status ?? null,
+        },
+        { status: httpStatus }
+      );
+    }
     const message = error instanceof Error ? error.message : 'Unknown error';
     const status = message.includes('OPENAI_API_KEY') ? 503 : 500;
     return NextResponse.json(

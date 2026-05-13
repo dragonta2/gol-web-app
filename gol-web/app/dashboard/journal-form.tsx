@@ -514,12 +514,26 @@ function JournalForm({ dailyLogId, dailyLog, logDate, expandedStates, onExpanded
       );
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          details?: string;
+          hint?: string;
+          code?: string;
+          openai_status?: number | null;
+        };
         if (response.status === 429 && data.code === 'BATCH_LIMIT_EXCEEDED') {
           toast.error(data.error || '再生成回数は2回までです。');
           return;
         }
-        throw new Error(data.error || data.details || `HTTP ${response.status}`);
+        const summary =
+          (typeof data.details === 'string' && data.details) ||
+          (typeof data.error === 'string' && data.error) ||
+          `HTTP ${response.status}`;
+        const extras = [
+          typeof data.hint === 'string' && data.hint.trim() ? data.hint.trim() : null,
+          data.openai_status != null ? `OpenAI HTTP ${data.openai_status}` : null,
+        ].filter(Boolean);
+        throw new Error(extras.length > 0 ? `${summary}（${extras.join(' · ')}）` : summary);
       }
 
       const data = await response.json();
