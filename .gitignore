@@ -24,3 +24,4 @@ fix-gol-web-as-normal-dir.sh
 
 # 自動コミット用の日付記録ファイル
 general/.last-commit-date.md
+.vercel
